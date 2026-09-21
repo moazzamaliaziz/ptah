@@ -44,6 +44,30 @@ const VALUES: { title: string; body: string }[] = [
   },
 ];
 
+// Team described by role rather than fabricated named individuals.
+const TEAM: { title: string; body: string }[] = [
+  {
+    title: "Licensed Egyptologist guides",
+    body: "Our guides trained in Egyptology and hold official guiding licences. They read the sites for you — the stories in the reliefs, the reasons behind the ruins — rather than reciting a script.",
+  },
+  {
+    title: "Trip designers",
+    body: "Behind every itinerary is a planner who sequences your days around light and crowds, matches you to the right guide, and sweats the logistics so the trip feels effortless.",
+  },
+  {
+    title: "On-the-ground support",
+    body: "A Cairo-based team keeps every trip running and stays reachable throughout — the local number that always picks up when plans need to flex.",
+  },
+];
+
+// Mirrors the footer accreditation SSOT in src/content/landing.ts.
+const ACCREDITATIONS: { name: string; note: string }[] = [
+  { name: "ETF", note: "Member 2026" },
+  { name: "Travelife", note: "Partner" },
+  { name: "Egypt Air", note: "Official carrier partner" },
+  { name: "IATA", note: "Accredited agent" },
+];
+
 export default function AboutPage() {
   return (
     <Container className="py-14">
@@ -109,6 +133,44 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Team */}
+      <section id="team" className="mt-16 scroll-mt-24">
+        <h2 className="text-section-h2 font-bold text-ink">Our Egyptologists</h2>
+        <p className="mt-3 max-w-2xl text-body leading-relaxed text-ink/70">
+          Every Ptah journey is led by a licensed Egyptologist — a professional guide trained in Egypt&apos;s
+          history and archaeology, and licensed by the Ministry of Tourism and Antiquities. They&apos;re the
+          reason a visit becomes an understanding.
+        </p>
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+          {TEAM.map((t) => (
+            <div key={t.title} className="rounded-xl border border-grey-300/60 bg-white p-6">
+              <h3 className="text-trip-h3 font-semibold text-ink">{t.title}</h3>
+              <p className="mt-2 text-meta leading-relaxed text-ink/65">{t.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Accreditation */}
+      <section id="accreditation" className="mt-16 scroll-mt-24">
+        <h2 className="text-section-h2 font-bold text-ink">Accreditations &amp; partners</h2>
+        <p className="mt-3 max-w-2xl text-body leading-relaxed text-ink/70">
+          We hold ourselves to recognised industry standards and work with established travel partners — so the
+          people you trust with your trip are accountable to more than just us.
+        </p>
+        <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-4">
+          {ACCREDITATIONS.map((a) => (
+            <div key={a.name} className="rounded-xl border border-grey-300/60 bg-white p-6 text-center">
+              <p className="text-trip-h3 font-bold text-ink">{a.name}</p>
+              <p className="mt-1 text-meta text-ink/60">{a.note}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-meta text-ink/45">
+          See these partners referenced across our site footer. For verification details, contact us any time.
+        </p>
       </section>
 
       {/* CTA */}
