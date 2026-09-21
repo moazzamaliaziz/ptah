@@ -1,0 +1,959 @@
+/* =============================================================================
+   PTAH TOURS — global chrome styles (design.md §2 + §1.4)
+   Header / mega-menu / mobile curtain / footer / cookie banner / skip link /
+   MultiCropImage. Component-scoped class names, driven by the tokens in
+   tokens.css.
+   ========================================================================== */
+
+/* ---- Skip link (§2.4) -------------------------------------------------------
+   First focusable element; sr-only until focused; z = skipNav token. */
+.skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.skip-link:focus {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: var(--z-skip-nav);
+  width: auto;
+  height: auto;
+  clip: auto;
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  background: #fff;
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  border-radius: 4px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* ---- MultiCropImage (§1.4) ---------------------------------------------------
+   Aspect-ratio box (padding-top fallback + @supports upgrade) containing 1-3
+   absolutely-filling next/image variants. CSS display-switches pick the active
+   variant per breakpoint. Ratios are passed in as inline custom properties. */
+.mci {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-top: var(--mci-pad);
+  overflow: hidden;
+  background-color: var(--color-grey-300);
+  border-radius: var(--radius-step);
+  isolation: isolate;
+}
+@supports (aspect-ratio: 1 / 1) {
+  .mci {
+    padding-top: 0;
+    height: auto;
+    aspect-ratio: var(--mci-ratio);
+  }
+}
+.mci__variant {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+.mci__variant--base { display: block; }
+.mci--square-frame { border-radius: 0; }
+
+@media (min-width: 46.5em) {
+  .mci[data-mid] { padding-top: var(--mci-pad-mid); }
+  .mci[data-mid] .mci__variant--base { display: none; }
+  .mci[data-mid] .mci__variant--mid  { display: block; }
+  @supports (aspect-ratio: 1 / 1) {
+    .mci[data-mid] { aspect-ratio: var(--mci-ratio-mid); }
+  }
+}
+/* Third crop can switch at 1128 (50/50 cards) or 1440 (full-bleed CTA, stories) */
+@media (min-width: 70.5em) {
+  .mci[data-wide-at="1128"] { padding-top: var(--mci-pad-wide); }
+  .mci[data-wide-at="1128"] .mci__variant--base,
+  .mci[data-wide-at="1128"] .mci__variant--mid { display: none; }
+  .mci[data-wide-at="1128"] .mci__variant--wide { display: block; }
+  @supports (aspect-ratio: 1 / 1) {
+    .mci[data-wide-at="1128"] { aspect-ratio: var(--mci-ratio-wide); }
+  }
+}
+@media (min-width: 90em) {
+  .mci[data-wide-at="1440"] { padding-top: var(--mci-pad-wide); }
+  .mci[data-wide-at="1440"] .mci__variant--base,
+  .mci[data-wide-at="1440"] .mci__variant--mid { display: none; }
+  .mci[data-wide-at="1440"] .mci__variant--wide { display: block; }
+  @supports (aspect-ratio: 1 / 1) {
+    .mci[data-wide-at="1440"] { aspect-ratio: var(--mci-ratio-wide); }
+  }
+}
+.mci__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* =============================================================================
+   HEADER (§2.1) — sticky chrome; white backdrop span drives the
+   menu-open + hide-on-scroll white surface.
+   ADAPTED (design.md §2.1 / conflict §0.4 #7): the reference header is
+   absolutely positioned, but its hide-on-scroll trigger was never observed
+   (§0.5 #5). A purely absolute chrome scrolls away and cannot re-appear on
+   scroll-up, so the rebuild keeps the header sticky and applies the §2.4
+   translateY(-101%) hide/show motion to the header element itself. The
+   backdrop span keeps its exact translate/0.3s-ease-out behavior for the
+   menu-open flash.
+   ========================================================================== */
+.site-header {
+  --hdr-fg: var(--color-ink);
+  --hdr-quiet: color-mix(in srgb, var(--hdr-fg) 72%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  color: var(--hdr-fg);
+  display: grid;
+  transition: transform 0.3s ease-out;
+}
+.site-header[data-hidden="true"] {
+  transform: translateY(-101%);
+}
+.site-header[data-theme="on-dark"]:not([data-expanded="true"]):not([data-curtain="open"]) {
+  --hdr-fg: #fff;
+}
+.site-header[data-expanded="true"],
+.site-header[data-curtain="open"] {
+  z-index: var(--z-header-expanded);
+}
+
+/* White backdrop span — §2.1.4: translateY(-101%) resting, 0 when shown;
+   transition always transform .3s ease-out. */
+.site-header__backdrop {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
+  transform: translateY(-101%);
+  transition: transform 0.2s ease-out; /* close: 0.2s (§2.3) */
+  pointer-events: none;
+}
+.site-header[data-backdrop="shown"] .site-header__backdrop {
+  transform: translateY(0);
+  transition: transform 0.3s ease-out; /* open: 0.3s ease-out (§2.3) */
+}
+
+/* Header content sits above the backdrop */
+.site-header > .hd {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Quick-links bar (desktop, §2.1.1) -------------------------------------- */
+.quick-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  min-height: var(--top-bar-height);
+  padding-inline: var(--container-padding);
+  border-bottom: 1px solid color-mix(in srgb, var(--hdr-fg) 14%, transparent);
+}
+.quick-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--hdr-quiet);
+  transition: color 0.1s linear;
+}
+@media (hover: hover) {
+  .quick-links a:hover { color: var(--hdr-fg); }
+}
+
+/* ---- Primary nav row (desktop, §2.1.2) -------------------------------------- */
+.primary-bar {
+  display: flex;
+  align-items: center;
+  min-height: var(--primary-bar-height);
+  padding-top: 1.125rem;
+  padding-inline: var(--container-padding);
+  /* logo -> nav gap clamp (single clamp; dead second rule dropped per §8.4 I-6) */
+  column-gap: clamp(1.875rem, -2.00255rem + 6.53061vw, 3.875rem);
+}
+/* Condensed band 744-949 (§2.1.2 "condensed band") */
+@media (min-width: 46.5em) and (max-width: 59.34375em) {
+  .primary-bar { padding-top: 1.25rem; padding-inline: 1.625rem; }
+}
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--hdr-fg);
+  transition: var(--transition-hover);
+}
+.brand-logo svg { display: block; width: 50.4px; height: 62px; }
+/* Phase 7 (S3): a DB-driven custom logo image sizes to the wordmark's height. */
+.brand-logo img { display: block; width: auto; height: 62px; max-width: 200px; object-fit: contain; }
+@media (min-width: 70.5em) {
+  .brand-logo svg { width: 63.4px; height: 78px; }
+  .brand-logo img { height: 78px; max-width: 240px; }
+}
+
+.primary-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.5rem, -3.92308rem + 7.69231vw, 3rem);
+}
+.nav-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--hdr-fg);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-item__label { position: relative; }
+.nav-item__label::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 2px;
+  background: currentColor;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s linear, transform 0.2s ease-out;
+}
+@media (hover: hover) {
+  .nav-item:hover .nav-item__label::after,
+  .nav-item[aria-expanded="true"] .nav-item__label::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.primary-bar__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--hdr-fg);
+  cursor: pointer;
+  transition: var(--transition-hover);
+}
+/* Intentional inverse step: 48 -> 36 @950 -> 48 @1440 (§2.1.2) */
+@media (min-width: 59.375em) { .icon-button--dip { width: 36px; height: 36px; } }
+@media (min-width: 90em)     { .icon-button--dip { width: 48px; height: 48px; } }
+@media (hover: hover) {
+  .icon-button:hover { background: color-mix(in srgb, var(--hdr-fg) 10%, transparent); }
+}
+
+.bookmarks-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.875rem 0.375rem 0.375rem;
+  border-radius: 100px;
+  color: var(--hdr-fg);
+  text-decoration: none;
+  transition: var(--transition-hover);
+}
+.bookmarks-pill__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+}
+.bookmarks-pill__text { display: none; }
+@media (min-width: 70.5em) { .bookmarks-pill__text { display: inline; font-size: 13px; } }
+@media (hover: hover) {
+  .bookmarks-pill:hover { background: color-mix(in srgb, var(--hdr-fg) 10%, transparent); }
+}
+
+/* `.pill.build-pill` outranks the base `.pill` primitive (globals.css is
+   imported after chrome.css, so a single-class rule would lose the cascade). */
+.pill.build-pill {
+  min-height: 46px;
+  padding-inline: 1rem;
+  background: var(--color-gold);
+  color: var(--color-nile);
+  border: 0;
+}
+@media (hover: hover) {
+  .pill.build-pill:hover { background: var(--color-rust); color: #fff; }
+}
+@media (min-width: 23.4375em) {
+  .pill.build-pill { min-height: 48px; padding-inline: 1.5rem; }
+}
+@media (min-width: 70.5em) {
+  .pill.build-pill { padding-inline: 1.875rem; }
+}
+
+/* ---- Mega-menu flyouts (§2.3) ----------------------------------------------- */
+.megamenu { display: grid; }
+/* Panel overlays the page below the bars instead of growing the header: the
+   reference panel is absolute (`top: calc(--top-bar-height + 8.625rem)` in a
+   header that is itself absolute over the hero). Our header is sticky, so an
+   in-flow panel would push the document; top:100% keeps the same visual
+   contract without layout thrash. */
+.site-header > .megamenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  background: #fff;
+  box-shadow: 0 24px 48px rgb(0 0 0 / 0.14);
+}
+.megamenu__panel {
+  padding-block: 2.5rem 3rem;
+}
+.megamenu__grid {
+  display: grid;
+  grid-template-columns: repeat(22, 1fr);
+  gap: 1.5rem;
+  padding-inline: var(--container-22-padding);
+}
+/* Link columns: 3 x span 4; image CTAs: span 4/3/3 = 22 columns total */
+.mega-col { grid-column: span 4 / span 4; }
+.mega-cta { grid-column: span 3 / span 3; }
+.mega-cta--first { grid-column: span 4 / span 4; }
+
+/* Column stagger (§2.3): opacity + y -10px -> 0, per-column delay,
+   0.3s open on the open bezier, 0.2s close on the close bezier. */
+.mega-anim {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition:
+    opacity 0.2s linear,
+    transform 0.2s var(--ease-curtain-close);
+}
+.megamenu__panel[data-open="true"] .mega-anim {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.3s linear calc(var(--i, 0) * 60ms),
+    transform 0.3s var(--ease-curtain-open) calc(var(--i, 0) * 60ms);
+}
+
+.mega-col__h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: var(--color-ink);
+}
+.mega-col__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.625rem; }
+.mega-col__list a {
+  color: var(--color-ink);
+  font-size: 15px;
+  text-decoration: none;
+  transition: color 0.1s linear;
+}
+@media (hover: hover) {
+  .mega-col__list a:hover { color: var(--base-hover-color); }
+}
+
+.mega-cta { position: relative; }
+.mega-cta__card { display: block; text-decoration: none; }
+.mega-cta__label {
+  display: block;
+  margin-top: 0.625rem;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-rust);
+}
+.mega-cta__heading {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 15px;
+  color: var(--color-ink);
+  transition: var(--transition-hover);
+}
+@media (hover: hover) {
+  .mega-cta__card:hover .mega-cta__heading { color: var(--base-hover-color); }
+}
+
+/* ---- Mobile bar + curtain (§2.2) --------------------------------------------- */
+.mobile-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--mobile-bar-height);
+  padding-inline: var(--container-padding);
+}
+.mobile-bar .brand-logo { margin-right: auto; }
+
+/* Curtain: full-viewport white veil, opens/closes on the two beziers (§2.2). */
+.curtain {
+  position: fixed;
+  inset: var(--mobile-bar-height) 0 0 0;
+  z-index: -1; /* behind the mobile bar inside the header stacking context */
+  background: #fff;
+  transform: translateY(-101%);
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    transform var(--duration-curtain-close) var(--ease-curtain-close) var(--delay-curtain-close),
+    visibility 0s calc(var(--duration-curtain-close) + var(--delay-curtain-close));
+}
+.curtain[data-open="true"] {
+  transform: translateY(0);
+  pointer-events: all;
+  visibility: visible;
+  transition: transform var(--duration-curtain-open) var(--ease-curtain-open);
+}
+/* 10px top strip gradient (§2.2) */
+.curtain::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0.1;
+}
+.curtain__scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 1.5rem var(--container-padding) 3rem;
+  color: var(--color-ink);
+}
+
+.curtain-accordion { border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent); }
+.curtain-accordion__button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+}
+.curtain-accordion__chev { transition: transform 0.2s ease-out; }
+.curtain-accordion__button[aria-expanded="true"] .curtain-accordion__chev { transform: rotate(180deg); }
+.curtain-accordion__panel { padding: 0.25rem 0 1.25rem; }
+.curtain-accordion__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.curtain-accordion__list a {
+  color: var(--color-ink);
+  font-size: 16px;
+  text-decoration: none;
+  display: block;
+  padding: 0.25rem 0;
+}
+.curtain__quicklinks { margin-top: 1.5rem; display: grid; gap: 0.75rem; }
+.curtain__quicklinks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--color-ink);
+  text-decoration: none;
+  font-size: 15px;
+}
+
+/* Search dialog (§2.7 shell) */
+.search-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-search-dialog);
+  background: #fff;
+  color: var(--color-ink);
+  padding: var(--container-padding);
+  overflow-y: auto;
+}
+.search-dialog__inner { max-width: 46rem; margin: 10vh auto 0; }
+.search-dialog__field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 2px solid var(--color-ink);
+  padding-bottom: 0.75rem;
+}
+.search-dialog__input {
+  flex: 1;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 24px;
+  outline: none;
+}
+.search-chips { margin-top: 2rem; display: flex; flex-wrap: wrap; gap: 0.625rem; }
+.search-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 25%, transparent);
+  color: var(--color-ink);
+  text-decoration: none;
+  font-size: 15px;
+  transition: var(--transition-hover);
+}
+@media (hover: hover) {
+  .search-chip:hover { background: var(--color-papyrus); border-color: transparent; }
+}
+
+/* =============================================================================
+   FOOTER (§2.8): newsletter (left rail), 3 link columns incl. endorsements,
+   Travel Partners rendered ONCE (§8.4 I-5 single-render placement replaces the
+   reference's duplicated DOM + !important override), social row, legal bar.
+   ========================================================================== */
+.site-footer {
+  margin-top: var(--footer-margin);
+  position: relative;
+}
+/* 1px top rule drawn by ::before (§2.8) */
+.site-footer::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin-inline: var(--container-padding);
+  background: color-mix(in srgb, var(--color-ink) 15%, transparent);
+}
+.footer-shell {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  row-gap: 2.375rem;
+  column-gap: 1rem;
+  padding-block: 4.5rem 2.875rem;
+  padding-inline: var(--container-padding);
+}
+@media (min-width: 46.5em) {
+  .footer-shell {
+    grid-template-columns: repeat(24, 1fr);
+    column-gap: 1.5rem;
+  }
+}
+@media (min-width: 59.375em) {
+  .footer-shell { padding-block: 9.5rem 7.4375rem; }
+}
+
+/* Newsletter block — "Stay Connected" (§2.8.1) */
+.footer-newsletter { grid-column: 1 / 7; }
+@media (min-width: 46.5em) {
+  .footer-newsletter { grid-column: 1 / 25; }
+}
+@media (min-width: 59.375em) {
+  .footer-newsletter { grid-column: 1 / 10; grid-row: 1; }
+}
+@media (min-width: 90em) {
+  .footer-newsletter__inner { max-width: 21.75rem; }
+}
+.footer-newsletter__blurb { margin: 0.5rem 0 0; color: color-mix(in srgb, var(--color-ink) 78%, transparent); }
+@media (min-width: 23.75em) {
+  .footer-newsletter__blurb { text-wrap: balance; } /* the page's only text-wrap (§5.4) */
+}
+.pill.footer-newsletter__cta {
+  margin-top: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 42px;
+}
+/* Anti-squeeze: CTA goes full-width under 380px (§5.4 max-width micro-rule) */
+@media (max-width: 23.6875em) {
+  .footer-newsletter__cta { width: 100%; }
+}
+
+/* Link columns (§2.8.2) */
+.footer-columns { grid-column: 1 / 7; display: grid; grid-template-columns: 1fr; gap: 3.125rem 2rem; }
+@media (min-width: 23.4375em) {
+  .footer-columns { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 46.5em) {
+  .footer-columns { grid-column: 1 / 25; grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 59.375em) {
+  .footer-columns { grid-column: 10 / 25; grid-row: 1; justify-items: center; }
+}
+.footer-col__links { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.625rem; }
+.footer-col__links a {
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: color 0.1s linear;
+}
+@media (hover: hover) {
+  .footer-col__links a:hover { color: var(--base-hover-color); }
+}
+
+/* Endorsement badges (§2.8.3) — v1 typographic badges; intrinsic 55x61 -> 70x78 @744 */
+.footer-badges { display: flex; gap: 1rem; align-items: flex-start; }
+.badge-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  width: 3.4375rem;   /* 55px */
+  height: 3.8125rem;  /* 61px */
+  border: 1px solid color-mix(in srgb, var(--color-ink) 30%, transparent);
+  border-radius: 4px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--color-ink);
+  background: #fff;
+  transition: var(--transition-hover);
+  padding: 0.125rem;
+}
+.badge-cell strong { font-size: 10px; line-height: 1.15; display: block; }
+.badge-cell span { font-size: 8px; line-height: 1.2; display: block; }
+@media (min-width: 46.5em) {
+  .badge-cell { width: 4.375rem; height: 4.875rem; } /* 70x78 */
+}
+@media (hover: hover) {
+  .badge-cell:hover { border-color: var(--color-nile); color: var(--color-nile); }
+}
+
+/* Social row (§2.8.5): 2.5rem circular discs, 15px glyphs absolutely centered.
+   (Reference ships 40px targets; per instruction the 2.5rem geometry is
+   kept — §6.4 A-5's optional 44px bump is a later visual-QA decision.) */
+.footer-social { grid-column: 1 / 7; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+@media (min-width: 46.5em) {
+  .footer-social { grid-column: 1 / 25; }
+}
+@media (min-width: 59.375em) {
+  .footer-social { grid-column: 1 / 12; grid-row: 2; align-self: start; }
+}
+.social-disc {
+  position: relative;
+  display: inline-block;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 25%, transparent);
+  color: var(--color-ink);
+  transition: var(--transition-hover);
+}
+.social-disc svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+@media (hover: hover) {
+  .social-disc:hover { background: var(--color-nile); border-color: var(--color-nile); color: #fff; }
+}
+
+/* Travel Partners (§2.8.4) — SINGLE render (§8.4 I-5): one DOM node whose
+   grid position changes per breakpoint instead of two SSR copies. */
+.footer-partners {
+  grid-column: 1 / 7;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+@media (min-width: 46.5em) {
+  .footer-partners { grid-column: 1 / 25; }
+}
+@media (min-width: 59.375em) {
+  .footer-partners {
+    grid-column: 12 / 25;
+    grid-row: 3;
+    justify-content: end;
+    gap: 38px;
+    align-self: center;
+  }
+}
+.partner-mark {
+  color: var(--color-ink);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0.85;
+  transition: var(--transition-hover);
+}
+.partner-mark small { display: block; font-weight: 400; font-size: 11px; opacity: 0.7; }
+@media (hover: hover) {
+  .partner-mark:hover { color: var(--color-nile); opacity: 1; }
+}
+
+/* Legal / bottom bar (§2.8.6) */
+.footer-legal { grid-column: 1 / 7; }
+@media (min-width: 46.5em) {
+  .footer-legal { grid-column: 1 / 25; }
+}
+@media (min-width: 59.375em) {
+  .footer-legal { grid-column: 1 / 12; grid-row: 3; }
+}
+.footer-legal__inner {
+  position: relative;
+  padding: 1.6875rem 0 5rem; /* §2.8.6 verbatim */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.footer-legal__ack { margin: 0; max-width: 46rem; color: color-mix(in srgb, var(--color-ink) 72%, transparent); }
+/* Phase 7 (S3): DB-driven footer brand mark. Custom logo sizes by height;
+   the fallback cartouche SVG needs explicit dims (viewBox only otherwise). */
+.footer-legal__brand { display: inline-flex; align-items: center; color: var(--color-ink); }
+.footer-legal__brand svg { display: block; width: auto; height: 40px; }
+.footer-legal__brand img { display: block; height: 40px; width: auto; }
+.footer-legal__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.footer-legal__links a,
+.cookie-manage {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  transition: var(--transition-hover);
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .footer-legal__links a:hover,
+  .cookie-manage:hover { color: var(--base-hover-color); }
+}
+/* <=960px: "Manage Your Cookies" collapses to "Cookies" (§2.8.6 hidden span) */
+@media (max-width: 60em) {
+  .cookie-manage__long { display: none; }
+}
+
+/* =============================================================================
+   COOKIE CONSENT BANNER (§2.6 + §4.8.13 rebuild default)
+   Fixed bottom sheet; translateY(100%) -> 0 over 0.3s ease-out on first paint
+   (post-idle); reverse on accept/dismiss. Under reduced motion the global
+   clamp (globals.css §4.6) makes this instant. z = cookieBanner token.
+   ========================================================================== */
+.cookie-banner {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: var(--z-cookie-banner);
+  background: #fff;
+  color: var(--color-ink);
+  box-shadow: 0 -8px 40px rgb(0 0 0 / 0.16);
+  transform: translateY(102%);
+  visibility: hidden;
+  /* close: reverse 0.2s (§4.8.13); visibility flips after the slide finishes */
+  transition: transform 0.2s ease-out, visibility 0s 0.2s;
+  max-height: min(85dvh, 44rem);
+  overflow-y: auto;
+}
+.cookie-banner[data-open="true"] {
+  transform: translateY(0);
+  visibility: visible;
+  /* first paint: sheet raise 0.3s ease-out (§4.8.13) */
+  transition: transform 0.3s ease-out;
+}
+/* Reduced motion (§4.8.13): opacity cross-fade only — the global clamp in
+   globals.css would otherwise hard-cut the sheet. */
+@media (prefers-reduced-motion: reduce) {
+  .cookie-banner {
+    transform: none;
+    opacity: 0;
+    visibility: visible;
+    pointer-events: none;
+    transition: opacity 0.2s linear !important;
+  }
+  .cookie-banner[data-open="true"] { opacity: 1; pointer-events: auto; }
+}
+html[data-reduced-motion="true"] .cookie-banner {
+  transform: none;
+  opacity: 0;
+  visibility: visible;
+  pointer-events: none;
+  transition: opacity 0.2s linear !important;
+}
+html[data-reduced-motion="true"] .cookie-banner[data-open="true"] { opacity: 1; pointer-events: auto; }
+.cookie-banner__inner {
+  padding: 1.75rem var(--container-padding);
+  max-width: 62rem;
+  margin: 0 auto;
+}
+.cookie-banner__row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+@media (min-width: 59.375em) {
+  .cookie-banner__row { flex-direction: row; align-items: center; }
+  .cookie-banner__copy { flex: 1; }
+}
+.cookie-banner__copy p { margin: 0.375rem 0 0; max-width: 44rem; }
+.cookie-banner__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; flex-shrink: 0; }
+.cookie-manage-panel {
+  margin-top: 1.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 15%, transparent);
+  padding-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 46.5em) {
+  .cookie-manage-panel { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+}
+.cookie-cat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  align-items: start;
+}
+.cookie-cat input {
+  width: 2.75rem;
+  height: 1.5rem;
+  margin: 0.125rem 0 0;
+  appearance: none;
+  border-radius: 100px;
+  background: var(--color-grey-300);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.cookie-cat input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease-out;
+}
+.cookie-cat input:checked { background: var(--color-nile); }
+.cookie-cat input:checked::after { transform: translateX(1.25rem); }
+.cookie-cat input:disabled { cursor: not-allowed; opacity: 0.7; }
+.cookie-cat input:focus-visible { outline: 2px solid var(--color-nile); outline-offset: 2px; }
+.cookie-cat__name { font-weight: 700; display: block; }
+.cookie-cat__desc { font-size: 13px; line-height: 1.4; color: color-mix(in srgb, var(--color-ink) 75%, transparent); margin: 0; }
+.cookie-manage-actions { grid-column: 1 / -1; display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+/* ==========================================================================
+   Floating contact widgets (Phase 7 — Subsystem 4).
+   Two bottom-anchored vertical stacks (right/left). z = --z-chat: below the
+   cookie sheet (--z-cookie-banner) so consent wins, above page content. Each
+   button is a ≥44px pill that expands its label on hover/focus. Reduced motion
+   removes the width/opacity animation (respects globals.css §4.6).
+   ========================================================================== */
+.fw-cluster {
+  position: fixed;
+  bottom: 1.25rem;
+  z-index: var(--z-chat);
+  display: flex;
+  flex-direction: column-reverse; /* first widget (lowest sortOrder) sits at the bottom */
+  gap: 0.75rem;
+  pointer-events: none; /* let the gaps pass clicks through; buttons re-enable */
+}
+.fw-cluster--bottom-right { right: 1.25rem; align-items: flex-end; }
+.fw-cluster--bottom-left { left: 1.25rem; align-items: flex-start; }
+
+.fw-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  height: 3.25rem;      /* 52px — ≥44px touch target */
+  min-width: 3.25rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.22);
+  overflow: hidden;
+  white-space: nowrap;
+  transition: transform var(--transition-hover, 0.2s ease), box-shadow var(--transition-hover, 0.2s ease);
+}
+.fw-cluster--bottom-left .fw-btn { flex-direction: row-reverse; }
+.fw-btn:hover,
+.fw-btn:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.3);
+}
+.fw-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+/* Label collapses to zero width until hover/focus, then slides open. */
+.fw-btn__label {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: max-width 0.28s ease, opacity 0.2s ease, margin 0.28s ease;
+}
+.fw-btn:hover .fw-btn__label,
+.fw-btn:focus-visible .fw-btn__label {
+  max-width: 12rem;
+  opacity: 1;
+  margin-left: 0.55rem;
+}
+.fw-cluster--bottom-left .fw-btn:hover .fw-btn__label,
+.fw-cluster--bottom-left .fw-btn:focus-visible .fw-btn__label {
+  margin-left: 0;
+  margin-right: 0.55rem;
+}
+
+/* Desktop/mobile gating (breakpoint mirrors the header's 744px swap). */
+@media (max-width: 46.4375em) {
+  .fw-btn--desktop-only { display: none; }
+  .fw-cluster { bottom: 1rem; }
+  .fw-cluster--bottom-right { right: 1rem; }
+  .fw-cluster--bottom-left { left: 1rem; }
+}
+@media (min-width: 46.5em) {
+  .fw-btn--mobile-only { display: none; }
+}
+.fw-btn--hidden { display: none; }
+
+/* On coarse pointers (touch) there is no hover — always show the label so the
+   affordance is legible, but keep it compact. */
+@media (hover: none) {
+  .fw-btn__label { max-width: 12rem; opacity: 1; margin-left: 0.55rem; }
+  .fw-cluster--bottom-left .fw-btn__label { margin-left: 0; margin-right: 0.55rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fw-btn, .fw-btn__label { transition: none; }
+  .fw-btn:hover, .fw-btn:focus-visible { transform: none; }
+}
+:root[data-reduced-motion="true"] .fw-btn,
+:root[data-reduced-motion="true"] .fw-btn__label { transition: none; }
+:root[data-reduced-motion="true"] .fw-btn:hover,
+:root[data-reduced-motion="true"] .fw-btn:focus-visible { transform: none; }

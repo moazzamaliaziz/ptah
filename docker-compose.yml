@@ -1,0 +1,49 @@
+# Ptah Tours — local development infrastructure
+# Usage:
+#   docker compose up -d db        # start MySQL 8 (first run creates the volume)
+#   docker compose logs -f db      # watch startup / healthcheck
+#   docker compose down            # stop
+#   docker compose down -v         # stop AND delete all data (dev only!)
+#
+# Connection string for .env:
+#   DATABASE_URL="mysql://ptah:ptah-dev-password@localhost:3306/ptah_tours"
+
+services:
+  db:
+    image: mysql:8.4          # LTS line; MySQL 8.0 also works — pin before production
+    container_name: ptah-tours-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-ptah_tours}"
+      MYSQL_USER: "${MYSQL_USER:-ptah}"
+      # Dev-only DEFAULTS — overridable via env (MYSQL_PASSWORD=...), never a real secret here.
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-ptah-dev-password}"
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"   # root gets a throwaway password in dev
+    ports:
+      - "3306:3306"
+    volumes:
+      - ptah-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "${MYSQL_USER:-ptah}", "--password=${MYSQL_PASSWORD:-ptah-dev-password}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  # ── Later phases ───────────────────────────────────────────────────────────
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ptah-tours-redis
+  #   restart: unless-stopped
+  #   ports: ["6379:6379"]
+  #   volumes: [ptah-redis-data:/data]
+  #   healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 10 }
+  #   # Enables the Redis rate-limit adapter (src/lib/rate-limit.ts) and
+  #   # distributed session/cache work once we scale past a single VPS process.
+
+volumes:
+  ptah-mysql-data:
+  # ptah-redis-data:

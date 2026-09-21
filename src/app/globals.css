@@ -1,0 +1,191 @@
+/* =============================================================================
+   PTAH TOURS — global base styles.
+   Tailwind 4 layers + token files. Tokens live in ../styles/tokens.css;
+   chrome component CSS lives in ../styles/chrome.css.
+   ========================================================================== */
+
+@import "tailwindcss";
+@import "../styles/tokens.css";
+@import "../styles/chrome.css";
+@import "../styles/landing.css";
+
+/* ---- Reset-level rules (design.md §5.6) -------------------------------------
+   Tailwind preflight already normalizes borders/box-sizing; keep the observed
+   extras that preflight does not cover. */
+img {
+  max-inline-size: 100%;
+  max-block-size: 100%;
+}
+
+html {
+  /* Zero text-size-adjust (reference disables it via reset) */
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+}
+
+body {
+  font-family: var(--font-cabin), Arial, Helvetica, sans-serif;
+  font-size: 17px;      /* design.md §0.6: body copy is absolute 17px       */
+  line-height: 1.3;     /* design.md §1.2.1 body root line-height           */
+  background: var(--color-white);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Global focus ring (design.md §4.8.11 / §6.1) — instant, no transition */
+*:focus-visible {
+  outline: currentColor solid 1px;
+  outline-offset: 3px;
+}
+
+/* ---- sr-only (Reach-style clip pattern, design.md §2.4) ------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Section shell cascade (design.md §1.3.2 — verbatim) ----------------- */
+.section-shell {
+  width: 100%;
+  max-width: calc(100% - 2.25rem);
+  margin-left: auto;
+  margin-right: auto;
+  scroll-margin-top: var(--section-scroll-margin);
+}
+@media (min-width: 31.25em) {
+  .section-shell { max-width: calc(100% - 3rem); }
+}
+@media (min-width: 46.5em) {
+  .section-shell { max-width: calc(100% - 5rem); }
+}
+@media (min-width: 70.5em) {
+  .section-shell { max-width: calc(min(110rem, 100%) - 9.25rem); }
+}
+@media (min-width: 130em) {
+  .section-shell { max-width: 120rem; }
+}
+
+/* ---- Grid primitives (design.md §1.3.5) ------------------------------------ */
+.grid-6  { display: grid; grid-template-columns: repeat(6, 1fr);  gap: 1rem; }
+@media (min-width: 46.5em) {
+  .grid-12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; }
+  .grid-22 { display: grid; grid-template-columns: repeat(22, 1fr); gap: 1.5rem; }
+  .grid-24 { display: grid; grid-template-columns: repeat(24, 1fr); gap: 1.5rem; }
+}
+
+/* ---- Full-bleed "bleed trick" (design.md §1.3.5) ---------------------------
+   Child rails scroll edge-to-edge while cells align to the fluid gutter. */
+.bleed {
+  margin-left: calc(-1 * var(--container-padding));
+  width: calc(100% + 2 * var(--container-padding));
+}
+
+/* ---- Universal card hover contract (design.md §4.8.7) ---------------------- */
+.card-zoom {
+  transform: scale(var(--card-image-scale));
+  transition: transform 0.2s ease-out, opacity 0.4s linear;
+  will-change: transform;
+}
+@media (hover: hover) {
+  .hover-card:hover,
+  .hover-card:focus-within,
+  .hover-card:focus-visible {
+    --card-image-scale: 1.03;
+  }
+  .hover-card:hover :is(h2, h3, .card-heading),
+  .hover-card:focus-within :is(h2, h3, .card-heading),
+  .hover-card:focus-visible :is(h2, h3, .card-heading) {
+    color: var(--base-hover-color);
+  }
+}
+.hover-card :is(h2, h3, .card-heading) {
+  color: var(--card-heading-color);
+  transition: var(--transition-hover);
+}
+
+/* ---- Pill primitives (design.md §1.6) -------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.5rem 1.5rem;
+  border-radius: 100px;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: var(--transition-hover);
+  cursor: pointer;
+}
+.pill--solid {
+  background: var(--base-hover-color);
+  color: #fff;
+  border: 2px solid var(--base-hover-color);
+}
+@media (hover: hover) {
+  .pill--solid:hover { background: var(--color-nile); border-color: var(--color-nile); color: #fff; }
+}
+.pill--light {
+  background: #fff;
+  color: var(--color-nile);
+  border: 2px solid #fff;
+}
+@media (hover: hover) {
+  .pill--light:hover { background: var(--color-rust); border-color: var(--color-rust); color: #fff; }
+}
+.pill--outline {
+  background: transparent;
+  border: 2px solid currentColor;
+  color: var(--color-nile);
+}
+@media (hover: hover) {
+  .pill--outline:hover { background: var(--color-nile); border-color: var(--color-nile); color: #fff; }
+}
+
+/* ---- Inline underline text link (design.md §1.6) ---------------------------- */
+.link-inline {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  transition: color 0.1s linear;
+}
+@media (hover: hover) {
+  .link-inline:hover { color: var(--base-hover-color); }
+}
+
+/* =============================================================================
+   Reduced-motion subsystem (design.md §4.6 — REQUIRED improvement A-1)
+   Active on EITHER the OS preference OR the explicit root attribute
+   (html[data-reduced-motion="true"]) so it can be driven by a future
+   manual override toggle without touching the OS setting.
+   Motion-emitting client components must also consult
+   usePrefersReducedMotion() (src/hooks/use-prefers-reduced-motion.ts).
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root { --card-image-scale: 1 !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html[data-reduced-motion="true"] { --card-image-scale: 1; }
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+}

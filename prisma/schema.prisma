@@ -1,0 +1,626 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Ptah Tours — production database schema (MySQL 8 / InnoDB, utf8mb4)
+//
+// Conventions enforced across the schema:
+//   • IDs are `String @id @default(uuid())` (CHAR(36)) — UUIDs generated app-side.
+//   • All money is stored as INTEGER minor units (`*Cents`) + `currency` CHAR(3).
+//     Never use Decimal/Float for money.
+//   • Slugs are UNIQUE lowercase ASCII; enforced by regex at the app layer
+//     (portable CHECK constraints are not expressible via Prisma).
+//   • Every FK has a deliberately chosen ON DELETE behavior (see per-model notes).
+//   • Timestamps: `createdAt @default(now())`, `updatedAt @updatedAt` (UTC).
+//   • Tables are snake_cased via @@map; model/field names stay camelCase.
+//
+// Prisma 7 note: the datasource has NO `url` — connection strings live in
+// prisma.config.ts (CLI/migrations) and in the driver adapter at runtime
+// (src/lib/db.ts). See https://pris.ly/d/config-datasource
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ══════════════════════════════════ AUTH & RBAC ══════════════════════════════
+
+/// RBAC model decision: a single enum column on User (not a join table).
+/// One user holds exactly one role; privilege changes = one audited UPDATE.
+/// All authorization checks are explicit in src/server (no implicit bypass).
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  SUPPORT
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id              String     @id @default(uuid()) @db.Char(36)
+  email           String     @unique @db.VarChar(255)
+  name            String     @db.VarChar(160)
+  /// argon2id hash — see src/lib/crypto.ts. Nullable: OAuth-only users later.
+  passwordHash    String?    @db.VarChar(255)
+  role            Role       @default(USER)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  sessions    Session[]
+  bookings    Booking[]
+  auditEvents AuditLog[] @relation("AuditActor")
+  passwordResetTokens PasswordResetToken[]
+  wishlists   Wishlist[]
+
+  @@index([status])
+  @@map("users")
+}
+
+/// App-level DB session registry — credential logins (Auth.js v5, configured
+/// in a later phase) use JWTs for transport; a Session row is written at login
+/// so admins can REVOKE a session server-side. This is intentionally NOT the
+/// Auth.js adapter Session model (no OAuth adapter tables in Phase 0 — add
+/// Account/Authenticator models when social login ships).
+model Session {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String   @db.Char(36)
+  token     String   @unique @db.VarChar(512) // hashed session identifier
+  expiresAt DateTime
+  ip        String?  @db.VarChar(45) // IPv6 max length
+  userAgent String?  @db.VarChar(512)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Email-verification tokens. Shape matches the Auth.js verification-token
+/// contract so the same table can serve magic links later.
+model VerificationToken {
+  identifier String   @db.VarChar(255) // usually the email address
+  token      String   @db.VarChar(512) // store HASHED value, never raw
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+/// Password-reset tokens — always stored hashed (SHA-256 of the emailed token),
+/// single-use (`usedAt`), short-lived (`expires`).
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @db.Char(36)
+  tokenHash String    @unique @db.VarChar(255)
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Account wishlist (Phase 4). The public store is the localStorage adapter in
+/// src/lib/wishlist.ts; on login the guest bookmarks are merged into these rows
+/// so a wishlist follows the account across devices. One row per (user, tour);
+/// both sides cascade so deleting a user or tour cleans up its wishlist rows.
+model Wishlist {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String   @db.Char(36)
+  tourId    String   @db.Char(36)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tourId])
+  @@index([userId])
+  @@map("wishlists")
+}
+
+// ══════════════════════════════════ CATALOG ══════════════════════════════════
+
+enum TourStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Difficulty {
+  EASY
+  MODERATE
+  CHALLENGING
+}
+
+model Tour {
+  id              String      @id @default(uuid()) @db.Char(36)
+  slug            String      @unique @db.VarChar(191) // lowercase, url-safe
+  title           String      @db.VarChar(255)
+  summary         String      @db.VarChar(512)
+  descriptionLong String      @db.Text
+  durationDays    Int
+  /// Integer minor units (cents). Always pair with `currency`.
+  basePriceCents  Int
+  currency        String      @default("USD") @db.Char(3)
+  difficulty      Difficulty  @default(EASY)
+  /// Path under /public/assets (image library lands in a later phase) or CDN URL.
+  heroImage       String?     @db.VarChar(512)
+  status          TourStatus  @default(DRAFT)
+  // JSON string arrays — chosen over child tables because these lists are
+  // read together with the tour and never filtered/joined relationally.
+  inclusions      Json? // string[]
+  exclusions      Json? // string[]
+  /// Additional gallery image paths (string[]) shown below the hero on the
+  /// detail page. Same Json-array rationale as inclusions/exclusions.
+  gallery         Json? // string[]
+  /// Phase 7 flexible content fields (D3) — same Json rationale as the lists
+  /// above: read together with the tour, never filtered/joined relationally.
+  faqs            Json? // [{ q: string, a: string }]
+  travelNotes     Json? // string[]  (e.g. visa, packing, health notes)
+  /// Style/"special" classification tags (string[]) from src/content/tour-tags.ts,
+  /// driving the Tours mega-menu `?type=` filters. Same Json-array rationale as
+  /// the lists above; the catalog is small enough to filter in the query layer.
+  tags            Json? // string[]  (TourTag[])
+  /// Optional detail-page call-to-action. `ctaHref` is scheme-allowlisted
+  /// (safeUrl) at the admin boundary; both null → the default "Book" CTA shows.
+  ctaLabel        String?     @db.VarChar(120)
+  ctaHref         String?     @db.VarChar(512)
+  // SEO
+  metaTitle       String?     @db.VarChar(255)
+  metaDesc        String?     @db.VarChar(320)
+  ogImage         String?     @db.VarChar(512)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  destinations TourDestination[]
+  departures   TourDeparture[]
+  itinerary    ItineraryDay[]
+  wishlists    Wishlist[]
+  tripIdeas    TripIdeaTour[]
+
+  @@index([status])
+  @@index([status, createdAt])
+  @@map("tours")
+}
+
+model Destination {
+  id          String   @id @default(uuid()) @db.Char(36)
+  slug        String   @unique @db.VarChar(191) // lowercase, url-safe
+  name        String   @db.VarChar(160)
+  region      String?  @db.VarChar(160)
+  description String?  @db.Text
+  heroImage   String?  @db.VarChar(512)
+  // SEO
+  metaTitle   String?  @db.VarChar(255)
+  metaDesc    String?  @db.VarChar(320)
+  ogImage     String?  @db.VarChar(512)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tours TourDestination[]
+
+  @@map("destinations")
+}
+
+/// Explicit M:N join with ordering (controls featured-tour order per destination).
+model TourDestination {
+  tourId        String @db.Char(36)
+  destinationId String @db.Char(36)
+  sortOrder     Int    @default(0)
+
+  tour        Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@id([tourId, destinationId])
+  @@index([destinationId, sortOrder])
+  @@map("tour_destinations")
+}
+
+enum DepartureStatus {
+  OPEN
+  CLOSED
+  CANCELED
+}
+
+model TourDeparture {
+  id                String          @id @default(uuid()) @db.Char(36)
+  tourId            String          @db.Char(36)
+  startDate         DateTime        @db.Date
+  endDate           DateTime        @db.Date
+  maxCapacity       Int
+  /// Decremented atomically at booking time:
+  ///   UPDATE ... SET remainingCapacity = remainingCapacity - n
+  ///   WHERE id = ? AND remainingCapacity >= n
+  /// Race-safe seat claim — never read-modify-write from app code.
+  remainingCapacity Int
+  /// Minor units; NULL = inherit tour.basePriceCents.
+  priceOverrideCents Int?
+  status            DepartureStatus @default(OPEN)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tourId, startDate])
+  @@index([status, startDate])
+  @@map("tour_departures")
+}
+
+model ItineraryDay {
+  id          String @id @default(uuid()) @db.Char(36)
+  tourId      String @db.Char(36)
+  dayNumber   Int
+  title       String @db.VarChar(255)
+  description String @db.Text
+  sortOrder   Int    @default(0)
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, dayNumber])
+  @@map("itinerary_days")
+}
+
+// ══════════════════════════════ BOOKING & PAYMENTS ═══════════════════════════
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+  FAILED
+}
+
+model Booking {
+  id          String        @id @default(uuid()) @db.Char(36)
+  /// Nullable for GUEST checkout. ON DELETE SetNull: bookings survive account
+  /// deletion (financial record retention); the user is anonymized, not erased.
+  userId      String?       @db.Char(36)
+  guestEmail  String?       @db.VarChar(255)
+  departureId String        @db.Char(36)
+  status      BookingStatus @default(PENDING_PAYMENT)
+  seats       Int
+  totalCents  Int
+  currency    String        @default("USD") @db.Char(3)
+  /// { fullName, email, phone, passengers: [{ name, ... }] } — zod-validated at
+  /// the boundary; JSON because the shape evolves with product requirements.
+  contactInfo Json
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// Restrict: a departure with bookings can never be hard-deleted (cancel it).
+  departure TourDeparture @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  payments  Payment[]
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([departureId])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@map("bookings")
+  // NOTE: no separate BookingItem/Seat table — one booking = one departure × N
+  // seats; passenger details live in contactInfo. Revisit only if a multi-tour
+  // cart appears on the roadmap.
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id          String        @id @default(uuid()) @db.Char(36)
+  bookingId   String        @db.Char(36)
+  /// Stripe Checkout Session id (cs_test_…) — one checkout session per attempt.
+  sessionId   String?       @unique @db.VarChar(255)
+  /// Stripe PaymentIntent id (pi_…) — filled by the webhook handler.
+  intentId    String?       @unique @db.VarChar(255)
+  method      String        @default("stripe") @db.VarChar(32)
+  amountCents Int
+  currency    String        @default("USD") @db.Char(3)
+  status      PaymentStatus @default(PENDING)
+  /// Raw gateway payload snapshot for reconciliation/audit.
+  raw         Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  /// Restrict: payments are immutable financial records; never cascade-delete.
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+/// Webhook replay protection: unique provider event id (`evt_…` for Stripe).
+/// The handler INSERTs first; a unique-violation means "already processed → 200".
+model WebhookEvent {
+  id          String    @id @default(uuid()) @db.Char(36)
+  eventId     String    @unique @db.VarChar(255)
+  provider    String    @db.VarChar(32) // stripe | paymob | paypal
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([provider, createdAt])
+  @@map("webhook_events")
+}
+
+// ═══════════════════════════════ CMS & PLATFORM ══════════════════════════════
+
+/// Lightweight boolean feature flags, admin-editable at runtime.
+/// Seeded keys: SIGNUP_ENABLED, LOGIN_ENABLED, PAYMENTS_STRIPE_ENABLED,
+/// MAINTENANCE_MODE. env.ts FEATURE_* vars are boot-time defaults;
+/// these rows are the runtime source of truth.
+model SiteToggle {
+  key         String   @id @db.VarChar(100)
+  value       Boolean  @default(true)
+  description String?  @db.VarChar(255)
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_toggles")
+}
+
+/// Registry of the 20 pluggable third-party integrations (see prisma/seed.ts).
+/// `configEncrypted` holds the AES-encrypted credentials blob — credentials are
+/// never stored or logged in plaintext (encryption helper ships with the admin
+/// integration UI phase).
+model Integration {
+  key             String   @id @db.VarChar(64)
+  enabled         Boolean  @default(false)
+  configEncrypted String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("integrations")
+}
+
+enum ContentSectionType {
+  HERO_SLIDE
+  DESTINATION_TAB
+  STORY_CARD
+  CTA
+  PAGE_SECTION
+}
+
+/// Schema-flexible CMS: each section is (type + JSON payload + ordering).
+/// A new block type = one enum value + one zod schema at the boundary,
+/// not a migration.
+model ContentSection {
+  id        String             @id @default(uuid()) @db.Char(36)
+  type      ContentSectionType
+  data      Json
+  sortOrder Int                @default(0)
+  enabled   Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([type, enabled, sortOrder])
+  @@map("content_sections")
+}
+
+/// Append-only audit trail for every admin mutation.
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Char(36)
+  /// SetNull: deleting a staff account must not erase the audit trail.
+  actorId   String?  @db.Char(36)
+  action    String   @db.VarChar(100) // e.g. "tour.publish", "integration.toggle"
+  entity    String   @db.VarChar(64)
+  entityId  String?  @db.VarChar(64)
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}
+
+// ══════════════════════════════ MEDIA & SETTINGS ═════════════════════════════
+
+/// WordPress-style media library (Phase 7). Image BYTES live in MySQL (user
+/// directive: manage in the admin panel, persist in the DB — fits Hostinger
+/// Business where the app FS may be ephemeral but the DB is durable, and keeps
+/// the white-label engine self-contained: one mysqldump captures all media).
+///
+/// Metadata and bytes are split into two tables so the library grid
+/// (`MediaAsset.findMany`) never loads blob bytes — only the `/api/media/<id>`
+/// serving route selects `MediaBlob.bytes`.
+model MediaAsset {
+  id        String   @id @default(uuid()) @db.Char(36)
+  /// Original upload name — display only; never used to build a filesystem path.
+  filename  String   @db.VarChar(255)
+  /// Allowlisted on upload: image/webp|png|jpeg|gif|svg+xml + x-icon/vnd.microsoft.icon.
+  mimeType  String   @db.VarChar(100)
+  byteSize  Int
+  /// Parsed from the image header when cheap (PNG/JPEG/WebP); null otherwise.
+  width     Int?
+  height    Int?
+  /// sha256 hex of the raw bytes — serves as the ETag and enables dedupe.
+  checksum  String   @db.Char(64)
+  altText   String?  @db.VarChar(512)
+  /// Coarse grouping for the library filter: tours|destinations|branding|favicon|general.
+  folder    String   @default("general") @db.VarChar(64)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  blob MediaBlob?
+
+  @@index([folder, createdAt])
+  @@index([checksum])
+  @@map("media_assets")
+}
+
+/// The raw bytes for a MediaAsset, isolated so listings stay blob-free.
+/// LONGBLOB (up to 4 GiB; uploads are capped far below that at the app layer).
+model MediaBlob {
+  mediaId String @id @db.Char(36)
+  bytes   Bytes  @db.LongBlob
+
+  media MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@map("media_blobs")
+}
+
+/// Typed key-value settings store (Phase 7) — the runtime source of truth for
+/// branding, contact details, SEO, and other editor-controlled globals that are
+/// NOT the 7 landing sections (ContentSection), booleans (SiteToggle), or
+/// third-party credentials (Integration). `value` is JSON-encoded text,
+/// zod-validated on read with a typed fallback to src/content/landing.ts.
+/// NEVER stores secrets — those stay in the AES vault (Integration).
+model SiteSetting {
+  key       String   @id @db.VarChar(100) // dotted, e.g. branding.siteName, contact.phone
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+/// Phase 7 (Subsystem 4) — admin-managed floating contact widgets (phone,
+/// WhatsApp, Tripadvisor, email, messenger, custom). Rendered as a bottom-
+/// anchored cluster on the public site. `href` is scheme-allowlisted on write
+/// (https|tel|mailto; blocks javascript:/data:). No secrets.
+enum WidgetType {
+  PHONE
+  WHATSAPP
+  TRIPADVISOR
+  EMAIL
+  MESSENGER
+  CUSTOM
+}
+
+model FloatingWidget {
+  id          String     @id @default(uuid()) @db.Char(36)
+  type        WidgetType
+  enabled     Boolean    @default(true)
+  label       String     @db.VarChar(120) // aria-label / tooltip
+  href        String     @db.VarChar(512) // tel: | mailto: | https://wa.me/.. | https://..
+  iconKey     String     @db.VarChar(40)
+  bgColor     String?    @db.VarChar(32) // brand token/hex; default per type when null
+  showDesktop Boolean    @default(true)
+  showMobile  Boolean    @default(true)
+  position    String     @default("bottom-right") @db.VarChar(20) // bottom-right | bottom-left
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([enabled, sortOrder])
+  @@map("floating_widgets")
+}
+
+// ═══════════════════════════════ EVENTS & FESTIVALS ═══════════════════════════
+// Admin-managed events/festivals (the nav's "Events & Festivals"). Reuses the
+// TourStatus DRAFT/PUBLISHED/ARCHIVED lifecycle so only published events render
+// publicly. Dates are calendar dates (@db.Date); `recurring` flags annual
+// festivals whose date repeats each year.
+
+model Event {
+  id          String     @id @default(uuid()) @db.Char(36)
+  slug        String     @unique @db.VarChar(191) // lowercase, url-safe
+  title       String     @db.VarChar(255)
+  summary     String     @db.VarChar(512)
+  description String     @db.Text
+  location    String?    @db.VarChar(200) // e.g. "Abu Simbel, Aswan"
+  startDate   DateTime   @db.Date
+  endDate     DateTime?  @db.Date // null → single-day event
+  recurring   Boolean    @default(false) // annual festival (date repeats yearly)
+  heroImage   String?    @db.VarChar(512)
+  status      TourStatus @default(DRAFT)
+  // SEO
+  metaTitle   String?    @db.VarChar(255)
+  metaDesc    String?    @db.VarChar(320)
+  ogImage     String?    @db.VarChar(512)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status, startDate])
+  @@map("events")
+}
+
+// ═══════════════════════════════════ TRIP IDEAS ══════════════════════════════
+// Hybrid editorial + catalog surface: a curated theme (e.g. "Nile Cruises",
+// "Family Trips") with its own editorial intro, that also surfaces matching
+// real tours via the TripIdeaTour join (mirrors TourDestination). Reuses the
+// TourStatus lifecycle.
+
+model TripIdea {
+  id              String         @id @default(uuid()) @db.Char(36)
+  slug            String         @unique @db.VarChar(191) // lowercase, url-safe
+  title           String         @db.VarChar(255)
+  summary         String         @db.VarChar(512)
+  descriptionLong String         @db.Text // editorial intro (markdown-free paragraphs)
+  heroImage       String?        @db.VarChar(512)
+  status          TourStatus     @default(DRAFT)
+  // SEO
+  metaTitle       String?        @db.VarChar(255)
+  metaDesc        String?        @db.VarChar(320)
+  ogImage         String?        @db.VarChar(512)
+  sortOrder       Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  tours TripIdeaTour[]
+
+  @@index([status, sortOrder])
+  @@map("trip_ideas")
+}
+
+model TripIdeaTour {
+  tripIdeaId String @db.Char(36)
+  tourId     String @db.Char(36)
+  sortOrder  Int    @default(0)
+
+  tripIdea TripIdea @relation(fields: [tripIdeaId], references: [id], onDelete: Cascade)
+  tour     Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@id([tripIdeaId, tourId])
+  @@index([tourId])
+  @@map("trip_idea_tours")
+}
+
+// ═══════════════════════════════════ CONTACT ═════════════════════════════════
+// Public contact-form submissions. Persisted FIRST (source of truth) so an
+// enquiry is never lost when no email provider is configured; the admin email
+// is best-effort on top. Read/triaged from the admin inbox. Not user-linked
+// (guests submit); optional userId could be added later.
+
+enum ContactStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+model ContactMessage {
+  id        String        @id @default(uuid()) @db.Char(36)
+  name      String        @db.VarChar(120)
+  email     String        @db.VarChar(255)
+  phone     String?       @db.VarChar(40)
+  subject   String?       @db.VarChar(200)
+  message   String        @db.Text
+  status    ContactStatus @default(NEW)
+  // Light request context for spam triage (not shown as PII in listings).
+  ipHash    String?       @db.VarChar(64) // sha256(ip) — dedupe/abuse signal, not reversible
+  userAgent String?       @db.VarChar(512)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@map("contact_messages")
+}

@@ -1,0 +1,222 @@
+﻿/* =============================================================================
+   PTAH TOURS — DESIGN TOKENS (design.md §1 foundations)
+   -----------------------------------------------------------------------------
+   BRAND MAPPING TABLE  (reference "Banff" palette -> Ptah Tours Egypt palette)
+   -----------------------------------------------------------------------------
+   | spec role          | ref hex   | Ptah token            | hex      | note |
+   |--------------------|-----------|-----------------------|----------|------|
+   | plum  (auroraDark) | #43273b   | --color-nile          | #1a2340  | deep indigo "Nile Night"; theme-color, dark bands, story pill hover |
+   | coral (sunriseMid) | #ea7660   | --color-gold          | #d9822b  | warm desert gold; SELECTED state only (2px bars, 6px dots) — never body text on white (2.9:1); mirrors reference role |
+   | rust (hover)       | #b25340   | --color-rust          | #9a5c1b  | burnt-gold hover: card heading hover, link hover, meta icons, solid pills (~5.4:1 on white) |
+   | ink                | #262626   | --color-ink           | #262626  | unchanged — primary text |
+   | purple (KBYG hover)| #9c5e91   | --color-sand          | #a07a2a  | sand-gold; KBYG card hover bg (white 19px/700 text = large-text contrast OK) |
+   | lavender (KBYG bg) | #f7f3f9   | --color-papyrus       | #f7f2e3  | papyrus tint; subtle card fill |
+   | white              | #ffffff   | --color-white         | #ffffff  | unchanged |
+   | grey.300           | #cccccc   | --color-grey-300      | #cccccc  | unchanged — image box placeholder, passive dots |
+   | black@30 scrim     | rgba(0,0,0,.30) | --color-scrim-30 | rgb(0 0 0 / 0.30) | full-bleed CTA scrim |
+   -----------------------------------------------------------------------------
+   Values below marked design.md §1.3/§2.0/§4.2 are copied verbatim.
+   ========================================================================== */
+
+@theme {
+  /* Brand palette (see mapping table above) */
+  --color-nile: #1a2340;
+  --color-gold: #d9822b;
+  --color-rust: #9a5c1b;
+  --color-ink: #262626;
+  --color-sand: #a07a2a;
+  --color-papyrus: #f7f2e3;
+  --color-white: #ffffff;
+  --color-grey-300: #cccccc;
+  --color-scrim-30: rgb(0 0 0 / 0.3);
+
+  /* Border radius (design.md §1.3.6): 8px everywhere -> 12px @46.5em on cards/frames.
+     --radius-shell steps at the media query in :root below (theme vars are static;
+     the stepped token lives in :root so media queries can reassign it). */
+  --radius-card: 8px;
+
+  /* ---- LEGACY BRIDGE (pre-Phase-1 marketing demo pages) -------------------
+     Keeps old routes compiling/rendering until their own phase re-themes them.
+     Deprecated: do not use in site chrome or landing sections. */
+  --color-cream: #f8f3e9;
+  --color-cream-soft: #f1e8d8;
+  --color-white-warm: #fffdf9;
+  --color-burgundy: #7c1d2c;
+  --color-burgundy-dark: #4a1119;
+  --color-burgundy-tint: #f4e4e2;
+  --color-charcoal: #221c19;
+  --color-warm-gray: #8b8078;
+  --color-border: #e6dcc8;
+  --font-display: var(--font-cabin);
+  --font-sans: var(--font-cabin);
+}
+
+:root {
+  /* ---- Semantic aliases (site chrome + sections reference these) ---------- */
+  --color-primary: var(--color-nile);      /* dark surfaces / bands / dark pills */
+  --color-accent: var(--color-gold);       /* selection state markers */
+  --base-hover-color: var(--color-rust);   /* design.md §4.2 token, verbatim role */
+  --card-heading-color: var(--color-ink);  /* design.md §4.2 token, verbatim role */
+  --card-bg: var(--color-white);
+
+  /* ---- Motion grammar (design.md §4.2/§4.4) ------------------------------ */
+  --transition-hover: all 0.2s ease;       /* the house transition (~70x in reference) */
+  --card-image-scale: 1;                   /* -> 1.03 on hook hover (§4.8.7) */
+  --card-image-scale-hover: 1.03;
+  --ease-curtain-open: cubic-bezier(0.25, 1, 0.5, 1);   /* §4.4 out-expo */
+  --ease-curtain-close: cubic-bezier(0.12, 0, 0.39, 0); /* §4.4 inverse */
+  --duration-curtain-open: 0.6s;           /* §4.8.2 */
+  --duration-curtain-close: 0.3s;          /* §4.8.2 */
+  --delay-curtain-close: 0.1s;             /* §4.8.2 */
+
+  /* ---- Z-index map (design.md §2.0 — verbatim) ---------------------------- */
+  --z-header: 2147483639;
+  --z-chat: 2147483640;
+  --z-header-expanded: 2147483642;
+  --z-dialog: 2147483644;
+  --z-skip-nav: 2147483644;
+  --z-search-dialog: 2147483645;
+  --z-cookie-banner: 2147483646;
+  --z-preview: 2147483647;
+
+  /* ---- Header geometry (§2.1/§2.2) ---------------------------------------- */
+  --top-bar-height: 2.625rem;      /* 42px desktop quick-links bar */
+  --primary-bar-height: 6.375rem;  /* 102px desktop primary row    */
+  --mobile-bar-height: 4.5625rem;  /* 73px mobile bar              */
+
+  /* ---- Radius step token (§1.3.6) ----------------------------------------- */
+  --radius-step: 8px;              /* 8px <744, 12px >=46.5em */
+
+  /* ---- Container padding cascade (§1.3.1 — verbatim) ---------------------- */
+  --container-padding: 1.125rem;   /* 18px */
+  /* Interior container variants (§1.3.3); meaningful only >=70.5em, but
+     defined at every level so interior compositions never compute an unset var */
+  --container-22-padding: var(--container-padding);
+  --container-20-padding: var(--container-padding);
+  --container-18-padding: var(--container-padding);
+
+  /* ---- Section rhythm (§1.3.4) -------------------------------------------- */
+  --section-margin: 6rem;          /* Get Inspired / 50-50 / KBYG / Stories */
+  --section-margin-cta: 4.5rem;    /* full-bleed CTA                        */
+  --footer-margin: 7.5rem;         /* footer                                */
+  --section-scroll-margin: 6.25rem;/* 100px — clears the header (§1.3.2)    */
+}
+
+@media (min-width: 31.25em) {      /* >=500 */
+  :root { --container-padding: 1.5rem; }
+}
+@media (min-width: 46.5em) {       /* >=744 — PRIMARY SWITCH */
+  :root {
+    --container-padding: 2.5rem;
+    --radius-step: 12px;
+    --section-margin: 6.8rem;
+    --section-margin-cta: 5.1rem;
+    --footer-margin: 10rem;
+  }
+}
+@media (min-width: 70.5em) {       /* >=1128 */
+  :root {
+    --container-padding: max(4.625rem, (50vw - 55rem + 4.625rem));
+    --section-margin: 8rem;
+    --section-margin-cta: 6rem;
+    /* §1.3.3 interior tracks (mega-menu family) */
+    --container-22-padding: max(4.625rem, (100vw - 92.229rem) / 2);
+    --container-20-padding: max(4.625rem, (100vw - 83.708rem) / 2);
+    --container-18-padding: max(4.625rem, (100vw - 75.1875rem) / 2);
+  }
+}
+@media (min-width: 130em) {        /* >=2080 — hard locks (§5.5) */
+  :root {
+    --container-padding: calc((100vw - 120rem) / 2);
+    --section-margin: 10rem;
+    --section-margin-cta: 7.5rem;
+    --container-22-padding: calc((100vw - 109.875rem) / 2);
+    --container-20-padding: calc((100vw - 99.75rem) / 2);
+    --container-18-padding: calc((100vw - 89.625rem) / 2);
+  }
+}
+
+/* =============================================================================
+   TYPE RAMP as utilities (design.md §1.2.2).
+   Stepped rem/px scale per breakpoint — zero clamp()/vw font sizing.
+   Breakpoints: base 0-374 | >=23.4375em (375) | >=46.5em (744) | >=70.5em (1128) | >=90em (1440)
+   ========================================================================== */
+
+@utility text-hero { /* hero display H2: 42/48/56/68/86 */
+  font-size: 42px; line-height: 1.048; letter-spacing: 0.01em;
+  @media (min-width: 23.4375em) { font-size: 48px; line-height: 1.042; }
+  @media (min-width: 46.5em)    { font-size: 56px; line-height: 1.054; }
+  @media (min-width: 70.5em)    { font-size: 68px; line-height: 1.044; }
+  @media (min-width: 90em)      { font-size: 86px; line-height: 1.047; }
+}
+@utility text-section-h2 { /* section H2: 26/30/36/42/50 */
+  font-size: 26px; line-height: 1.077; letter-spacing: 0.01em;
+  @media (min-width: 23.4375em) { font-size: 30px; line-height: 1.067; }
+  @media (min-width: 46.5em)    { font-size: 36px; line-height: 1.056; }
+  @media (min-width: 70.5em)    { font-size: 42px; line-height: 1.048; }
+  @media (min-width: 90em)      { font-size: 50px; line-height: 1.04; }
+}
+@utility text-fwcta-h2 { /* full-bleed CTA H2: 36/42/48/56/72 */
+  font-size: 36px; line-height: 1.056; letter-spacing: 0.01em;
+  @media (min-width: 23.4375em) { font-size: 42px; line-height: 1.048; }
+  @media (min-width: 46.5em)    { font-size: 48px; line-height: 1.042; }
+  @media (min-width: 70.5em)    { font-size: 56px; line-height: 1.054; }
+  @media (min-width: 90em)      { font-size: 72px; line-height: 1.056; }
+}
+@utility text-kbyg-h2 { /* compact section H2: 23/26/28/30/31 */
+  font-size: 23px; line-height: 1.087; letter-spacing: 0.01em;
+  @media (min-width: 23.4375em) { font-size: 26px; line-height: 1.077; }
+  @media (min-width: 46.5em)    { font-size: 28px; line-height: 1.071; }
+  @media (min-width: 70.5em)    { font-size: 30px; line-height: 1.067; }
+  @media (min-width: 90em)      { font-size: 31px; line-height: 1.065; }
+}
+@utility text-trip-h3 { /* trip-card H3: 19/1.105 all widths */
+  font-size: 19px; line-height: 1.105; letter-spacing: 0.01em;
+}
+@utility text-card-title { /* KBYG + accommodation card titles: 17 -> 19 @1128 */
+  font-size: 17px; line-height: 1.3; letter-spacing: 0.01em;
+  @media (min-width: 70.5em) { font-size: 19px; }
+}
+@utility text-story-body { /* story copy: 17/1.412 -> 19/1.368 @1128 */
+  font-size: 17px; line-height: 1.412;
+  @media (min-width: 70.5em) { font-size: 19px; line-height: 1.368; }
+}
+@utility text-body { /* default body copy */
+  font-size: 17px; line-height: 1.412;
+}
+@utility text-cta-copy { /* full-bleed CTA subcopy: 15 -> 19 @744 -> 21 @1128 */
+  font-size: 15px; line-height: 1.412;
+  @media (min-width: 46.5em) { font-size: 19px; }
+  @media (min-width: 70.5em) { font-size: 21px; }
+}
+@utility text-eyebrow { /* "Featured Stories": 15/500 lh 1.333 constant */
+  font-size: 15px; font-weight: 500; line-height: 1.333;
+}
+@utility text-nav { /* nav items: 15 -> 16 @1128 */
+  font-size: 15px; line-height: 1.3;
+  @media (min-width: 70.5em) { font-size: 16px; }
+}
+@utility text-quick-link { /* quick-links bar: 13/1.231 */
+  font-size: 13px; line-height: 1.231;
+}
+@utility text-footer-col-h2 { /* footer column H2: 16/700 lh 1.125 */
+  font-size: 16px; font-weight: 700; line-height: 1.125;
+}
+@utility text-footer-link { font-size: 15px; line-height: 1.3; }
+@utility text-newsletter-h2 { /* "Sign Up!": 18/700 -> 19 @1128 */
+  font-size: 18px; font-weight: 700; line-height: 1.3;
+  @media (min-width: 70.5em) { font-size: 19px; }
+}
+@utility text-newsletter { /* blurb: 15 -> 17 @1128 */
+  font-size: 15px; line-height: 1.35;
+  @media (min-width: 70.5em) { font-size: 17px; }
+}
+@utility text-meta { /* card meta + attribution + legal: 13 */
+  font-size: 13px; line-height: 1.35;
+}
+@utility text-btn { /* buttons/pill labels: 16/700 */
+  font-size: 16px; font-weight: 700; line-height: 1.3;
+}
+@utility text-legal { /* small print: 14/500 lh 1.357 */
+  font-size: 14px; font-weight: 500; line-height: 1.357;
+}

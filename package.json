@@ -1,0 +1,49 @@
+{
+    "name": "ptah-tours",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint",
+        "db:generate": "prisma generate",
+        "db:migrate": "prisma migrate dev",
+        "db:seed": "tsx prisma/seed.ts",
+        "db:studio": "prisma studio",
+        "db:up": "docker compose up -d db",
+        "db:down": "docker compose down",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@auth/prisma-adapter": "^2.11.3",
+        "@node-rs/argon2": "^2.2.1",
+        "@prisma/adapter-mariadb": "^7.10.0",
+        "@prisma/client": "^7.10.0",
+        "jose": "^6.2.12",
+        "lucide-react": "^1.46.0",
+        "motion": "^13.4.0",
+        "next": "16.3.5",
+        "next-auth": "^5.0.0-beta.32",
+        "react": "19.2.8",
+        "react-dom": "19.2.8",
+        "server-only": "^0.0.1",
+        "sharp": "^0.35.4",
+        "stripe": "19.1.0",
+        "swiper": "^14.2.0",
+        "zod": "^4.6.5"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4",
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "dotenv": "^18.0.0",
+        "eslint": "^9",
+        "eslint-config-next": "16.3.5",
+        "prisma": "^7.10.0",
+        "tailwindcss": "^4",
+        "tsx": "^4.23.13",
+        "typescript": "^5"
+    }
+}
