@@ -1,6 +1,14 @@
-import type { NextConfig } from "next";
+// Plain ESM config (no TypeScript) so loading it requires NO SWC/Babel
+// transpilation step. On build hosts where the native SWC binary can't load
+// (e.g. an older glibc), transpiling a `next.config.ts` fails in the config
+// phase and Next reports a "module not found" for its compiled
+// `<hash>.next.config.ts` artifact. A `.mjs` config sidesteps that entirely;
+// the rest of the build falls back to SWC's WASM build automatically.
+//
+// Type-checked in editors via the JSDoc annotation below — no `.ts` needed.
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // Next 16 note: verified against node_modules/next/dist/docs/01-app/
   // 03-api-reference/05-config — all of these remain valid top-level options.
   reactStrictMode: true,
