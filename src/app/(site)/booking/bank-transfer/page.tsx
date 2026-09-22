@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Container from "@/components/layout/Container";
 import { getBookingOutcome } from "@/server/booking-read";
 import { formatPriceCents } from "@/lib/utils";
@@ -34,7 +34,10 @@ export default async function BankTransferPage({
   searchParams: Promise<{ booking?: string }>;
 }) {
   const { booking: bookingId } = await searchParams;
-  if (!bookingId) notFound();
+  // No reference at all → the user landed here without booking; send them home
+  // (a redirect is a clean 307, unlike notFound() on a streamed dynamic page,
+  // which flushes a 200 shell before the 404 can take effect).
+  if (!bookingId) redirect("/");
   const booking = await getBookingOutcome(bookingId);
   if (!booking) notFound();
 

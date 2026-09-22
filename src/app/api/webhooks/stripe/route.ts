@@ -53,6 +53,14 @@ async function markProcessed(eventId: string): Promise<void> {
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
+  // Reject unsigned requests up front — before the configured-check — so the
+  // endpoint never acks an unsigned POST with 200 (consistent with the PayPal
+  // webhook, which fails closed). A real Stripe delivery always carries this.
+  const signature = req.headers.get("stripe-signature");
+  if (!signature) {
+    return NextResponse.json({ error: "Missing stripe-signature" }, { status: 400 });
+  }
+
   const stripe = await getStripe();
   const webhookSecret = await getWebhookSecret();
   if (!stripe || !webhookSecret) {
@@ -60,11 +68,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     // but do nothing. (In practice Stripe is not sending here if unconfigured.)
     logger.warn("stripe webhook hit but Stripe/webhook secret not configured");
     return NextResponse.json({ received: true, ignored: "unconfigured" }, { status: 200 });
-  }
-
-  const signature = req.headers.get("stripe-signature");
-  if (!signature) {
-    return NextResponse.json({ error: "Missing stripe-signature" }, { status: 400 });
   }
 
   // Raw body — REQUIRED for signature verification (do not JSON.parse first).

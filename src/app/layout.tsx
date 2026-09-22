@@ -48,7 +48,11 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: {
       default: titleDefault,
-      template: `%s · ${name}`,
+      // Pages already suffix their own brand ("Tours | Ptah Tours"), so the
+      // template must NOT re-append it (that produced "Tours | Ptah Tours ·
+      // Ptah Tours"). Pass the page title through verbatim; the `default`
+      // above still brands pages that set no title of their own.
+      template: "%s",
     },
     description,
     ...(faviconId ? { icons: { icon: `/api/media/${faviconId}`, shortcut: `/api/media/${faviconId}` } } : {}),
