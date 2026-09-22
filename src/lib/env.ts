@@ -93,7 +93,16 @@ const envSchema = z
     NEXT_PUBLIC_GTM_ID: optionalString(),
 
     // ── App environment ─────────────────────────────────────────────────────
-    APP_ENV: z.enum(["development", "test", "production"]).optional(),
+    // Lenient on purpose: trim + lowercase, and treat any other value (e.g. a
+    // mis-cased "Production" or a stray platform value) as unset rather than
+    // failing the whole boot — it's a cosmetic hint, not a security control.
+    APP_ENV: z
+      .string()
+      .optional()
+      .transform((v) => {
+        const s = v?.trim().toLowerCase();
+        return s === "development" || s === "test" || s === "production" ? s : undefined;
+      }),
 
     // ── Feature flags — boot-time defaults; runtime source of truth is the
     //    site_toggles table (admin-editable). ────────────────────────────────
