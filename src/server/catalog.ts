@@ -9,6 +9,7 @@
  */
 import "server-only";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import {
   DEPARTING_SOON_DAYS,
   durationInBucket,
@@ -100,6 +101,25 @@ function toFaqArray(value: unknown): { q: string; a: string }[] {
     }
     return [];
   });
+}
+
+/**
+ * Build-time resilience. `listPublishedTourSlugs` runs inside the
+ * /tours/[slug] `generateStaticParams`, which Next.js executes during
+ * `next build` even though that route is `force-dynamic` (the config governs
+ * rendering, not param collection). A build server that briefly can't reach
+ * the DB must NOT crash the whole build — mirror the graceful degradation used
+ * in src/server/events.ts / content.ts / toggles.ts: log and return a safe
+ * empty fallback, so the build emits zero prerendered params and the pages are
+ * generated on demand once the DB is reachable, instead of failing the deploy.
+ */
+async function safeRead<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    logger.warn(`${label} failed — using empty fallback (DB unreachable?)`, { error });
+    return fallback;
+  }
 }
 
 /** Only future, OPEN departures are bookable/visible to the public. */
@@ -343,11 +363,17 @@ export async function searchPublishedTours(term: string): Promise<TourListItem[]
 
 /** Slugs of all published tours — for generateStaticParams / sitemap. */
 export async function listPublishedTourSlugs(): Promise<string[]> {
-  const rows = await db.tour.findMany({
-    where: { status: "PUBLISHED" },
-    select: { slug: true },
-  });
-  return rows.map((r) => r.slug);
+  return safeRead(
+    "listPublishedTourSlugs",
+    async () => {
+      const rows = await db.tour.findMany({
+        where: { status: "PUBLISHED" },
+        select: { slug: true },
+      });
+      return rows.map((r) => r.slug);
+    },
+    [],
+  );
 }
 
 /**
