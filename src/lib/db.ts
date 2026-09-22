@@ -43,27 +43,15 @@ if (typeof net.setDefaultAutoSelectFamily === "function") {
 }
 
 /**
- * Force IPv4-first DNS resolution — THE fix for the 45028 pool-timeout errors.
+ * Prefer IPv4 when resolving the DB host — belt-and-suspenders only.
  *
- * Vercel runtime logs showed every request failing (or crawling for ~10s) with:
- *   "pool timeout: failed to retrieve a connection from pool after 10001ms
- *    (pool connections: active=0 idle=0 limit=N)"
- * The pool held ZERO connections and couldn't establish even one inside its 10s
- * acquire window. Cause: managed cloud MySQL (TiDB/Aiven) publishes both AAAA
- * (IPv6) and A (IPv4) records; the mariadb connector resolves the host and
- * attempts the returned addresses itself, in order. Node's default result order
- * is "verbatim" (frequently IPv6 first), and Vercel functions have no usable
- * IPv6 route, so the IPv6 attempt hangs until connectTimeout — consuming the
- * whole acquire window → 45028. Uncaught reads then 500 ("Something went
- * wrong"); caught reads (getSettings) return defaults but still pay the stall.
- *
- * net.setDefaultAutoSelectFamily above did NOT fix it: the connector iterates
- * addresses itself instead of using Node's Happy-Eyeballs socket race, so that
- * socket-level option never applies to its attempts. The reliable lever is the
- * DNS result ORDER. ipv4first makes dns.lookup return IPv4 first, so the
- * connector connects over IPv4 immediately and never touches the stalling IPv6
- * path. Process-global (read by every later lookup) and TLS-safe: `host` stays
- * the hostname, so SNI / certificate verification is unchanged. Node >= 18.
+ * The prod DB host (TiDB Cloud gateway) is IPv4-only, so this is effectively a
+ * no-op there; it just keeps any dual-stack environment from stalling on a dead
+ * IPv6 route. IMPORTANT: this is NOT what fixed the 45028 pool timeouts. An
+ * in-function diagnostic proved TCP reached the DB in ~6ms (no IPv6/DNS issue)
+ * yet every pool checkout still timed out — because the TLS handshake never
+ * started. The real fix is the `ssl` config in createAdapter() below. Kept only
+ * because it is harmless. Node >= 18.
  */
 if (typeof dns.setDefaultResultOrder === "function") {
   dns.setDefaultResultOrder("ipv4first");
@@ -98,7 +86,22 @@ function createAdapter(): PrismaMariaDb {
       connectionLimit: Number.isFinite(poolLimit) && poolLimit > 0 ? poolLimit : 5,
       // Fail a checkout attempt after 10s rather than hang forever.
       connectTimeout: 10_000,
-    });
+      // TiDB Cloud Serverless enforces TLS (require_secure_transport=ON) and its
+      // gateway routes each connection to the right cluster by the TLS SNI
+      // servername. The mariadb driver opens the plain socket first and only
+      // upgrades to TLS when `ssl` is set — and, unlike mysql2, it never fills in
+      // `servername` itself (it hands tls.connect just { socket }). With no ssl
+      // the handshake never starts: TCP connects in ~6ms but every pool checkout
+      // then hangs to connectTimeout and fails with Prisma 45028 (active=0
+      // idle=0) — the ~10s-per-request stall seen in prod. Supplying ssl +
+      // servername fixes it. Node's bundled CA store trusts the public gateway
+      // cert, so rejectUnauthorized stays true without a custom `ca`.
+      ssl: {
+        minVersion: "TLSv1.2",
+        rejectUnauthorized: true,
+        servername: url.hostname,
+      },
+    } as ConstructorParameters<typeof PrismaMariaDb>[0]);
   } catch {
     // If the URL can't be parsed for any reason, fall back to the string form
     // (default pool) so the app still connects rather than failing to boot.

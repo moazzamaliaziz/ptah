@@ -105,5 +105,25 @@ export async function GET(req: Request) {
     out.query2 = { ms: Date.now() - t2, err: (e as Error).message };
   }
 
+  // Post-connect introspection (only meaningful once TLS lets a query through):
+  // which database the URL actually selected, and what tables live there — to
+  // confirm the seed landed where the app reads. The URL path is "sys", which
+  // is suspicious for a MySQL system schema.
+  try {
+    const rows = await db.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      "SELECT DATABASE() AS db",
+    );
+    out.currentDatabase = rows?.[0]?.db ?? null;
+  } catch (e) {
+    out.currentDatabase = { err: (e as Error).message };
+  }
+  try {
+    const rows = await db.$queryRawUnsafe<Array<Record<string, unknown>>>("SHOW TABLES");
+    out.tables = rows.map((row) => Object.values(row)[0]);
+    out.tableCount = rows.length;
+  } catch (e) {
+    out.tables = { err: (e as Error).message };
+  }
+
   return NextResponse.json(out);
 }
