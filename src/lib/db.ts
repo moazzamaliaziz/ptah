@@ -12,9 +12,34 @@
  * datasource urls from schema files).
  */
 import "server-only";
+import net from "node:net";
 import { PrismaClient } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { env } from "@/lib/env";
+
+/**
+ * Serverless connect-latency fix ("Happy Eyeballs").
+ *
+ * The mariadb driver opens its sockets through Node's net/tls layer. When the
+ * DB hostname resolves to BOTH an IPv6 (AAAA) and IPv4 (A) address — as managed
+ * cloud MySQL hosts (TiDB, Aiven) do — and the runtime attempts IPv6 first, an
+ * environment with no usable IPv6 route (Vercel's serverless functions) stalls
+ * on that attempt until `connectTimeout` (~10s) before falling back to IPv4.
+ * Every uncached DB read then paid a ~10s penalty, which is exactly the stall
+ * documented for local dev in .env (localhost → ::1).
+ *
+ * Enabling autoSelectFamily makes Node race IPv4 and IPv6 in parallel and use
+ * whichever connects first, eliminating the stall. It's a process-global
+ * default read by every socket connect made afterwards, so it must run before
+ * the pool opens its first connection — module import order guarantees this
+ * file is evaluated before any query. Guarded because the API only exists on
+ * Node >= 18.18 (Vercel runs newer, local dev may vary).
+ */
+if (typeof net.setDefaultAutoSelectFamily === "function") {
+  net.setDefaultAutoSelectFamily(true);
+  // Fail a stalled family attempt over to the other family fast (default 250ms).
+  net.setDefaultAutoSelectFamilyAttemptTimeout?.(500);
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -23,15 +48,17 @@ const globalForPrisma = globalThis as unknown as {
 /**
  * Build the MariaDB/MySQL driver adapter with an explicit connection pool.
  *
- * The default pool is 10 connections; under concurrent load that serializes
- * DB-reading pages (each request queues for one of 10 slots), which was the
- * dominant latency source in load testing. We parse the validated DATABASE_URL
- * into a pool config so we can raise `connectionLimit` (env-tunable via
- * DB_POOL_LIMIT, default 30). Keep this comfortably under MySQL's
- * `max_connections` (default 151), leaving headroom for the CLI + other procs.
+ * On serverless (Vercel) each function instance serves only a little
+ * concurrency, but many instances run at once — so a large per-instance pool
+ * multiplies into far more open connections than a managed cloud DB's cap
+ * allows (TiDB Serverless / Aiven free tiers cap concurrent connections low),
+ * and surplus connections just sit idle. We keep the per-instance pool small
+ * (env-tunable via DB_POOL_LIMIT, default 5) so total connections stay under
+ * the provider ceiling. `connectTimeout` is a safety upper bound; with
+ * autoSelectFamily enabled above, real connects resolve in well under a second.
  */
 function createAdapter(): PrismaMariaDb {
-  const poolLimit = Number(process.env.DB_POOL_LIMIT ?? 30);
+  const poolLimit = Number(process.env.DB_POOL_LIMIT ?? 5);
   try {
     const url = new URL(env.DATABASE_URL);
     return new PrismaMariaDb({
@@ -40,7 +67,7 @@ function createAdapter(): PrismaMariaDb {
       user: decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
       database: url.pathname.replace(/^\//, "") || undefined,
-      connectionLimit: Number.isFinite(poolLimit) && poolLimit > 0 ? poolLimit : 30,
+      connectionLimit: Number.isFinite(poolLimit) && poolLimit > 0 ? poolLimit : 5,
       // Fail a checkout attempt after 10s rather than hang forever.
       connectTimeout: 10_000,
     });
