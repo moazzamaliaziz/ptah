@@ -42,6 +42,13 @@ function readEventInput(fd: FormData): Record<string, unknown> {
 function revalidateEvent(id?: string): void {
   revalidatePath("/admin/events");
   revalidatePath("/events");
+  // /events/[slug] is ISR (revalidate=300). Publish/unpublish and delete don't
+  // carry the slug, so refresh the whole detail route on every mutation. Call
+  // both the route-group-prefixed and bare dynamic-pattern forms — a
+  // non-matching path is a harmless no-op, so this is robust to how Next 16
+  // resolves the (site) group in the pattern.
+  revalidatePath("/(site)/events/[slug]", "page");
+  revalidatePath("/events/[slug]", "page");
   if (id) revalidatePath(`/admin/events/${id}`);
 }
 

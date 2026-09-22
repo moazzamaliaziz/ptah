@@ -40,7 +40,7 @@ export async function submitBookingAction(
   const ip = getClientIp(h);
 
   // Per-IP throttle: 8 booking attempts / minute (each is a seat claim + gateway call).
-  if (!checkRateLimit(`booking:${ip}`, 8, 60_000).allowed) {
+  if (!(await checkRateLimit(`booking:${ip}`, 8, 60_000)).allowed) {
     return { error: "Too many attempts. Please wait a minute and try again." };
   }
 

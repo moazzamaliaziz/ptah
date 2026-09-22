@@ -30,7 +30,7 @@ export async function subscribeNewsletterAction(
     return { ok: true, error: null };
   }
 
-  if (!checkRateLimit(`newsletter:${ip}`, 5, 300_000).allowed) {
+  if (!(await checkRateLimit(`newsletter:${ip}`, 5, 300_000)).allowed) {
     return { ok: false, error: "Too many attempts. Please wait a few minutes and try again." };
   }
 

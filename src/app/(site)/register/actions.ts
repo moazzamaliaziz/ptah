@@ -63,7 +63,7 @@ export async function registerAction(_prev: RegisterState, formData: FormData): 
   const ip = getClientIp(h);
   const userAgent = h.get("user-agent");
 
-  if (!checkRateLimit(`register:${ip}`, 5, 60_000).allowed) {
+  if (!(await checkRateLimit(`register:${ip}`, 5, 60_000)).allowed) {
     return { ok: false, error: "Too many attempts. Please wait a minute and try again." };
   }
 

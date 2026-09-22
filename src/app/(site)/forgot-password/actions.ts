@@ -27,7 +27,7 @@ export async function forgotPasswordAction(_prev: ForgotState, formData: FormDat
   const h = await headers();
   const ip = getClientIp(h);
 
-  if (!checkRateLimit(`forgot:${ip}`, 5, 60_000).allowed) {
+  if (!(await checkRateLimit(`forgot:${ip}`, 5, 60_000)).allowed) {
     return { done: false, error: "Too many requests. Please wait a minute and try again." };
   }
 

@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/trip-ideas" },
 };
 
-export const dynamic = "force-dynamic";
+// Read-only editorial catalog (no request-time APIs) — ISR with a 5-minute
+// window; admin mutations revalidate /trip-ideas on demand for freshness.
+export const revalidate = 300;
 
 export default async function TripIdeasPage() {
   const ideas = await listPublishedTripIdeas();

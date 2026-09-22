@@ -27,7 +27,7 @@ export async function submitContactAction(_prev: ContactState, formData: FormDat
     return { ok: true, error: null };
   }
 
-  if (!checkRateLimit(`contact:${ip}`, 5, 300_000).allowed) {
+  if (!(await checkRateLimit(`contact:${ip}`, 5, 300_000)).allowed) {
     return { ok: false, error: "Too many messages. Please wait a few minutes and try again." };
   }
 

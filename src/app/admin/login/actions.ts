@@ -37,7 +37,7 @@ export async function loginAction(formData: FormData): Promise<void> {
   const userAgent = h.get("user-agent");
 
   // Per-IP throttle: 10 attempts / minute.
-  if (!checkRateLimit(`admin-login:${ip}`, 10, 60_000).allowed) {
+  if (!(await checkRateLimit(`admin-login:${ip}`, 10, 60_000)).allowed) {
     redirect(`/admin/login?error=rate&from=${encodeURIComponent(target)}`);
   }
 
