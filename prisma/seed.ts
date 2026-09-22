@@ -9,7 +9,7 @@
  *
  * Seeds:
  *   • 1 SUPER_ADMIN user (dev credentials — change immediately in any real env)
- *   • 4 SiteToggle flags
+ *   • 6 SiteToggle flags
  *   • 20 Integration registry rows (all disabled)
  *   • 6 Destinations (Cairo, Luxor, Aswan, Alexandria, Hurghada, Sharm El Sheikh)
  *   • 12 Tours with itinerary days + departures + destination links + real hero
@@ -57,6 +57,16 @@ const SITE_TOGGLES = [
     key: "PAYMENTS_STRIPE_ENABLED",
     value: false,
     description: "Enable Stripe checkout (requires STRIPE_* env + webhook)",
+  },
+  {
+    key: "PAYMENTS_PAYPAL_ENABLED",
+    value: false,
+    description: "Enable PayPal checkout (requires PayPal integration creds + webhook ID)",
+  },
+  {
+    key: "PAYMENTS_BANK_TRANSFER_ENABLED",
+    value: false,
+    description: "Offer offline bank transfer at checkout (staff confirm each payment)",
   },
   {
     key: "MAINTENANCE_MODE",

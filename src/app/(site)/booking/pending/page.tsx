@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Container from "@/components/layout/Container";
 import { getBookingOutcome } from "@/server/booking-read";
 import { formatPriceCents } from "@/lib/utils";
@@ -25,7 +25,7 @@ export default async function BookingPendingPage({
   searchParams: Promise<{ booking?: string }>;
 }) {
   const { booking: bookingId } = await searchParams;
-  if (!bookingId) notFound();
+  if (!bookingId) redirect("/");
   const booking = await getBookingOutcome(bookingId);
   if (!booking) notFound();
 

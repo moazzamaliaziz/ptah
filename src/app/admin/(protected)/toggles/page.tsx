@@ -7,6 +7,8 @@ const META: Record<ToggleKey, { label: string; description: string }> = {
   SIGNUP_ENABLED: { label: "Customer sign-up", description: "Allow new customer account registration (enforced by the auth phase)." },
   LOGIN_ENABLED: { label: "Customer login", description: "Allow existing customers to sign in (enforced by the auth phase). Admin login is never affected." },
   PAYMENTS_STRIPE_ENABLED: { label: "Stripe payments", description: "Enable Stripe checkout (requires Stripe integration credentials + webhook)." },
+  PAYMENTS_PAYPAL_ENABLED: { label: "PayPal payments", description: "Enable PayPal checkout (requires PayPal integration credentials + webhook ID)." },
+  PAYMENTS_BANK_TRANSFER_ENABLED: { label: "Bank transfer", description: "Offer offline bank transfer at checkout. Set the instructions via BANK_TRANSFER_INSTRUCTIONS; staff confirm each payment manually in Orders." },
   MAINTENANCE_MODE: { label: "Maintenance mode", description: "Show a maintenance page to non-admin visitors. Admins keep full access." },
 };
 

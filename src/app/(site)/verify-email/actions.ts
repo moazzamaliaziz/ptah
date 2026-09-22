@@ -23,7 +23,7 @@ export async function resendVerificationAction(_prev: ResendState, formData: For
   const h = await headers();
   const ip = getClientIp(h);
 
-  if (!checkRateLimit(`verify-resend:${ip}`, 5, 60_000).allowed) {
+  if (!(await checkRateLimit(`verify-resend:${ip}`, 5, 60_000)).allowed) {
     return { done: false, error: "Too many requests. Please wait a minute and try again." };
   }
 

@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/events" },
 };
 
-export const dynamic = "force-dynamic";
+// Read-only editorial catalog (no request-time APIs) — ISR with a 5-minute
+// window; admin mutations revalidate /events on demand for freshness.
+export const revalidate = 300;
 
 function formatDateRange(start: Date, end: Date | null, recurring: boolean): string {
   const fmt = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" });

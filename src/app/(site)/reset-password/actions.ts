@@ -29,7 +29,7 @@ export async function resetPasswordAction(_prev: ResetState, formData: FormData)
   const h = await headers();
   const ip = getClientIp(h);
 
-  if (!checkRateLimit(`reset:${ip}`, 10, 60_000).allowed) {
+  if (!(await checkRateLimit(`reset:${ip}`, 10, 60_000)).allowed) {
     return { ok: false, error: "Too many attempts. Please wait a minute and try again." };
   }
 

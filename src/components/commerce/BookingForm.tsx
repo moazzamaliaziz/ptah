@@ -16,15 +16,26 @@ export interface BookingDepartureOption {
   remainingCapacity: number;
 }
 
-function SubmitButton({ totalLabel }: { totalLabel: string }) {
+export type PaymentMethod = "stripe" | "paypal" | "bank_transfer";
+
+const METHOD_META: Record<PaymentMethod, { label: string; blurb: string }> = {
+  stripe: { label: "Card", blurb: "Pay securely by card via Stripe." },
+  paypal: { label: "PayPal", blurb: "Pay with your PayPal account." },
+  bank_transfer: { label: "Bank transfer", blurb: "Get bank details and pay by transfer; we confirm on receipt." },
+};
+
+function SubmitButton({ totalLabel, offline }: { totalLabel: string; offline: boolean }) {
   const { pending } = useFormStatus();
+  const idle = offline
+    ? `Continue to bank details · ${totalLabel}`
+    : `Continue to payment · ${totalLabel}`;
   return (
     <button
       type="submit"
       disabled={pending}
       className="w-full rounded-full bg-nile px-6 py-3.5 text-btn text-white transition-colors hover:bg-nile/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nile disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? "Starting secure checkout…" : `Continue to payment · ${totalLabel}`}
+      {pending ? "Working…" : idle}
     </button>
   );
 }
@@ -38,9 +49,11 @@ function SubmitButton({ totalLabel }: { totalLabel: string }) {
 export default function BookingForm({
   departures,
   initialDepartureId,
+  methods = ["stripe"],
 }: {
   departures: BookingDepartureOption[];
   initialDepartureId?: string;
+  methods?: PaymentMethod[];
 }) {
   const firstBookable = departures.find((d) => d.remainingCapacity > 0);
   const [departureId, setDepartureId] = useState(
@@ -49,6 +62,8 @@ export default function BookingForm({
       : firstBookable?.id ?? departures[0]?.id ?? "",
   );
   const [seats, setSeats] = useState(1);
+  const availableMethods = methods.length > 0 ? methods : (["stripe"] as PaymentMethod[]);
+  const [method, setMethod] = useState<PaymentMethod>(availableMethods[0] ?? "stripe");
   const [state, formAction] = useActionState<BookingFormState, FormData>(submitBookingAction, {
     error: null,
   });
@@ -198,6 +213,35 @@ export default function BookingForm({
         </label>
       </fieldset>
 
+      {availableMethods.length > 1 ? (
+        <fieldset className="space-y-2">
+          <legend className="text-card-title font-semibold text-ink">How would you like to pay?</legend>
+          {availableMethods.map((m) => (
+            <label
+              key={m}
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors ${
+                method === m ? "border-nile bg-nile/5" : "border-grey-300/60 hover:border-nile/40"
+              }`}
+            >
+              <input
+                type="radio"
+                name="method"
+                value={m}
+                checked={method === m}
+                onChange={() => setMethod(m)}
+                className="mt-1 h-4 w-4 accent-nile"
+              />
+              <span>
+                <span className="block text-body font-medium text-ink">{METHOD_META[m].label}</span>
+                <span className="block text-[11px] text-ink/55">{METHOD_META[m].blurb}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        <input type="hidden" name="method" value={method} />
+      )}
+
       <div className="rounded-xl bg-papyrus/60 p-4">
         <div className="flex items-center justify-between text-body">
           <span className="text-ink/70">
@@ -205,12 +249,18 @@ export default function BookingForm({
           </span>
           <span className="text-lg font-bold text-nile">{totalLabel}</span>
         </div>
-        <p className="mt-1 text-[11px] text-ink/50">Full payment is taken now via secure Stripe checkout.</p>
+        <p className="mt-1 text-[11px] text-ink/50">
+          {method === "bank_transfer"
+            ? "Your seats are held while you arrange the transfer; we confirm on receipt."
+            : "Full payment is taken now via secure checkout."}
+        </p>
       </div>
 
-      <SubmitButton totalLabel={totalLabel} />
+      <SubmitButton totalLabel={totalLabel} offline={method === "bank_transfer"} />
       <p className="text-center text-[11px] text-ink/45">
-        You&apos;ll be redirected to Stripe to pay. Your seats are held while you complete checkout.
+        {method === "bank_transfer"
+          ? "We'll show you the bank details and your booking reference next. Your seats are held while you transfer."
+          : "You'll be redirected to complete payment. Your seats are held while you check out."}
       </p>
     </form>
   );

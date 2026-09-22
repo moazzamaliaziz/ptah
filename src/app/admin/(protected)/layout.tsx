@@ -11,6 +11,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   const newEnquiries = can(user, "enquiries.view") ? await countNewContactMessages() : 0;
 
   const items: AdminNavItem[] = [{ href: "/admin", label: "Dashboard" }];
+  if (can(user, "bookings.view")) items.push({ href: "/admin/bookings", label: "Orders" });
   if (can(user, "content.view")) items.push({ href: "/admin/content", label: "Content (CMS)" });
   if (can(user, "catalog.view")) items.push({ href: "/admin/tours", label: "Tours" });
   if (can(user, "catalog.view")) items.push({ href: "/admin/destinations", label: "Destinations" });

@@ -20,8 +20,39 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+/**
+ * Build the MariaDB/MySQL driver adapter with an explicit connection pool.
+ *
+ * The default pool is 10 connections; under concurrent load that serializes
+ * DB-reading pages (each request queues for one of 10 slots), which was the
+ * dominant latency source in load testing. We parse the validated DATABASE_URL
+ * into a pool config so we can raise `connectionLimit` (env-tunable via
+ * DB_POOL_LIMIT, default 30). Keep this comfortably under MySQL's
+ * `max_connections` (default 151), leaving headroom for the CLI + other procs.
+ */
+function createAdapter(): PrismaMariaDb {
+  const poolLimit = Number(process.env.DB_POOL_LIMIT ?? 30);
+  try {
+    const url = new URL(env.DATABASE_URL);
+    return new PrismaMariaDb({
+      host: url.hostname,
+      port: url.port ? Number(url.port) : 3306,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      database: url.pathname.replace(/^\//, "") || undefined,
+      connectionLimit: Number.isFinite(poolLimit) && poolLimit > 0 ? poolLimit : 30,
+      // Fail a checkout attempt after 10s rather than hang forever.
+      connectTimeout: 10_000,
+    });
+  } catch {
+    // If the URL can't be parsed for any reason, fall back to the string form
+    // (default pool) so the app still connects rather than failing to boot.
+    return new PrismaMariaDb(env.DATABASE_URL);
+  }
+}
+
 function createPrismaClient(): PrismaClient {
-  const adapter = new PrismaMariaDb(env.DATABASE_URL);
+  const adapter = createAdapter();
   return new PrismaClient({
     adapter,
     log:

@@ -3,8 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Container from "@/components/layout/Container";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import BookingForm, { type BookingDepartureOption } from "@/components/commerce/BookingForm";
+import BookingForm, {
+  type BookingDepartureOption,
+  type PaymentMethod,
+} from "@/components/commerce/BookingForm";
 import { getTourDetail } from "@/server/catalog";
+import { getToggles } from "@/server/toggles";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +54,16 @@ export default async function BookingPage({
 
   const anyBookable = options.some((o) => o.remainingCapacity > 0);
 
+  // Payment methods offered are the enabled runtime toggles. Falls back to card
+  // so the funnel still renders (and gracefully routes to manual follow-up) when
+  // nothing is configured yet.
+  const toggles = await getToggles();
+  const enabledMethods: PaymentMethod[] = [];
+  if (toggles.PAYMENTS_STRIPE_ENABLED) enabledMethods.push("stripe");
+  if (toggles.PAYMENTS_PAYPAL_ENABLED) enabledMethods.push("paypal");
+  if (toggles.PAYMENTS_BANK_TRANSFER_ENABLED) enabledMethods.push("bank_transfer");
+  const methods: PaymentMethod[] = enabledMethods.length > 0 ? enabledMethods : ["stripe"];
+
   return (
     <Container className="py-12">
       <Breadcrumbs
@@ -69,7 +83,7 @@ export default async function BookingPage({
 
           <div className="mt-8">
             {anyBookable ? (
-              <BookingForm departures={options} initialDepartureId={departure} />
+              <BookingForm departures={options} initialDepartureId={departure} methods={methods} />
             ) : (
               <div className="rounded-xl border border-grey-300/60 bg-papyrus/50 p-8 text-center">
                 <p className="text-card-title font-semibold text-ink">No seats available right now.</p>

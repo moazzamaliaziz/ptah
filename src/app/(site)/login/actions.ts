@@ -63,7 +63,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   const ip = getClientIp(h);
   const userAgent = h.get("user-agent");
 
-  if (!checkRateLimit(`login:${ip}`, 10, 60_000).allowed) {
+  if (!(await checkRateLimit(`login:${ip}`, 10, 60_000)).allowed) {
     return { ok: false, error: "Too many attempts. Please wait a minute and try again." };
   }
 

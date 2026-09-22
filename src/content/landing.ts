@@ -471,7 +471,7 @@ export const fiftyCtas: [FiftyCta, FiftyCta] = [
   {
     title: "Sail the Nile in Style",
     copy: "Four-to-seven night cruises between Luxor and Aswan, with cabins we have personally inspected.",
-    cta: { label: "Browse Nile Cruises", href: "/tours?collection=nile-cruise" },
+    cta: { label: "Explore the Nile", href: "/the-nile" },
     image: {
       src: `${A}/cta/fifty-nile-cruise.webp`,
       mid: `${A}/cta/fifty-nile-cruise.webp`,

@@ -7,18 +7,25 @@
  *   (edge is not configurable here).
  *
  * What it does on every matched request:
- *   1. Content-Security-Policy — two modes:
- *      • DEFAULT (production-safe for this phase): a strict policy WITHOUT a
- *        nonce, because marketing pages are statically generated and
- *        nonce-based CSP forces EVERY route into dynamic rendering
- *        (docs: guides/content-security-policy — "all pages must be
- *        dynamically rendered"). `script-src 'self' 'unsafe-inline'` is the
- *        documented requirement for Next.js inline bootstrap scripts.
- *      • STRICT NONCE MODE (opt-in): set SECURITY_CSP_NONCE=1. A per-request
- *        cryptographic nonce is generated, injected via the `x-nonce` request
- *        header (Server Components read it with `await headers()`), and the
- *        CSP switches to `script-src 'self' 'nonce-<n>' 'strict-dynamic'`.
- *        Enable only together with dynamic rendering on every route.
+ *   1. Content-Security-Policy — selected PER PATH:
+ *      • STRICT NONCE MODE on the sensitive surfaces (`/admin/*` staff panel and
+ *        `/booking/*` checkout funnel): a per-request cryptographic nonce is
+ *        generated, injected via the `x-nonce` request header (Server Components
+ *        read it with `await headers()`; Next also parses the nonce out of the
+ *        `Content-Security-Policy` request header to nonce its own framework +
+ *        `<Script>` tags), and the CSP is `script-src 'self' 'nonce-<n>'
+ *        'strict-dynamic'` — NO 'unsafe-inline' for scripts. These routes are
+ *        already dynamically rendered (auth/session + per-request reads), so the
+ *        per-request nonce does not conflict with any static/ISR caching.
+ *      • COMPATIBLE MODE everywhere else (marketing / catalog): a nonce-free
+ *        policy with `script-src 'self' 'unsafe-inline'` — the documented
+ *        requirement for Next.js inline bootstrap scripts on STATICALLY
+ *        generated pages (docs: guides/content-security-policy — nonces force
+ *        "all pages must be dynamically rendered"). This preserves their ISR
+ *        caching.
+ *      • OVERRIDE: SECURITY_CSP_NONCE=1 forces the strict nonce policy on EVERY
+ *        path (backward compatible with the previous global gate). Enable only
+ *        together with dynamic rendering on every route.
  *   2. Clickjacking / sniffing / referrer hardening headers (always on).
  *   3. HSTS in production only (2-year, includeSubDomains, preload) — sending
  *      it over plain-http localhost is meaningless.
@@ -32,8 +39,24 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { integrationCspOrigins } from "@/lib/integration-csp";
 
-const STRICT_NONCE_ENABLED = process.env.SECURITY_CSP_NONCE === "1";
+/* Env override: force the strict nonce policy on EVERY matched path (backward
+ * compatible with the previous global gate). With it unset, the strict policy
+ * is selected per-path for the sensitive surfaces (see STRICT_SURFACE_PREFIXES
+ * / the selection in `proxy`). */
+const STRICT_NONCE_FORCED = process.env.SECURITY_CSP_NONCE === "1";
 const IS_PROD = process.env.NODE_ENV === "production";
+
+/* Sensitive surfaces that always receive the strict nonce-based CSP: the staff
+ * admin panel and the booking/checkout funnel. Both are dynamically rendered,
+ * so per-request nonces here never disable static/ISR caching (which only the
+ * compatible-policy marketing/catalog pages rely on). */
+const STRICT_SURFACE_PREFIXES = ["/admin", "/booking"] as const;
+
+function isStrictSurface(pathname: string): boolean {
+  return STRICT_SURFACE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
 /* Trusted origin for the internal site-state poll. Pinned to the configured
  * public URL so a spoofed `Host:` header cannot steer this server-side fetch at
@@ -167,10 +190,17 @@ function buildCsp(nonce: string | null, cspIntegrations: string[]): string {
 }
 
 export function proxy(request: NextRequest) {
-  const nonce = STRICT_NONCE_ENABLED
+  const { pathname, origin } = request.nextUrl;
+
+  // Per-path policy selection: emit the strict nonce policy on the sensitive
+  // surfaces (admin + booking), or everywhere when the env override is set;
+  // otherwise the compatible (nonce-free) policy. A nonce is generated only
+  // when the strict policy applies, so compatible pages stay nonce-free and
+  // cacheable.
+  const useStrictCsp = STRICT_NONCE_FORCED || isStrictSurface(pathname);
+  const nonce = useStrictCsp
     ? Buffer.from(crypto.randomUUID()).toString("base64")
     : null;
-  const { pathname, origin } = request.nextUrl;
 
   // Poll the internal endpoint on the CONFIGURED origin in production (so a
   // spoofed `Host:` cannot steer the server-side fetch and poison the cache);
@@ -181,6 +211,15 @@ export function proxy(request: NextRequest) {
   const { maintenance, cspIntegrations } = getSiteState(pollOrigin);
   const csp = buildCsp(nonce, cspIntegrations);
 
+  // Forward the CSP (and nonce, when in strict mode) to the renderer via request
+  // headers — Next.js parses the request-side CSP to nonce its own framework +
+  // <Script> tags, and code can read `x-nonce` with `await headers()` (per the
+  // CSP guide). Built before the maintenance branch so the rewritten
+  // /maintenance render receives the same nonce plumbing under a strict policy.
+  const requestHeaders = new Headers(request.headers);
+  if (nonce) requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
   // Maintenance gate: public pages only. /admin (staff), /api (incl. the state
   // endpoint the poll itself hits) and /maintenance are always exempt.
   const publicPath =
@@ -188,17 +227,12 @@ export function proxy(request: NextRequest) {
     !pathname.startsWith("/api") &&
     pathname !== "/maintenance";
   if (publicPath && maintenance) {
-    const res = NextResponse.rewrite(new URL("/maintenance", request.url));
+    const res = NextResponse.rewrite(new URL("/maintenance", request.url), {
+      request: { headers: requestHeaders },
+    });
     setSecurityHeaders(res, csp);
     return res;
   }
-
-  // Forward the CSP (and nonce, when enabled) to the renderer via request headers
-  // — Next.js parses the request-side CSP to nonce its own scripts, and code can
-  // read `x-nonce` with `await headers()` (per the CSP guide).
-  const requestHeaders = new Headers(request.headers);
-  if (nonce) requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   setSecurityHeaders(response, csp);

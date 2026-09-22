@@ -8,7 +8,9 @@ import Button from "@/components/ui/Button";
 import { getEventDetail, listPublishedEventSlugs } from "@/server/events";
 import { env } from "@/lib/env";
 
-export const dynamic = "force-dynamic";
+// Read-only event detail (no request-time APIs) — ISR with a 5-minute window;
+// generateStaticParams pre-renders known slugs, admin mutations revalidate on demand.
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   const slugs = await listPublishedEventSlugs();
