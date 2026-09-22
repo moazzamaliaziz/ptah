@@ -13,6 +13,7 @@
  */
 import "server-only";
 import net from "node:net";
+import dns from "node:dns";
 import { PrismaClient } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { env } from "@/lib/env";
@@ -39,6 +40,33 @@ if (typeof net.setDefaultAutoSelectFamily === "function") {
   net.setDefaultAutoSelectFamily(true);
   // Fail a stalled family attempt over to the other family fast (default 250ms).
   net.setDefaultAutoSelectFamilyAttemptTimeout?.(500);
+}
+
+/**
+ * Force IPv4-first DNS resolution — THE fix for the 45028 pool-timeout errors.
+ *
+ * Vercel runtime logs showed every request failing (or crawling for ~10s) with:
+ *   "pool timeout: failed to retrieve a connection from pool after 10001ms
+ *    (pool connections: active=0 idle=0 limit=N)"
+ * The pool held ZERO connections and couldn't establish even one inside its 10s
+ * acquire window. Cause: managed cloud MySQL (TiDB/Aiven) publishes both AAAA
+ * (IPv6) and A (IPv4) records; the mariadb connector resolves the host and
+ * attempts the returned addresses itself, in order. Node's default result order
+ * is "verbatim" (frequently IPv6 first), and Vercel functions have no usable
+ * IPv6 route, so the IPv6 attempt hangs until connectTimeout — consuming the
+ * whole acquire window → 45028. Uncaught reads then 500 ("Something went
+ * wrong"); caught reads (getSettings) return defaults but still pay the stall.
+ *
+ * net.setDefaultAutoSelectFamily above did NOT fix it: the connector iterates
+ * addresses itself instead of using Node's Happy-Eyeballs socket race, so that
+ * socket-level option never applies to its attempts. The reliable lever is the
+ * DNS result ORDER. ipv4first makes dns.lookup return IPv4 first, so the
+ * connector connects over IPv4 immediately and never touches the stalling IPv6
+ * path. Process-global (read by every later lookup) and TLS-safe: `host` stays
+ * the hostname, so SNI / certificate verification is unchanged. Node >= 18.
+ */
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
 }
 
 const globalForPrisma = globalThis as unknown as {
