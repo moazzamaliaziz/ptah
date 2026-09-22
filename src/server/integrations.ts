@@ -59,6 +59,8 @@ export const INTEGRATIONS: readonly IntegrationDef[] = [
   { key: "PAYPAL", label: "PayPal", category: "payments", fields: [
     { name: "CLIENT_ID", label: "Client ID", secret: false },
     { name: "CLIENT_SECRET", label: "Client secret", secret: true },
+    { name: "ENVIRONMENT", label: "Environment (sandbox or live)", secret: false, placeholder: "sandbox" },
+    { name: "WEBHOOK_ID", label: "Webhook ID (for signature verification)", secret: false },
   ] },
   { key: "RECAPTCHA", label: "reCAPTCHA v3", category: "security", fields: [
     { name: "SITE_KEY", label: "Site key", secret: false },

@@ -48,9 +48,17 @@ const envSchema = z
     NEXTAUTH_SECRET: optionalString(),
     AUTH_URL: optionalUrl(),
 
-    // ── Payments (wired in a later phase) ───────────────────────────────────
+    // ── Payments ─────────────────────────────────────────────────────────────
+    // Stripe + PayPal credentials are vault-first (admin Integrations), with
+    // these env vars as a deployment fallback. See src/lib/stripe.ts /
+    // src/server/payments/paypal.ts for resolution order.
     STRIPE_SECRET_KEY: optionalString(),
     STRIPE_WEBHOOK_SECRET: optionalString(),
+    // Bank-transfer instructions shown on the offline-payment page. Free text
+    // (account name/number/IBAN/reference guidance). Optional — if the bank
+    // transfer method is enabled but this is unset, the page shows a safe
+    // "we'll email you the details" message rather than any invented numbers.
+    BANK_TRANSFER_INSTRUCTIONS: optionalString(),
 
     // ── Integrations vault (Phase 2) ─────────────────────────────────────────
     // 32+ byte secret used to derive the AES-256-GCM key that encrypts the 20
@@ -85,6 +93,8 @@ const envSchema = z
     FEATURE_SIGNUP_ENABLED: boolFromString(true),
     FEATURE_LOGIN_ENABLED: boolFromString(true),
     FEATURE_STRIPE_PAYMENTS_ENABLED: boolFromString(false),
+    FEATURE_PAYPAL_PAYMENTS_ENABLED: boolFromString(false),
+    FEATURE_BANK_TRANSFER_ENABLED: boolFromString(false),
     FEATURE_MAINTENANCE_MODE: boolFromString(false),
 
     NODE_ENV: z
