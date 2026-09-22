@@ -125,5 +125,24 @@ export async function GET(req: Request) {
     out.tables = { err: (e as Error).message };
   }
 
+  // The current db ("sys") has no app tables — find which schema actually holds
+  // the seeded tables so DATABASE_URL can be pointed at it.
+  try {
+    const rows = await db.$queryRawUnsafe<Array<Record<string, unknown>>>("SHOW DATABASES");
+    out.databases = rows.map((row) => Object.values(row)[0]);
+  } catch (e) {
+    out.databases = { err: (e as Error).message };
+  }
+  try {
+    const rows = await db.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      "SELECT TABLE_SCHEMA AS db, COUNT(*) AS n FROM information_schema.TABLES " +
+        "WHERE TABLE_NAME IN ('tours','site_settings','destinations','bookings','users') " +
+        "GROUP BY TABLE_SCHEMA",
+    );
+    out.appTableLocations = rows.map((row) => ({ db: row.db, matched: Number(row.n) }));
+  } catch (e) {
+    out.appTableLocations = { err: (e as Error).message };
+  }
+
   return NextResponse.json(out);
 }
