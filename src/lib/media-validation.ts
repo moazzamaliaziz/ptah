@@ -17,19 +17,52 @@
  */
 import { createHash } from "node:crypto";
 
-/** MIME → canonical extension. The keys ARE the upload allowlist. */
+/**
+ * MIME → canonical extension. The keys ARE the store-as-is allowlist: every
+ * type here is served straight from the DB into an <img>, so it must be a format
+ * browsers render natively. TIFF is NOT here — it is accepted but transcoded to
+ * WebP first (see CONVERT_TO_WEBP_MIME); HEIC/HEIF is refused with a hint.
+ */
 export const ALLOWED_IMAGE_MIME: Record<string, string> = {
   "image/webp": "webp",
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/gif": "gif",
+  "image/avif": "avif",
+  "image/bmp": "bmp",
+  "image/x-ms-bmp": "bmp",
   "image/svg+xml": "svg",
   "image/x-icon": "ico",
   "image/vnd.microsoft.icon": "ico",
 };
 
-/** 8 MiB for raster; SVG/ICO are tiny by nature so cap them far lower. */
-export const MAX_RASTER_BYTES = 8 * 1024 * 1024;
+/** Human-readable accepted-format list for UI copy + error messages. */
+export const ACCEPTED_IMAGE_LABEL = "JPEG, PNG, WebP, GIF, SVG, ICO, AVIF, BMP, TIFF";
+
+/**
+ * Formats we accept but must transcode to WebP before storing, because browsers
+ * cannot render them in an <img>. The conversion (sharp) runs in the server
+ * layer (@/server/media) — this module stays pure/sync, so it only names them.
+ */
+export const CONVERT_TO_WEBP_MIME = new Set<string>(["image/tiff"]);
+
+/**
+ * Recognized-but-unsupported types → a friendly, specific message (better than
+ * "not a recognized image"). HEIC/HEIF (iPhone) needs a native decoder that
+ * sharp's prebuilt binary lacks, so we refuse it and say what to do instead.
+ */
+export const UNSUPPORTED_IMAGE_HINTS: Record<string, string> = {
+  "image/heic": "iPhone HEIC photos aren’t supported yet — please save the photo as JPEG or PNG and upload that.",
+  "image/heif": "HEIF photos aren’t supported yet — please save the photo as JPEG or PNG and upload that.",
+};
+
+/**
+ * 4 MiB raster cap. Vercel rejects any Server Action / route request body over
+ * ~4.5 MB at the platform edge (before our code runs), so an 8 MB "limit" was a
+ * lie on live — bigger uploads just failed. 4 MB leaves headroom for multipart
+ * framing. SVG is text so it is capped far lower.
+ */
+export const MAX_RASTER_BYTES = 4 * 1024 * 1024;
 export const MAX_VECTOR_BYTES = 512 * 1024;
 
 export interface MediaValidationOk {
@@ -54,9 +87,27 @@ export function sha256Bytes(bytes: Buffer): string {
 }
 
 /**
+ * Read the brand list from an ISO-BMFF `ftyp` box. AVIF and HEIC share this
+ * container and differ only by brand, so this is how we tell them apart.
+ * Returns [] when the bytes are not an `ftyp` box.
+ */
+function isoBmffBrands(bytes: Buffer): string[] {
+  if (bytes.length < 12 || bytes.toString("ascii", 4, 8) !== "ftyp") return [];
+  const declared = bytes.readUInt32BE(0);
+  const end = declared >= 12 && declared <= bytes.length ? declared : Math.min(bytes.length, 64);
+  const brands = [bytes.toString("ascii", 8, 12)];
+  for (let o = 16; o + 4 <= end; o += 4) brands.push(bytes.toString("ascii", o, o + 4));
+  return brands.map((b) => b.toLowerCase().replace(/\0+$/, "").trim());
+}
+
+const HEIC_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs", "mif1", "msf1", "miaf"]);
+
+/**
  * Sniff the true image type from magic bytes. Returns the canonical MIME, or
  * null if the bytes match no known image signature. SVG is text/XML so it is
  * detected by a leading `<?xml`/`<svg` token (after optional BOM/whitespace).
+ * AVIF/HEIC are ISO-BMFF containers disambiguated by their `ftyp` brand; TIFF
+ * (`II*` / `MM*`) and HEIC are recognized so the caller can convert or refuse.
  */
 export function sniffImageMime(bytes: Buffer): string | null {
   if (bytes.length >= 8 &&
@@ -66,6 +117,12 @@ export function sniffImageMime(bytes: Buffer): string | null {
   }
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return "image/jpeg";
+  }
+  // AVIF / HEIC share the ISO-BMFF `ftyp` container — disambiguate by brand.
+  const brands = isoBmffBrands(bytes);
+  if (brands.length) {
+    if (brands.includes("avif") || brands.includes("avis")) return "image/avif";
+    if (brands.some((b) => HEIC_BRANDS.has(b))) return "image/heic";
   }
   if (bytes.length >= 6 && bytes.toString("ascii", 0, 6).match(/^GIF8[79]a$/)) {
     return "image/gif";
@@ -78,6 +135,16 @@ export function sniffImageMime(bytes: Buffer): string | null {
   if (bytes.length >= 4 && bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0x01 && bytes[3] === 0x00) {
     return "image/x-icon";
   }
+  // BMP: "BM".
+  if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) {
+    return "image/bmp";
+  }
+  // TIFF: "II*\0" (little-endian) or "MM\0*" (big-endian).
+  if (bytes.length >= 4 &&
+      ((bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x2a && bytes[3] === 0x00) ||
+       (bytes[0] === 0x4d && bytes[1] === 0x4d && bytes[2] === 0x00 && bytes[3] === 0x2a))) {
+    return "image/tiff";
+  }
   // SVG — skip a UTF-8 BOM and leading whitespace, then look for xml/svg.
   const head = bytes.subarray(0, 512).toString("utf8").replace(/^﻿/, "").trimStart().toLowerCase();
   if (head.startsWith("<?xml") || head.startsWith("<svg") || head.startsWith("<!doctype svg")) {
@@ -86,9 +153,13 @@ export function sniffImageMime(bytes: Buffer): string | null {
   return null;
 }
 
-/** True when declared and sniffed MIME are the same image family (ico aliases unify). */
+/** True when declared and sniffed MIME are the same image family (ico/bmp aliases unify). */
 function mimeFamilyMatches(declared: string, sniffed: string): boolean {
-  const norm = (m: string) => (m === "image/vnd.microsoft.icon" ? "image/x-icon" : m);
+  const norm = (m: string) => {
+    if (m === "image/vnd.microsoft.icon") return "image/x-icon";
+    if (m === "image/x-ms-bmp") return "image/bmp";
+    return m;
+  };
   return norm(declared) === norm(sniffed);
 }
 
@@ -145,6 +216,15 @@ export function parseImageDimensions(bytes: Buffer, mime: string): { width: numb
         return { width: w, height: h };
       }
     }
+    if (mime === "image/bmp" && bytes.length >= 26) {
+      const headerSize = bytes.readUInt32LE(14);
+      if (headerSize === 12) {
+        // BITMAPCOREHEADER: 16-bit unsigned width/height.
+        return { width: bytes.readUInt16LE(18), height: bytes.readUInt16LE(20) };
+      }
+      // BITMAPINFOHEADER and later: 32-bit signed (negative height = top-down).
+      return { width: Math.abs(bytes.readInt32LE(18)), height: Math.abs(bytes.readInt32LE(22)) };
+    }
   } catch {
     return null;
   }
@@ -159,7 +239,7 @@ export function parseImageDimensions(bytes: Buffer, mime: string): { width: numb
 export function validateUpload(declaredMime: string, input: Buffer): MediaValidationResult {
   const mime = declaredMime.toLowerCase().trim();
   if (!(mime in ALLOWED_IMAGE_MIME)) {
-    return { ok: false, error: `Unsupported file type "${declaredMime}". Allowed: JPEG, PNG, WebP, GIF, SVG, ICO.` };
+    return { ok: false, error: `Unsupported file type "${declaredMime}". Allowed: ${ACCEPTED_IMAGE_LABEL}.` };
   }
   if (input.length === 0) return { ok: false, error: "File is empty." };
 

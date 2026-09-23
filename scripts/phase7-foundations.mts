@@ -72,7 +72,7 @@ async function main(): Promise<void> {
   // Oversize raster → reject (declare a 9 MB buffer with a PNG header).
   const huge = Buffer.concat([fakePng(), Buffer.alloc(9 * 1024 * 1024)]);
   const oversize = validateUpload("image/png", huge);
-  check("rejects oversize raster (>8 MB)", oversize.ok === false);
+  check("rejects oversize raster (over the 4 MB cap)", oversize.ok === false);
 
   // ── (B) DB round-trip: media ─────────────────────────────────────────────
   const testChecksum = "probe" + Date.now().toString(16).padStart(59, "0"); // 64 hex-ish chars

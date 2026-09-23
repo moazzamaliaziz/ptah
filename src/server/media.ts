@@ -12,8 +12,16 @@
  * caller's (server action) responsibility.
  */
 import "server-only";
+import sharp from "sharp";
 import { db } from "@/lib/db";
-import { validateUpload, ALLOWED_IMAGE_MIME } from "@/lib/media-validation";
+import {
+  validateUpload,
+  ALLOWED_IMAGE_MIME,
+  CONVERT_TO_WEBP_MIME,
+  UNSUPPORTED_IMAGE_HINTS,
+  MAX_RASTER_BYTES,
+  sniffImageMime,
+} from "@/lib/media-validation";
 import { MEDIA_FOLDERS, isMediaFolder, type MediaFolder, type MediaSummary } from "@/lib/media-shared";
 
 // Re-export the client-safe domain constants/types so existing server-side
@@ -61,14 +69,86 @@ function safeFilename(original: string, mimeType: string): string {
   return `${base || "image"}.${ext}`;
 }
 
+/** Raster formats sharp's prebuilt binary can decode — used to backfill dims. */
+const SHARP_READABLE = new Set([
+  "image/avif",
+  "image/webp",
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/tiff",
+]);
+
+interface PreparedUpload {
+  /** Final MIME to validate + store (WebP for transcoded inputs). */
+  declaredMime: string;
+  /** Final bytes to validate + store. */
+  bytes: Buffer;
+}
+
 /**
- * Validate + persist an uploaded image. Deduplicates by sha256 checksum: an
- * identical upload reuses the existing asset (returns it with `deduped: true`)
- * instead of storing the bytes twice.
+ * Pre-process raw upload bytes before the pure (sync) validator sees them:
+ *   • refuse recognized-but-unsupported types (HEIC/HEIF) with a helpful hint;
+ *   • transcode convert-only types (TIFF) to WebP via sharp, so the stored
+ *     bytes are always something a browser can render from /api/media/<id>;
+ *   • otherwise pass the bytes through unchanged.
+ * A cheap raw-size guard runs first so we never hand a huge buffer to sharp.
+ */
+async function prepareUpload(
+  declaredMime: string,
+  input: Buffer,
+): Promise<{ ok: true; prepared: PreparedUpload } | { ok: false; error: string }> {
+  if (input.length === 0) return { ok: false, error: "File is empty." };
+  if (input.length > MAX_RASTER_BYTES) {
+    return {
+      ok: false,
+      error: `File too large (${(input.length / 1024 / 1024).toFixed(1)} MB). Max ${(MAX_RASTER_BYTES / 1024 / 1024).toFixed(1)} MB.`,
+    };
+  }
+
+  const sniffed = sniffImageMime(input);
+  if (sniffed && UNSUPPORTED_IMAGE_HINTS[sniffed]) {
+    return { ok: false, error: UNSUPPORTED_IMAGE_HINTS[sniffed] };
+  }
+  if (sniffed && CONVERT_TO_WEBP_MIME.has(sniffed)) {
+    try {
+      const webp = await sharp(input).webp({ quality: 82 }).toBuffer();
+      return { ok: true, prepared: { declaredMime: "image/webp", bytes: webp } };
+    } catch {
+      return { ok: false, error: "Could not read that image file — it may be corrupt." };
+    }
+  }
+  return { ok: true, prepared: { declaredMime, bytes: input } };
+}
+
+/**
+ * Validate + persist an uploaded image. HEIC/HEIF is refused and TIFF is
+ * transcoded to WebP up front (see prepareUpload); the pure validator then
+ * gates the final bytes. Deduplicates by sha256 checksum: an identical upload
+ * reuses the existing asset (returns it with `deduped: true`) instead of
+ * storing the bytes twice.
  */
 export async function createMedia(input: CreateMediaInput): Promise<CreateMediaResult> {
-  const validation = validateUpload(input.declaredMime, input.bytes);
+  const prep = await prepareUpload(input.declaredMime, input.bytes);
+  if (!prep.ok) return { ok: false, error: prep.error };
+
+  const validation = validateUpload(prep.prepared.declaredMime, prep.prepared.bytes);
   if (!validation.ok) return { ok: false, error: validation.error };
+
+  // Backfill dimensions for formats the pure header parser can't read (e.g.
+  // AVIF) but sharp can. Best-effort — never fatal; dims stay null on failure.
+  let { width, height } = validation;
+  if ((width === null || height === null) && SHARP_READABLE.has(validation.mimeType)) {
+    try {
+      const meta = await sharp(validation.bytes).metadata();
+      if (typeof meta.width === "number" && typeof meta.height === "number") {
+        width = meta.width;
+        height = meta.height;
+      }
+    } catch {
+      /* best-effort; leave dims null */
+    }
+  }
 
   const folder = normalizeFolder(input.folder);
   const altText = input.altText?.trim() ? input.altText.trim().slice(0, 512) : null;
@@ -85,8 +165,8 @@ export async function createMedia(input: CreateMediaInput): Promise<CreateMediaR
       filename: safeFilename(input.filename, validation.mimeType),
       mimeType: validation.mimeType,
       byteSize: validation.byteSize,
-      width: validation.width,
-      height: validation.height,
+      width,
+      height,
       checksum: validation.checksum,
       altText,
       folder,

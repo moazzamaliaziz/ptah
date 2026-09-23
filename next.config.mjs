@@ -16,8 +16,9 @@ const nextConfig = {
   compress: true,
   experimental: {
     // Phase 7 media library: the upload Server Action receives image FormData.
-    // Default cap is 1 MB; the app-layer validator enforces 8 MB raster / 512 KB
-    // SVG, so 10mb here leaves headroom for multipart boundary/header overhead.
+    // Default cap is 1 MB; the app-layer validator enforces 4 MB raster / 512 KB
+    // SVG (Vercel rejects request bodies over ~4.5 MB at the edge anyway), so
+    // 10mb here just leaves headroom for multipart boundary/header overhead.
     // The widened surface is mitigated by the `media.manage` capability gate —
     // only staff can reach the action (verified against 05-config/serverActions.md).
     serverActions: {

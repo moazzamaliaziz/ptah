@@ -183,7 +183,7 @@ export default function MediaPicker({
                   <input
                     className="admin-input"
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon"
+                    accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon,image/avif,image/bmp,image/tiff"
                     disabled={uploading}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
@@ -192,6 +192,9 @@ export default function MediaPicker({
                       e.target.value = "";
                     }}
                   />
+                  <span className="admin-card__meta" style={{ fontSize: "0.72rem", marginTop: "0.25rem" }}>
+                    JPEG, PNG, WebP, GIF, SVG, ICO, AVIF, BMP, TIFF — max 4 MB.
+                  </span>
                 </label>
                 {uploading ? <span className="admin-card__meta">Uploading…</span> : null}
               </div>
