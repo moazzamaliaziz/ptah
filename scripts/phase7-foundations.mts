@@ -48,16 +48,19 @@ async function main(): Promise<void> {
   check("accepts a real PNG (magic bytes match)", okPng.ok === true);
   check("parses PNG dimensions (1×1)", okPng.ok === true && okPng.width === 1 && okPng.height === 1);
 
-  const badMime = validateUpload("application/pdf", fakePng());
-  check("rejects a non-allowlisted MIME", badMime.ok === false);
+  // Sniff is authoritative, so the declared type no longer gates: a non-image
+  // payload is rejected because it matches no image signature (sniff → null).
+  const notImage = validateUpload("application/pdf", Buffer.from("%PDF-1.7\nnot an image", "utf8"));
+  check("rejects a non-image payload (sniff fails)", notImage.ok === false);
 
   const empty = validateUpload("image/png", Buffer.alloc(0));
   check("rejects an empty file", empty.ok === false);
 
-  // Declared PNG but the bytes are actually SVG → spoof, must reject.
+  // Declared PNG but the bytes are actually SVG → the sniffed type wins: it is
+  // accepted and stored as sanitized image/svg+xml (declared type is only a hint).
   const svgBytes = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>', "utf8");
-  const spoof = validateUpload("image/png", svgBytes);
-  check("rejects declared-vs-actual MIME mismatch (png declared, svg bytes)", spoof.ok === false);
+  const relabelled = validateUpload("image/png", svgBytes);
+  check("declared/actual mismatch resolves to sniffed type (png→svg)", relabelled.ok === true && relabelled.ok && relabelled.mimeType === "image/svg+xml");
 
   check("sniffs svg from leading <svg", sniffImageMime(svgBytes) === "image/svg+xml");
 

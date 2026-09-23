@@ -19,6 +19,7 @@ import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe";
 import { refundCapture } from "@/server/payments/paypal";
 import { refundBooking, cancelAndReleaseBooking } from "@/server/booking";
+import { writeAudit } from "@/server/audit";
 
 const ALL_STATUSES: readonly BookingStatus[] = [
   "PENDING_PAYMENT",
@@ -223,7 +224,14 @@ export type AdminActionResult =
   | { ok: true }
   | {
       ok: false;
-      reason: "NOT_FOUND" | "NOT_REFUNDABLE" | "NO_PAYMENT" | "GATEWAY_UNAVAILABLE" | "GATEWAY_ERROR";
+      reason:
+        | "NOT_FOUND"
+        | "NOT_REFUNDABLE"
+        | "NO_PAYMENT"
+        | "GATEWAY_UNAVAILABLE"
+        | "GATEWAY_ERROR"
+        | "SEATS_UNAVAILABLE"
+        | "STALE";
       message: string;
     };
 
@@ -307,4 +315,89 @@ export async function adminCancelBooking(params: {
   return res.ok
     ? { ok: true }
     : { ok: false, reason: "NOT_REFUNDABLE", message: "Only a pending booking can be cancelled." };
+}
+
+/** Statuses that hold a departure seat (claimed at reserve time, freed on exit). */
+const SEAT_HOLDING: readonly BookingStatus[] = ["PENDING_PAYMENT", "CONFIRMED"];
+const holdsSeats = (s: BookingStatus): boolean => SEAT_HOLDING.includes(s);
+
+/**
+ * Manual status correction (item #6). Moves a booking to any of the five
+ * statuses while keeping seat accounting correct: releasing seats when leaving a
+ * seat-holding status, and re-claiming them (with an over-sell guard) when
+ * returning to one. This is a bookkeeping tool ONLY — unlike adminRefundBooking /
+ * adminCancelBooking it never calls a payment gateway and never sends email, so
+ * it corrects records, it does not move money. Status-guarded against races.
+ */
+export async function setBookingStatus(params: {
+  bookingId: string;
+  target: BookingStatus;
+  actorId: string;
+}): Promise<AdminActionResult> {
+  const { bookingId, target, actorId } = params;
+
+  return db.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true, seats: true, departureId: true },
+    });
+    if (!booking) {
+      return { ok: false, reason: "NOT_FOUND", message: "Booking not found." } as const;
+    }
+
+    const current = booking.status;
+    if (current === target) return { ok: true } as const;
+
+    const wasHeld = holdsSeats(current);
+    const willHold = holdsSeats(target);
+
+    // Re-claiming a released seat: refuse if the departure is now full.
+    if (!wasHeld && willHold) {
+      const dep = await tx.tourDeparture.findUnique({
+        where: { id: booking.departureId },
+        select: { remainingCapacity: true },
+      });
+      if (!dep || dep.remainingCapacity < booking.seats) {
+        return {
+          ok: false,
+          reason: "SEATS_UNAVAILABLE",
+          message: "Not enough seats remain on this departure to re-activate the booking.",
+        } as const;
+      }
+    }
+
+    // Status-guarded flip: only win the transition if still in the status we read.
+    const flip = await tx.booking.updateMany({
+      where: { id: bookingId, status: current },
+      data: { status: target },
+    });
+    if (flip.count !== 1) {
+      return {
+        ok: false,
+        reason: "STALE",
+        message: "The booking changed status just now — reload and try again.",
+      } as const;
+    }
+
+    if (wasHeld && !willHold) {
+      await tx.tourDeparture.update({
+        where: { id: booking.departureId },
+        data: { remainingCapacity: { increment: booking.seats } },
+      });
+    } else if (!wasHeld && willHold) {
+      await tx.tourDeparture.update({
+        where: { id: booking.departureId },
+        data: { remainingCapacity: { decrement: booking.seats } },
+      });
+    }
+
+    await writeAudit({
+      actorId,
+      action: "booking.status.override",
+      entity: "booking",
+      entityId: bookingId,
+      meta: { from: current, to: target, manual: true },
+    });
+    return { ok: true } as const;
+  });
 }

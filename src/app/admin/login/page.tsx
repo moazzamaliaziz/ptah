@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth/session";
 import { isStaff } from "@/server/auth/rbac";
 import { loginAction } from "./actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 const ERRORS: Record<string, string> = {
   invalid: "Incorrect email or password.",
@@ -55,9 +56,9 @@ export default async function AdminLoginPage({
               required
             />
           </label>
-          <button className="admin-btn" type="submit" style={{ width: "100%", marginTop: "0.5rem" }}>
+          <SubmitButton pendingLabel="Signing in…" style={{ width: "100%", marginTop: "0.5rem" }}>
             Sign in
-          </button>
+          </SubmitButton>
         </form>
       </div>
     </div>

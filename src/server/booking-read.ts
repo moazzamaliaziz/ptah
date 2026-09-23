@@ -92,12 +92,6 @@ export async function getBookingOutcome(bookingId: string): Promise<BookingOutco
   });
   if (!booking) return null;
 
-  const contactEmail =
-    booking.guestEmail ??
-    (booking.contactInfo && typeof booking.contactInfo === "object" && "email" in booking.contactInfo
-      ? String((booking.contactInfo as Record<string, unknown>).email)
-      : null);
-
   return {
     id: booking.id,
     status: booking.status,
@@ -108,6 +102,78 @@ export async function getBookingOutcome(bookingId: string): Promise<BookingOutco
     tourSlug: booking.departure.tour.slug,
     startDate: booking.departure.startDate,
     endDate: booking.departure.endDate,
-    contactEmailMasked: maskEmail(contactEmail),
+    contactEmailMasked: maskEmail(contactEmailOf(booking)),
+  };
+}
+
+type ContactCarrier = { guestEmail: string | null; contactInfo: unknown };
+
+/** Best contact email for a booking: the guest email, else stored contactInfo.email. */
+function contactEmailOf(booking: ContactCarrier): string | null {
+  if (booking.guestEmail) return booking.guestEmail;
+  const info = booking.contactInfo;
+  if (info && typeof info === "object" && "email" in info) {
+    const email = (info as Record<string, unknown>).email;
+    return typeof email === "string" ? email : null;
+  }
+  return null;
+}
+
+export interface BookingTracking {
+  reference: string;
+  status: string;
+  seats: number;
+  totalCents: number;
+  currency: string;
+  tourTitle: string;
+  tourSlug: string;
+  startDate: Date;
+  endDate: Date;
+  createdAt: Date;
+}
+
+/**
+ * Public tracking lookup: match a booking by BOTH its reference (id) and the
+ * contact email used to book. The reference is a UUID others might hold, so the
+ * email must also match to prove ownership. Any mismatch returns null with no
+ * hint about whether the reference exists on its own — uniform not-found.
+ */
+export async function lookupBooking(reference: string, email: string): Promise<BookingTracking | null> {
+  const ref = reference.trim();
+  const wanted = email.trim().toLowerCase();
+  if (!ref || !wanted) return null;
+
+  const booking = await db.booking.findUnique({
+    where: { id: ref },
+    select: {
+      id: true,
+      status: true,
+      seats: true,
+      totalCents: true,
+      currency: true,
+      guestEmail: true,
+      contactInfo: true,
+      createdAt: true,
+      departure: {
+        select: { startDate: true, endDate: true, tour: { select: { title: true, slug: true } } },
+      },
+    },
+  });
+  if (!booking) return null;
+
+  const contact = contactEmailOf(booking);
+  if (!contact || contact.trim().toLowerCase() !== wanted) return null;
+
+  return {
+    reference: booking.id,
+    status: booking.status,
+    seats: booking.seats,
+    totalCents: booking.totalCents,
+    currency: booking.currency,
+    tourTitle: booking.departure.tour.title,
+    tourSlug: booking.departure.tour.slug,
+    startDate: booking.departure.startDate,
+    endDate: booking.departure.endDate,
+    createdAt: booking.createdAt,
   };
 }

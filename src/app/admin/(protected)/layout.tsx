@@ -1,8 +1,10 @@
 import type { ReactNode, JSX } from "react";
+import Link from "next/link";
 import { requireStaff, can } from "@/server/auth/rbac";
 import { logoutAction } from "@/app/admin/actions";
 import { countNewContactMessages } from "@/server/contact";
 import AdminNav, { type AdminNavItem } from "./AdminNav";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export default async function ProtectedAdminLayout({ children }: { children: ReactNode }): Promise<JSX.Element> {
   const user = await requireStaff();
@@ -34,6 +36,15 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           <small>Admin panel</small>
         </div>
         <AdminNav items={items} />
+        <Link
+          href="/"
+          target="_blank"
+          rel="noopener"
+          className="admin-nav-link"
+          style={{ marginTop: "0.5rem", opacity: 0.85 }}
+        >
+          View live site ↗
+        </Link>
         <div className="admin-sidebar__spacer" />
         <div className="admin-sidebar__user">
           <div>{user.name}</div>
@@ -41,9 +52,9 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           <div style={{ marginTop: "0.15rem" }}>{user.role}</div>
         </div>
         <form action={logoutAction} style={{ marginTop: "0.5rem" }}>
-          <button className="admin-btn admin-btn--ghost" type="submit" style={{ width: "100%", color: "#fff", borderColor: "rgba(255,255,255,0.3)" }}>
+          <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel="Signing out…" style={{ width: "100%", color: "#fff", borderColor: "rgba(255,255,255,0.3)" }}>
             Sign out
-          </button>
+          </SubmitButton>
         </form>
       </aside>
       <main className="admin-main">{children}</main>

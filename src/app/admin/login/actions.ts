@@ -7,6 +7,7 @@
  * the panel even during maintenance / with public login disabled.
  */
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { verifyCredentials } from "@/server/auth/credentials";
@@ -56,12 +57,16 @@ export async function loginAction(formData: FormData): Promise<void> {
   }
 
   await createSession(user.id, { ip, userAgent });
-  await writeAudit({
-    actorId: user.id,
-    action: "auth.login",
-    entity: "user",
-    entityId: user.id,
-    meta: { area: "admin", ip },
-  });
+  // Audit logging is a non-critical side effect — run it AFTER the response so
+  // it doesn't add a DB round trip to the sign-in the user is waiting on.
+  after(() =>
+    writeAudit({
+      actorId: user.id,
+      action: "auth.login",
+      entity: "user",
+      entityId: user.id,
+      meta: { area: "admin", ip },
+    }),
+  );
   redirect(target);
 }

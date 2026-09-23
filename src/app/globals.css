@@ -189,3 +189,30 @@ html[data-reduced-motion="true"] *::after {
   transition-duration: 0.01ms !important;
   transition-delay: 0ms !important;
 }
+
+/* =============================================================================
+   PRINT — "Download as PDF" for the booking receipt (item #10).
+   PrintButton sets data-printing="receipt" on <html> before window.print(), so
+   ONLY an intentional receipt print strips the site chrome; an ordinary Ctrl+P
+   on any other page is untouched. Screen rendering is never affected (print
+   media), and the attribute is removed again on `afterprint`.
+   ========================================================================== */
+.no-print {
+  /* Utility: opt an on-screen element out of the printed page. */
+}
+@media print {
+  html[data-printing="receipt"] .site-header,
+  html[data-printing="receipt"] .site-footer,
+  html[data-printing="receipt"] .cookie-banner,
+  html[data-printing="receipt"] .fw-cluster,
+  html[data-printing="receipt"] .no-print {
+    display: none !important;
+  }
+  html[data-printing="receipt"],
+  html[data-printing="receipt"] body {
+    background: #fff !important;
+  }
+  html[data-printing="receipt"] .print-receipt {
+    box-shadow: none !important;
+  }
+}

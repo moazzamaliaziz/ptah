@@ -5,9 +5,12 @@
  *
  * Defense in depth for user-uploaded bytes (Phase 7, D1 — media stored in MySQL):
  *   1. MIME allowlist            — only image types we intend to serve.
- *   2. Magic-byte sniffing       — the real bytes must match the declared MIME;
- *                                  a `.png` that is actually an HTML/JS payload
- *                                  is rejected (defeats content-type spoofing).
+ *   2. Magic-byte sniffing       — the SNIFFED type is authoritative (the
+ *                                  browser's declared MIME is only a hint and is
+ *                                  often wrong). Bytes matching no image
+ *                                  signature (e.g. an HTML/JS payload) sniff to
+ *                                  null and are rejected — spoofing can't smuggle
+ *                                  a non-image through.
  *   3. Size caps                 — per-type ceilings (raster vs SVG) bound DB
  *                                  growth and the Server Action body.
  *   4. SVG sanitization          — strip <script>, on* handlers, and external
@@ -153,16 +156,6 @@ export function sniffImageMime(bytes: Buffer): string | null {
   return null;
 }
 
-/** True when declared and sniffed MIME are the same image family (ico/bmp aliases unify). */
-function mimeFamilyMatches(declared: string, sniffed: string): boolean {
-  const norm = (m: string) => {
-    if (m === "image/vnd.microsoft.icon") return "image/x-icon";
-    if (m === "image/x-ms-bmp") return "image/bmp";
-    return m;
-  };
-  return norm(declared) === norm(sniffed);
-}
-
 /**
  * Remove active content from an SVG so it is safe to store and serve via <img>:
  * drop <script> blocks, inline event handlers (on*=), <foreignObject>, and
@@ -232,16 +225,25 @@ export function parseImageDimensions(bytes: Buffer, mime: string): { width: numb
 }
 
 /**
- * Full upload validation gate. `declaredMime` is the browser-reported type;
- * the real bytes must corroborate it. Returns the bytes to persist (SVG
- * sanitized), checksum, and parsed dimensions — or a safe error message.
+ * Full upload validation gate. The TRUE type is decided by SNIFFING the magic
+ * bytes; the browser-reported type (`_declaredMime`) is only a hint and is
+ * frequently wrong — a PNG saved with a `.jpg` name reports `image/jpeg`, and
+ * some browsers send `application/octet-stream`. We store and later serve by the
+ * sniffed type, so a declared-vs-actual mismatch is NOT an error: the real bytes
+ * win (this is what lets a transparent-background PNG through). Safety holds:
+ * bytes matching no image signature sniff to null and are rejected, SVG is
+ * sanitized, and /api/media serves the sniffed type with `nosniff`. HEIC (refuse)
+ * and TIFF (transcode) are handled upstream in @/server/media before this runs.
+ * Returns the bytes to persist (SVG sanitized), checksum, and parsed dimensions.
  */
-export function validateUpload(declaredMime: string, input: Buffer): MediaValidationResult {
-  const mime = declaredMime.toLowerCase().trim();
-  if (!(mime in ALLOWED_IMAGE_MIME)) {
-    return { ok: false, error: `Unsupported file type "${declaredMime}". Allowed: ${ACCEPTED_IMAGE_LABEL}.` };
-  }
+export function validateUpload(_declaredMime: string, input: Buffer): MediaValidationResult {
   if (input.length === 0) return { ok: false, error: "File is empty." };
+
+  const sniffed = sniffImageMime(input);
+  if (!sniffed || !(sniffed in ALLOWED_IMAGE_MIME)) {
+    return { ok: false, error: `That file isn’t a supported image. Allowed: ${ACCEPTED_IMAGE_LABEL}.` };
+  }
+  const mime = sniffed;
 
   const isVector = mime === "image/svg+xml";
   const cap = isVector ? MAX_VECTOR_BYTES : MAX_RASTER_BYTES;
@@ -249,14 +251,8 @@ export function validateUpload(declaredMime: string, input: Buffer): MediaValida
     return { ok: false, error: `File too large (${(input.length / 1024 / 1024).toFixed(1)} MB). Max ${(cap / 1024 / 1024).toFixed(1)} MB.` };
   }
 
-  const sniffed = sniffImageMime(input);
-  if (!sniffed) return { ok: false, error: "File content is not a recognized image." };
-  if (!mimeFamilyMatches(mime, sniffed)) {
-    return { ok: false, error: `File content (${sniffed}) does not match its type (${mime}).` };
-  }
-
   const bytes = isVector ? sanitizeSvg(input) : input;
-  const dims = parseImageDimensions(bytes, sniffed);
+  const dims = parseImageDimensions(bytes, mime);
   return {
     ok: true,
     mimeType: mime,

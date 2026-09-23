@@ -548,9 +548,9 @@
 .footer-shell {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  row-gap: 2.375rem;
+  row-gap: 2rem;
   column-gap: 1rem;
-  padding-block: 4.5rem 2.875rem;
+  padding-block: 3.25rem 1.75rem;
   padding-inline: var(--container-padding);
 }
 @media (min-width: 46.5em) {
@@ -559,8 +559,11 @@
     column-gap: 1.5rem;
   }
 }
+/* Roomier on desktop, but far tighter than the reference's 9.5/7.4rem which
+   left ~200px of dead space at the fold (user: footer felt overwhelming, too
+   much gap from the bottom). */
 @media (min-width: 59.375em) {
-  .footer-shell { padding-block: 9.5rem 7.4375rem; }
+  .footer-shell { padding-block: 5rem 2.75rem; }
 }
 
 /* Newsletter block — "Stay Connected" (§2.8.1) */
@@ -714,7 +717,10 @@
 }
 .footer-legal__inner {
   position: relative;
-  padding: 1.6875rem 0 5rem; /* §2.8.6 verbatim */
+  /* Was `1.6875rem 0 5rem` (§2.8.6): the 5rem bottom stacked on top of the
+     footer-shell's own bottom padding for a huge empty strip. Dropped — the
+     shell already spaces the footer from the page edge. */
+  padding: 1.6875rem 0 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;

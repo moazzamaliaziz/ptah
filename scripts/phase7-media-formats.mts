@@ -104,8 +104,8 @@ async function main(): Promise<void> {
   check("raster cap is 4 MB", MAX_RASTER_BYTES === 4 * 1024 * 1024);
   const oversize = Buffer.concat([await makeImage("png"), Buffer.alloc(4 * 1024 * 1024)]);
   check("rejects >4 MB raster", validateUpload("image/png", oversize).ok === false);
-  const spoof = validateUpload("image/avif", await makeImage("png")); // declared AVIF, bytes PNG
-  check("rejects declared-vs-actual mismatch (avif declared, png bytes)", spoof.ok === false);
+  const relabelled = validateUpload("image/avif", await makeImage("png")); // declared AVIF, bytes PNG
+  check("declared/actual mismatch resolves to sniffed type (avif declared, png bytes → png)", relabelled.ok === true && relabelled.ok && relabelled.mimeType === "image/png");
 
   check(
     "accepted-format label lists AVIF/BMP/TIFF",

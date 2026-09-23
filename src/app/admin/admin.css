@@ -23,6 +23,11 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  /* Scroll the rail internally when the nav + user block + sign-out exceed the
+     viewport height (many nav items on a short/mid-height desktop window).
+     Without this the sign-out button was pushed past the fold and unreachable,
+     leaving a blank strip at the bottom (reported ~1000px bug). */
+  overflow-y: auto;
 }
 .admin-sidebar__brand {
   font-weight: 700;
@@ -125,6 +130,16 @@
 .admin-login__card p { margin: 0 0 1.25rem; opacity: 0.7; font-size: 0.9rem; }
 
 .admin-cat { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.55; margin: 1.5rem 0 0.5rem; }
+
+/* ── Mid-desktop / tablet-landscape (769–1024px) ──────────────────────────────
+   Between the phone stack (≤768px) and roomy desktop, the fixed 248px rail left
+   the content column cramped. Narrow the rail a little so content breathes; it
+   stays a scrollable sticky column, so the sign-out button is always reachable
+   (see overflow-y on .admin-sidebar). */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .admin-shell { grid-template-columns: 208px 1fr; }
+  .admin-main { padding: 1.5rem clamp(1rem, 2.5vw, 2rem); }
+}
 
 /* ── Mobile / tablet-portrait (≤768px) ────────────────────────────────────────
    The desktop shell is a fixed 248px rail + content column. On a phone that

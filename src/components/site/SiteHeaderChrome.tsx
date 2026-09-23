@@ -319,6 +319,13 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
               >
                 <Icon name="search" size={20} />
               </button>
+              <Link
+                href="/track-booking"
+                className="icon-button icon-button--dip"
+                aria-label="Track your booking"
+              >
+                <Icon name="ticket" size={20} />
+              </Link>
               <BookmarkPill href={nav.bookmarksHref} />
               <Link href={nav.buildTripCta.href} className="pill build-pill text-btn">
                 {nav.buildTripCta.label}
@@ -462,6 +469,10 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
                     {link.label}
                   </Link>
                 ))}
+                <Link href="/track-booking">
+                  <Icon name="ticket" size={16} />
+                  Track your booking
+                </Link>
               </nav>
 
               <div style={{ marginTop: "1.75rem" }}>

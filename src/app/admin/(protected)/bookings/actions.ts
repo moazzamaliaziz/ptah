@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireCapability } from "@/server/auth/rbac";
-import { adminRefundBooking, adminCancelBooking } from "@/server/admin/orders-admin";
+import {
+  adminRefundBooking,
+  adminCancelBooking,
+  setBookingStatus,
+  parseBookingStatus,
+} from "@/server/admin/orders-admin";
 import { confirmBankTransferBooking } from "@/server/booking";
 
 const str = (fd: FormData, key: string): string => String(fd.get(key) ?? "");
@@ -38,4 +43,21 @@ export async function markBankTransferPaidAction(fd: FormData): Promise<void> {
   const result = await confirmBankTransferBooking({ bookingId: id, actorId: user.id });
   revalidateBooking(id);
   redirect(`/admin/bookings/${id}?${result.ok ? "msg=paid" : "err=NOT_REFUNDABLE"}`);
+}
+
+/**
+ * Manually set a booking's status (item #6). Bookkeeping only — corrects the
+ * record and its seat count; it does NOT refund/charge a gateway or email the
+ * customer. Admin-only (bookings.edit).
+ */
+export async function setBookingStatusAction(fd: FormData): Promise<void> {
+  const user = await requireCapability("bookings.edit");
+  const id = str(fd, "id");
+  const target = parseBookingStatus(str(fd, "status"));
+  if (!target) {
+    redirect(`/admin/bookings/${id}?err=INVALID_STATUS`);
+  }
+  const result = await setBookingStatus({ bookingId: id, target, actorId: user.id });
+  revalidateBooking(id);
+  redirect(`/admin/bookings/${id}?${result.ok ? "msg=status" : `err=${result.reason}`}`);
 }

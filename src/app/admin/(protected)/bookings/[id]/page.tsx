@@ -6,7 +6,12 @@ import { requireCapability, can } from "@/server/auth/rbac";
 import { formatPriceCents } from "@/lib/utils";
 import { getBookingForAdmin } from "@/server/admin/orders-admin";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
-import { refundBookingAction, cancelBookingAction, markBankTransferPaidAction } from "../actions";
+import {
+  refundBookingAction,
+  cancelBookingAction,
+  markBankTransferPaidAction,
+  setBookingStatusAction,
+} from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +23,27 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   FAILED: "admin-badge--off",
 };
 
+const STATUS_LABEL: Record<BookingStatus, string> = {
+  PENDING_PAYMENT: "Pending",
+  CONFIRMED: "Confirmed",
+  CANCELLED: "Cancelled",
+  REFUNDED: "Refunded",
+  FAILED: "Failed",
+};
+
+const STATUS_OPTIONS: readonly BookingStatus[] = [
+  "PENDING_PAYMENT",
+  "CONFIRMED",
+  "CANCELLED",
+  "REFUNDED",
+  "FAILED",
+];
+
 const OK_MESSAGES: Record<string, string> = {
   refunded: "Booking refunded and seats released.",
   cancelled: "Booking cancelled and seats released.",
   paid: "Payment recorded — booking confirmed and the customer emailed.",
+  status: "Booking status updated.",
 };
 
 const ERR_MESSAGES: Record<string, string> = {
@@ -30,6 +52,9 @@ const ERR_MESSAGES: Record<string, string> = {
   NO_PAYMENT: "No matching payment was found to act on.",
   GATEWAY_UNAVAILABLE: "The payment gateway is not configured.",
   GATEWAY_ERROR: "The payment gateway refused the request — check its dashboard.",
+  SEATS_UNAVAILABLE: "Not enough seats remain on this departure to re-activate the booking.",
+  STALE: "The booking changed status just now — reload and try again.",
+  INVALID_STATUS: "That is not a valid booking status.",
 };
 
 function fmt(d: Date): string {
@@ -174,6 +199,38 @@ export default async function AdminBookingDetailPage({
               </form>
             ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {editor ? (
+        <div className="admin-card" style={{ marginTop: "1rem" }}>
+          <h2>Set status manually</h2>
+          <p className="admin-card__meta" style={{ marginTop: "0.35rem" }}>
+            Corrects the record and its seat count only. This does <strong>not</strong> refund or
+            charge a card and does <strong>not</strong> email the customer — use the buttons above
+            for those. Reactivating a cancelled/refunded booking re-claims seats and is refused if
+            the departure is full.
+          </p>
+          <form action={setBookingStatusAction} className="admin-row" style={{ marginTop: "0.75rem", alignItems: "flex-end" }}>
+            <input type="hidden" name="id" value={booking.id} />
+            <label className="admin-field" style={{ margin: 0 }}>
+              <span>Status</span>
+              <select name="status" defaultValue={booking.status} className="admin-input">
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_LABEL[s]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <ConfirmSubmitButton
+              className="admin-btn"
+              confirm="Change this booking's status? This only corrects the record and its seat count — no refund, charge, or email is sent."
+              pendingLabel="Saving…"
+            >
+              Apply status
+            </ConfirmSubmitButton>
+          </form>
         </div>
       ) : null}
     </>
