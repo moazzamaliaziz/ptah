@@ -36,8 +36,13 @@ function formatDate(d: Date): string {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
 }
 
-function methodLabel(method: string | null): string {
-  if (!method) return "—";
+function methodLabel(method: string | null, status: BookingStatus): string {
+  if (!method) {
+    // No Payment row exists yet. For a still-open order this means the guest
+    // reserved seats but has not begun a payment method; label it plainly
+    // instead of a bare "—" so staff can tell it apart from missing data.
+    return status === "PENDING_PAYMENT" ? "Awaiting payment" : "—";
+  }
   if (method === "bank_transfer") return "Bank transfer";
   return method.charAt(0).toUpperCase() + method.slice(1);
 }
@@ -131,7 +136,7 @@ export default async function AdminBookingsPage({
                 <td>{formatDate(b.startDate)}</td>
                 <td>{b.seats}</td>
                 <td>{formatPriceCents(b.totalCents, b.currency)}</td>
-                <td>{methodLabel(b.paymentMethod)}</td>
+                <td>{methodLabel(b.paymentMethod, b.status)}</td>
                 <td>
                   <span className={`admin-badge ${STATUS_BADGE[b.status]}`}>{STATUS_LABEL[b.status]}</span>
                 </td>
