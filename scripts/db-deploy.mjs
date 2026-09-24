@@ -48,7 +48,11 @@ function sleep(ms) {
 let lastCode = 1;
 for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
   console.log(`[db-deploy] prisma migrate deploy (attempt ${attempt}/${MAX_ATTEMPTS})`);
-  const result = spawnSync("prisma", ["migrate", "deploy"], {
+  // Invoke through `npx` so the local prisma CLI resolves regardless of whether
+  // node_modules/.bin is on PATH (it is when npm runs `build`, but not when this
+  // script is run directly). prisma is a local devDependency, so npx never
+  // fetches anything. shell:true lets Windows pick up npx.cmd.
+  const result = spawnSync("npx", ["prisma", "migrate", "deploy"], {
     stdio: "inherit",
     shell: true,
     env: { ...process.env, DATABASE_URL: deployUrl },
