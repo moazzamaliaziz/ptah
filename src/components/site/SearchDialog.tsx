@@ -1,13 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, type FormEvent, type JSX } from "react";
 import { Icon } from "@/components/ui/Icon";
+import type { Dictionary } from "@/i18n/dictionaries/en";
 
 export interface SearchDialogProps {
   popularSearches: string[];
   searchHref: string;
+  /** Localized search-dialog copy (aria labels, placeholder, "popular"). */
+  labels: Dictionary["search"];
   onClose: () => void;
 }
 
@@ -23,7 +26,7 @@ const FOCUSABLE =
  * Tab/Shift+Tab trap cycles within the dialog; Escape closes it and the
  * opener (SiteHeaderChrome) restores focus to the search trigger.
  */
-export function SearchDialog({ popularSearches, searchHref, onClose }: SearchDialogProps): JSX.Element {
+export function SearchDialog({ popularSearches, searchHref, labels, onClose }: SearchDialogProps): JSX.Element {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -83,11 +86,11 @@ export function SearchDialog({ popularSearches, searchHref, onClose }: SearchDia
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Search Ptah Tours"
+      aria-label={labels.dialogAria}
     >
       <div className="search-dialog__inner">
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close search" style={{ color: "var(--color-ink)" }}>
+          <button type="button" className="icon-button" onClick={onClose} aria-label={labels.closeAria} style={{ color: "var(--color-ink)" }}>
             <Icon name="close" size={24} />
           </button>
         </div>
@@ -97,14 +100,14 @@ export function SearchDialog({ popularSearches, searchHref, onClose }: SearchDia
             ref={inputRef}
             type="search"
             name="term"
-            aria-label="Search trips, destinations and stories"
-            placeholder="Pyramids, Nile cruise, Alexandria…"
+            aria-label={labels.inputAria}
+            placeholder={labels.placeholder}
             autoComplete="off"
             className="search-dialog__input"
           />
         </form>
         <p className="text-meta" style={{ marginTop: "2rem" }}>
-          Popular searches
+          {labels.popular}
         </p>
         <div className="search-chips">
           {popularSearches.map((term) => (

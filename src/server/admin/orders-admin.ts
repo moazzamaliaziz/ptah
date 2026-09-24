@@ -19,6 +19,7 @@ import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe";
 import { refundCapture } from "@/server/payments/paypal";
 import { refundBooking, cancelAndReleaseBooking } from "@/server/booking";
+import { parsePriceBreakdown, type PriceBreakdown } from "@/server/booking-core";
 import { writeAudit } from "@/server/audit";
 
 const ALL_STATUSES: readonly BookingStatus[] = [
@@ -42,6 +43,48 @@ function contactField(
 ): string | null {
   if (contactInfo && typeof contactInfo === "object" && key in contactInfo) {
     const v = (contactInfo as Record<string, unknown>)[key];
+    return typeof v === "string" && v.length > 0 ? v : null;
+  }
+  return null;
+}
+
+/** Billing address captured at checkout, read out of the contactInfo JSON. */
+export interface AdminBillingAddress {
+  line1: string;
+  line2: string | null;
+  city: string;
+  region: string;
+  postalCode: string;
+  country: string;
+}
+
+function billingFrom(contactInfo: unknown): AdminBillingAddress | null {
+  if (!contactInfo || typeof contactInfo !== "object" || !("billing" in contactInfo)) return null;
+  const b = (contactInfo as Record<string, unknown>).billing;
+  if (!b || typeof b !== "object") return null;
+  const rec = b as Record<string, unknown>;
+  const s = (k: string): string => (typeof rec[k] === "string" ? (rec[k] as string) : "");
+  const line1 = s("line1");
+  if (!line1) return null; // nothing usable without at least a first line
+  const line2 = s("line2");
+  return {
+    line1,
+    line2: line2 || null,
+    city: s("city"),
+    region: s("region"),
+    postalCode: s("postalCode"),
+    country: s("country"),
+  };
+}
+
+/**
+ * A manually-entered payment reference (e.g. a bank-transfer confirmation code)
+ * lives in the Payment.raw JSON — there is no dedicated column and offline
+ * methods have no gateway id. See confirmBankTransferBooking in booking.ts.
+ */
+function paymentReference(raw: unknown): string | null {
+  if (raw && typeof raw === "object" && "reference" in raw) {
+    const v = (raw as Record<string, unknown>).reference;
     return typeof v === "string" && v.length > 0 ? v : null;
   }
   return null;
@@ -130,6 +173,8 @@ export interface AdminPaymentRow {
   currency: string;
   sessionId: string | null;
   intentId: string | null;
+  /** Manually-recorded reference (offline methods) — extracted from Payment.raw. */
+  reference: string | null;
   createdAt: Date;
 }
 
@@ -146,6 +191,16 @@ export interface AdminBookingDetail {
   contactEmail: string | null;
   contactPhone: string | null;
   contactNotes: string | null;
+  billing: AdminBillingAddress | null;
+  /** Frozen per-passenger-type price breakdown, or null for legacy bookings. */
+  pricing: PriceBreakdown | null;
+  /** P5: discount applied at checkout (minor units); 0 when no coupon. The
+   *  breakdown lines sum to the GROSS; `totalCents` is already the NET charge. */
+  discountCents: number;
+  /** Coupon code applied, or null. */
+  couponCode: string | null;
+  /** ISO-3166 alpha-2 country the booking was made from (P7 reporting), or null. */
+  originCountry: string | null;
   tourTitle: string;
   tourSlug: string;
   startDate: Date;
@@ -170,6 +225,10 @@ export async function getBookingForAdmin(id: string): Promise<AdminBookingDetail
       userId: true,
       guestEmail: true,
       contactInfo: true,
+      pricing: true,
+      discountCents: true,
+      couponCode: true,
+      originCountry: true,
       createdAt: true,
       updatedAt: true,
       departure: {
@@ -185,6 +244,7 @@ export async function getBookingForAdmin(id: string): Promise<AdminBookingDetail
           currency: true,
           sessionId: true,
           intentId: true,
+          raw: true,
           createdAt: true,
         },
       },
@@ -209,11 +269,26 @@ export async function getBookingForAdmin(id: string): Promise<AdminBookingDetail
     contactEmail: b.guestEmail ?? contactField(b.contactInfo, "email"),
     contactPhone: contactField(b.contactInfo, "phone"),
     contactNotes: contactField(b.contactInfo, "notes"),
+    billing: billingFrom(b.contactInfo),
+    pricing: parsePriceBreakdown(b.pricing),
+    discountCents: b.discountCents,
+    couponCode: b.couponCode,
+    originCountry: b.originCountry,
     tourTitle: b.departure.tour.title,
     tourSlug: b.departure.tour.slug,
     startDate: b.departure.startDate,
     endDate: b.departure.endDate,
-    payments: b.payments,
+    payments: b.payments.map((p) => ({
+      id: p.id,
+      method: p.method,
+      status: p.status,
+      amountCents: p.amountCents,
+      currency: p.currency,
+      sessionId: p.sessionId,
+      intentId: p.intentId,
+      reference: paymentReference(p.raw),
+      createdAt: p.createdAt,
+    })),
     canRefund: b.status === "CONFIRMED",
     canCancel: b.status === "PENDING_PAYMENT",
     canMarkPaid: b.status === "PENDING_PAYMENT" && pendingBankTransfer,
@@ -394,10 +469,77 @@ export async function setBookingStatus(params: {
     await writeAudit({
       actorId,
       action: "booking.status.override",
-      entity: "booking",
+      entity: "Booking",
       entityId: bookingId,
       meta: { from: current, to: target, manual: true },
     });
     return { ok: true } as const;
+  });
+}
+
+// ── Booking history + live-orders read models (Wave "item 11", Phase 2) ──────
+
+/** One entry in a booking's status history, resolved from the AuditLog. */
+export interface AdminAuditEntry {
+  id: string;
+  action: string;
+  /** Staff member who performed it, or null for system/customer/webhook events. */
+  actorName: string | null;
+  /** meta.via when present ("stripe.webhook", "paypal", "admin.bank_transfer"). */
+  via: string | null;
+  /** Status override endpoints (meta.from / meta.to), else null. */
+  from: string | null;
+  to: string | null;
+  createdAt: Date;
+}
+
+function metaString(meta: unknown, key: string): string | null {
+  if (meta && typeof meta === "object" && !Array.isArray(meta) && key in meta) {
+    const v = (meta as Record<string, unknown>)[key];
+    return typeof v === "string" && v.length > 0 ? v : null;
+  }
+  return null;
+}
+
+/**
+ * The append-only AuditLog rows for one booking, oldest first — the source for
+ * the status-history timeline on the detail page. Booking audit rows were
+ * historically written under both "Booking" and (briefly) "booking" entity
+ * casings, so match both; the entityId (a UUID) is what actually scopes them.
+ */
+export async function getBookingAuditTrail(bookingId: string): Promise<AdminAuditEntry[]> {
+  const rows = await db.auditLog.findMany({
+    where: { entityId: bookingId, entity: { in: ["Booking", "booking"] } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      action: true,
+      meta: true,
+      createdAt: true,
+      actor: { select: { name: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    action: r.action,
+    actorName: r.actor?.name ?? null,
+    via: metaString(r.meta, "via"),
+    from: metaString(r.meta, "from"),
+    to: metaString(r.meta, "to"),
+    createdAt: r.createdAt,
+  }));
+}
+
+/**
+ * Bookings that need a human decision now: PENDING_PAYMENT holding an
+ * unconfirmed offline bank transfer (the admin must confirm receipt). Powers the
+ * dashboard "needs attention" indicator.
+ */
+export async function countBookingsNeedingAttention(): Promise<number> {
+  return db.booking.count({
+    where: {
+      status: "PENDING_PAYMENT",
+      payments: { some: { method: "bank_transfer", status: "PENDING" } },
+    },
   });
 }

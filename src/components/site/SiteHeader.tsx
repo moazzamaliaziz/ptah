@@ -5,16 +5,18 @@
  * an admin-set logo overrides the built-in cartouche SVG wordmark.
  */
 import type { JSX } from "react";
-import { siteNav } from "@/content/landing";
 import SiteHeaderChrome from "@/components/site/SiteHeaderChrome";
 import { getSettings } from "@/server/settings";
+import { getDictionary } from "@/i18n/dictionaries";
+import { localizeSiteNav, headerStrings } from "@/i18n/chrome";
 
 export async function SiteHeader(): Promise<JSX.Element> {
-  const settings = await getSettings();
+  const [settings, dict] = await Promise.all([getSettings(), getDictionary()]);
   const logoId = settings["branding.logoMediaId"];
   return (
     <SiteHeaderChrome
-      nav={siteNav}
+      nav={localizeSiteNav(dict)}
+      t={headerStrings(dict)}
       logoSrc={logoId ? `/api/media/${logoId}` : null}
       siteName={settings["branding.siteName"]}
     />

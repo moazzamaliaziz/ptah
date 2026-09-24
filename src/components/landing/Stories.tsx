@@ -16,7 +16,7 @@
  * `.swiper-slide-visible` (§3.7.4). Reduced motion: fades are instant (speed
  * 0) and the parallax writer is skipped.
  */
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { useCallback, useRef, useState } from "react";
 import type { JSX } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";

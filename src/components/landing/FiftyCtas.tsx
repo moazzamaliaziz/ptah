@@ -6,7 +6,7 @@
  * of the card; pill pinned to the card bottom via margin-top:auto.
  * Media hover zoom uses the --card-image-scale contract (§4.8.7).
  */
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import type { JSX } from "react";
 import MultiCropImage from "@/components/site/MultiCropImage";
 import type { FiftyCta } from "@/content/landing";

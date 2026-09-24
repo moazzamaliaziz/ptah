@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import type { BookingStatus } from "@prisma/client";
 import { requireCapability, can } from "@/server/auth/rbac";
 import { formatPriceCents } from "@/lib/utils";
-import { getBookingForAdmin } from "@/server/admin/orders-admin";
+import { PAX_TYPE_LABEL } from "@/server/booking-core";
+import { getBookingForAdmin, getBookingAuditTrail, type AdminAuditEntry } from "@/server/admin/orders-admin";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import {
   refundBookingAction,
@@ -68,6 +69,54 @@ function methodLabel(method: string): string {
   return method.charAt(0).toUpperCase() + method.slice(1);
 }
 
+/** ISO-3166 alpha-2 → English country name (built-in, no dependency); the raw
+ *  code is a safe fallback if the runtime can't resolve it. Null passes through. */
+function regionName(code: string | null): string | null {
+  if (!code) return null;
+  const trimmed = code.trim().toUpperCase();
+  if (!trimmed) return null;
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(trimmed) ?? trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+const STATUS_WORD: Record<string, string> = {
+  PENDING_PAYMENT: "Pending",
+  CONFIRMED: "Confirmed",
+  CANCELLED: "Cancelled",
+  REFUNDED: "Refunded",
+  FAILED: "Failed",
+};
+
+/** Turn one audit row into a plain-English sentence for the timeline. */
+function auditLabel(e: AdminAuditEntry): string {
+  switch (e.action) {
+    case "booking.create":
+      return "Booking created";
+    case "booking.confirm":
+      if (e.via === "admin.bank_transfer") return "Payment confirmed (bank transfer)";
+      if (e.via === "stripe.webhook") return "Payment confirmed (card / Stripe)";
+      if (e.via === "paypal") return "Payment confirmed (PayPal)";
+      return "Payment confirmed";
+    case "booking.fail":
+      return "Payment failed";
+    case "booking.cancel":
+      return "Booking cancelled — seats released";
+    case "booking.refund":
+      return "Booking refunded — seats released";
+    case "booking.status.override": {
+      const from = e.from ? (STATUS_WORD[e.from] ?? e.from) : null;
+      const to = e.to ? (STATUS_WORD[e.to] ?? e.to) : null;
+      if (from && to) return `Status changed manually: ${from} → ${to}`;
+      return "Status changed manually";
+    }
+    default:
+      return e.action;
+  }
+}
+
 export default async function AdminBookingDetailPage({
   params,
   searchParams,
@@ -81,7 +130,9 @@ export default async function AdminBookingDetailPage({
   const booking = await getBookingForAdmin(id);
   if (!booking) notFound();
 
+  const history = await getBookingAuditTrail(booking.id);
   const editor = can(user, "bookings.edit");
+  const originName = regionName(booking.originCountry);
 
   return (
     <>
@@ -93,6 +144,15 @@ export default async function AdminBookingDetailPage({
         <p>
           Reference <code>{booking.id}</code> ·{" "}
           <span className={`admin-badge ${STATUS_BADGE[booking.status]}`}>{booking.status}</span>
+        </p>
+        <p style={{ marginTop: "0.5rem" }}>
+          <a
+            className="admin-btn admin-btn--ghost"
+            href={`/admin/bookings/${booking.id}/invoice`}
+            style={{ display: "inline-block", textDecoration: "none" }}
+          >
+            Download invoice (PDF)
+          </a>
         </p>
       </div>
 
@@ -110,6 +170,20 @@ export default async function AdminBookingDetailPage({
               <tr><th>Departure</th><td>{fmtDate(booking.startDate)}</td></tr>
               <tr><th>Returns</th><td>{fmtDate(booking.endDate)}</td></tr>
               <tr><th>Travelers</th><td>{booking.seats}</td></tr>
+              {booking.pricing
+                ? booking.pricing.items.map((line) => (
+                    <tr key={line.type}>
+                      <th>{PAX_TYPE_LABEL[line.type]}</th>
+                      <td>{`${line.count} × ${formatPriceCents(line.unitCents, booking.currency)}`}</td>
+                    </tr>
+                  ))
+                : null}
+              {booking.discountCents > 0 ? (
+                <tr>
+                  <th>Discount{booking.couponCode ? ` (${booking.couponCode})` : ""}</th>
+                  <td>{`−${formatPriceCents(booking.discountCents, booking.currency)}`}</td>
+                </tr>
+              ) : null}
               <tr><th>Total</th><td>{formatPriceCents(booking.totalCents, booking.currency)}</td></tr>
             </tbody>
           </table>
@@ -123,6 +197,7 @@ export default async function AdminBookingDetailPage({
               <tr><th>Email</th><td>{booking.contactEmail ?? "—"}</td></tr>
               <tr><th>Phone</th><td>{booking.contactPhone ?? "—"}</td></tr>
               <tr><th>Account</th><td>{booking.isGuest ? "Guest checkout" : "Registered user"}</td></tr>
+              {originName ? <tr><th>Booked from</th><td>{originName}</td></tr> : null}
               <tr><th>Booked</th><td>{fmt(booking.createdAt)}</td></tr>
             </tbody>
           </table>
@@ -149,7 +224,7 @@ export default async function AdminBookingDetailPage({
                   <td>{methodLabel(p.method)}</td>
                   <td>{p.status}</td>
                   <td>{formatPriceCents(p.amountCents, p.currency)}</td>
-                  <td><code className="admin-card__meta">{p.intentId ?? p.sessionId ?? "—"}</code></td>
+                  <td><code className="admin-card__meta">{p.intentId ?? p.sessionId ?? p.reference ?? "—"}</code></td>
                   <td>{fmt(p.createdAt)}</td>
                 </tr>
               ))}
@@ -158,13 +233,52 @@ export default async function AdminBookingDetailPage({
         )}
       </div>
 
+      <div className="admin-card" style={{ marginTop: "1rem" }}>
+        <h2>History</h2>
+        {history.length === 0 ? (
+          <p className="admin-card__meta">No history recorded yet.</p>
+        ) : (
+          <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {history.map((e) => (
+              <li
+                key={e.id}
+                style={{
+                  paddingLeft: "0.9rem",
+                  borderLeft: "2px solid var(--color-border, #d8d2c0)",
+                  paddingBottom: "0.85rem",
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{auditLabel(e)}</div>
+                <div className="admin-card__meta">
+                  {fmt(e.createdAt)} · {e.actorName ?? "System"}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
       {editor && (booking.canRefund || booking.canCancel || booking.canMarkPaid) ? (
         <div className="admin-card" style={{ marginTop: "1rem" }}>
           <h2>Actions</h2>
           <div className="admin-row" style={{ marginTop: "0.5rem" }}>
             {booking.canMarkPaid ? (
-              <form action={markBankTransferPaidAction}>
+              <form
+                action={markBankTransferPaidAction}
+                style={{ display: "flex", flexDirection: "column", gap: "0.5rem", minWidth: "240px" }}
+              >
                 <input type="hidden" name="id" value={booking.id} />
+                <label className="admin-field" style={{ margin: 0 }}>
+                  <span>Payment reference (optional)</span>
+                  <input
+                    type="text"
+                    name="reference"
+                    className="admin-input"
+                    placeholder="e.g. bank transfer confirmation code"
+                    maxLength={200}
+                    autoComplete="off"
+                  />
+                </label>
                 <ConfirmSubmitButton
                   className="admin-btn"
                   confirm="Confirm you have received the bank transfer for this booking? The customer will be emailed a confirmation."

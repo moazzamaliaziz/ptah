@@ -33,6 +33,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Arabic/RTL: Cabin has no Arabic glyphs, so on the ar locale (dir="rtl") the
+   public root layout loads Noto Sans Arabic as --font-arabic; prefer it here so
+   Arabic copy renders in a real Arabic face rather than a system fallback. The
+   variable is only present on the ar document, so this rule is otherwise inert. */
+[dir="rtl"] body {
+  font-family: var(--font-arabic), var(--font-cabin), "Segoe UI", Tahoma, sans-serif;
+}
+
 /* ---- Global focus ring (design.md §4.8.11 / §6.1) — instant, no transition */
 *:focus-visible {
   outline: currentColor solid 1px;

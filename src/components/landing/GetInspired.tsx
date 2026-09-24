@@ -18,7 +18,7 @@
  *   - cards 1095/1176 -> 754/850, 19px h3, clock+tag meta in rust,
  *     stretched link with an sr-only "See details about {title}".
  */
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { useCallback, useRef, useState } from "react";
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";

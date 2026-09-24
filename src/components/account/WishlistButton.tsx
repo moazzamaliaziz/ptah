@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore, useTransition } from "react";
 import { subscribeWishlist, getWishlistIds, toggleBookmark } from "@/lib/wishlist";
-import { toggleWishlistAction } from "@/app/(site)/account/actions";
+import { toggleWishlistAction } from "@/app/[lang]/(site)/account/actions";
 
 /**
  * Save/unsave a tour (by slug). Guests persist to localStorage only; logged-in

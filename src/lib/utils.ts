@@ -15,10 +15,16 @@ export function formatPriceCents(
   currency: string,
   locale = "en-US",
 ): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(cents / 100);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+    }).format(cents / 100);
+  } catch {
+    // A malformed/unknown currency code makes Intl.NumberFormat throw RangeError.
+    // Fall back to a plain amount + code so one bad row never crashes a page or PDF.
+    return `${(cents / 100).toFixed(2)} ${currency}`;
+  }
 }
 
 /** Lowercase, URL-safe slug. The DB enforces uniqueness; this enforces shape. */

@@ -8,6 +8,7 @@
  * exposed to the public. Server-only: these touch the DB.
  */
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import {
@@ -15,7 +16,18 @@ import {
   durationInBucket,
   type LengthToken,
   type TourTag,
+  type TourSort,
+  type TourDifficulty,
 } from "@/content/tour-tags";
+import { defaultLocale, type Locale } from "@/i18n/config";
+import {
+  getTranslations,
+  getRecordTranslation,
+  tString,
+  tNullableString,
+  tStringArray,
+  tFaqArray,
+} from "@/server/translations";
 
 export interface DepartureView {
   id: string;
@@ -54,7 +66,38 @@ export interface TourFilter {
   length?: LengthToken;
   /** Only tours with an open departure within DEPARTING_SOON_DAYS (`?filter=departing-soon`). */
   departingSoon?: boolean;
+  /** P6 free-text query (`?q=`) — matches English title / summary / destination name. */
+  q?: string;
+  /** P6 price-range floor on the "from" price, minor units (`?priceMin=`, in whole units). */
+  priceMinCents?: number;
+  /** P6 price-range ceiling on the "from" price, minor units (`?priceMax=`). */
+  priceMaxCents?: number;
+  /** P6 difficulty filter (`?difficulty=`), a Prisma `Difficulty` enum value. */
+  difficulty?: TourDifficulty;
+  /** P6 sort order (`?sort=`); defaults to "featured" (newest first). */
+  sort?: TourSort;
+  /** P6 pagination: 1-based page number (`?page=`). */
+  page?: number;
+  /** P6 pagination: results per page; defaults to DEFAULT_TOUR_PAGE_SIZE. */
+  pageSize?: number;
 }
+
+/** Paginated result envelope returned by the P6 advanced search (`searchTours`). */
+export interface SearchToursResult {
+  /** The tours on the requested page (already localized + sorted). */
+  items: TourListItem[];
+  /** Total matches across all pages (exact — filtering is done before slicing). */
+  total: number;
+  /** The page actually returned (clamped into `[1, pageCount]`). */
+  page: number;
+  /** Page size used. */
+  pageSize: number;
+  /** Total number of pages (at least 1, even when empty). */
+  pageCount: number;
+}
+
+/** Default results-per-page for the tours finder. */
+export const DEFAULT_TOUR_PAGE_SIZE = 9;
 
 export interface TourDetail {
   id: string;
@@ -64,6 +107,10 @@ export interface TourDetail {
   descriptionLong: string;
   durationDays: number;
   basePriceCents: number;
+  /** P4 per-passenger-type prices (minor units). null ⇒ type not offered on this
+   *  tour, so the checkout hides that selector. May be 0 (free infant). */
+  childPriceCents: number | null;
+  infantPriceCents: number | null;
   currency: string;
   difficulty: string;
   heroImage: string | null;
@@ -78,6 +125,8 @@ export interface TourDetail {
   metaTitle: string | null;
   metaDesc: string | null;
   ogImage: string | null;
+  /** P4 close-tour toggle: tour is visible but online booking is disabled. */
+  bookingClosed: boolean;
   destinations: { slug: string; name: string; region: string | null }[];
   itinerary: { dayNumber: number; title: string; description: string }[];
   departures: DepartureView[];
@@ -100,6 +149,85 @@ function toFaqArray(value: unknown): { q: string; a: string }[] {
       }
     }
     return [];
+  });
+}
+
+/* Shared Prisma `select` for the catalog list view-model. Includes the row `id`
+   and each destination `id` — needed as translation keys, dropped from the
+   returned view-model. */
+const tourListSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  summary: true,
+  durationDays: true,
+  basePriceCents: true,
+  currency: true,
+  difficulty: true,
+  heroImage: true,
+  tags: true,
+  destinations: {
+    orderBy: { sortOrder: "asc" },
+    select: { destination: { select: { id: true, name: true } } },
+  },
+  departures: {
+    where: openFutureDepartureWhere(),
+    orderBy: { startDate: "asc" },
+    select: { startDate: true, priceOverrideCents: true },
+  },
+} as const;
+
+type TourListRow = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  durationDays: number;
+  basePriceCents: number;
+  currency: string;
+  difficulty: string;
+  heroImage: string | null;
+  tags: unknown;
+  destinations: { destination: { id: string; name: string } }[];
+  departures: { startDate: Date; priceOverrideCents: number | null }[];
+};
+
+/**
+ * Map raw catalog rows to the public TourListItem[], overlaying `title`,
+ * `summary` and destination `name` with their `locale` translations (English
+ * fallback per field). One batched translation query per model, regardless of
+ * how many tours are in the list.
+ */
+async function localizeTourList(rows: TourListRow[], locale: Locale): Promise<TourListItem[]> {
+  const tourTr = await getTranslations("Tour", rows.map((r) => r.id), locale);
+  const destIds = [
+    ...new Set(rows.flatMap((r) => r.destinations.map((d) => d.destination.id))),
+  ];
+  const destTr = await getTranslations("Destination", destIds, locale);
+
+  return rows.map((t) => {
+    const fm = tourTr.get(t.id);
+    const overrides = t.departures
+      .map((d) => d.priceOverrideCents)
+      .filter((c): c is number => c !== null);
+    // "From" price = cheapest of (base, any departure overrides).
+    const fromPriceCents = Math.min(t.basePriceCents, ...overrides);
+    return {
+      slug: t.slug,
+      title: tString(fm, "title", t.title),
+      summary: tString(fm, "summary", t.summary),
+      durationDays: t.durationDays,
+      fromPriceCents: Number.isFinite(fromPriceCents) ? fromPriceCents : t.basePriceCents,
+      currency: t.currency,
+      difficulty: t.difficulty,
+      heroImage: t.heroImage,
+      tags: toStringArray(t.tags),
+      destinations: t.destinations.map((d) =>
+        tString(destTr.get(d.destination.id), "name", d.destination.name),
+      ),
+      nextDeparture: t.departures[0]?.startDate ?? null,
+      openDepartureCount: t.departures.length,
+    };
   });
 }
 
@@ -140,6 +268,7 @@ function openFutureDepartureWhere() {
  */
 export async function listPublishedTours(
   filter?: string | TourFilter,
+  locale: Locale = defaultLocale,
 ): Promise<TourListItem[]> {
   const f: TourFilter =
     typeof filter === "string" ? { destinationSlug: filter } : (filter ?? {});
@@ -151,64 +280,132 @@ export async function listPublishedTours(
         ? { destinations: { some: { destination: { slug: f.destinationSlug } } } }
         : {}),
     },
-    select: {
-      slug: true,
-      title: true,
-      summary: true,
-      durationDays: true,
-      basePriceCents: true,
-      currency: true,
-      difficulty: true,
-      heroImage: true,
-      tags: true,
-      destinations: {
-        orderBy: { sortOrder: "asc" },
-        select: { destination: { select: { name: true } } },
-      },
-      departures: {
-        where: openFutureDepartureWhere(),
-        orderBy: { startDate: "asc" },
-        select: { startDate: true, priceOverrideCents: true },
-      },
-    },
+    select: tourListSelect,
     orderBy: { createdAt: "desc" },
   });
 
   const soonCutoff = new Date();
   soonCutoff.setUTCDate(soonCutoff.getUTCDate() + DEPARTING_SOON_DAYS);
 
-  return tours
-    .map((t) => {
-      const overrides = t.departures
-        .map((d) => d.priceOverrideCents)
-        .filter((c): c is number => c !== null);
-      // "From" price = cheapest of (base, any departure overrides).
-      const fromPriceCents = Math.min(t.basePriceCents, ...overrides);
-      return {
-        slug: t.slug,
-        title: t.title,
-        summary: t.summary,
-        durationDays: t.durationDays,
-        fromPriceCents: Number.isFinite(fromPriceCents) ? fromPriceCents : t.basePriceCents,
-        currency: t.currency,
-        difficulty: t.difficulty,
-        heroImage: t.heroImage,
-        tags: toStringArray(t.tags),
-        destinations: t.destinations.map((d) => d.destination.name),
-        nextDeparture: t.departures[0]?.startDate ?? null,
-        openDepartureCount: t.departures.length,
-      };
-    })
-    .filter((t) => {
-      if (f.tag && !t.tags.includes(f.tag)) return false;
-      if (f.length && !durationInBucket(t.durationDays, f.length)) return false;
-      if (f.departingSoon && !(t.nextDeparture && t.nextDeparture <= soonCutoff)) return false;
-      return true;
-    });
+  const items = await localizeTourList(tours, locale);
+
+  return items.filter((t) => {
+    if (f.tag && !t.tags.includes(f.tag)) return false;
+    if (f.length && !durationInBucket(t.durationDays, f.length)) return false;
+    if (f.departingSoon && !(t.nextDeparture && t.nextDeparture <= soonCutoff)) return false;
+    return true;
+  });
+}
+
+/**
+ * In-place sort for the finder. "featured" keeps the incoming createdAt-desc
+ * order from the DB; every other mode sorts a shallow copy's elements. V8's
+ * Array.sort is stable, so ties preserve that catalog order.
+ */
+function sortToursInPlace(items: TourListItem[], sort: TourSort): void {
+  switch (sort) {
+    case "price-asc":
+      items.sort((a, b) => a.fromPriceCents - b.fromPriceCents);
+      break;
+    case "price-desc":
+      items.sort((a, b) => b.fromPriceCents - a.fromPriceCents);
+      break;
+    case "duration-asc":
+      items.sort((a, b) => a.durationDays - b.durationDays);
+      break;
+    case "duration-desc":
+      items.sort((a, b) => b.durationDays - a.durationDays);
+      break;
+    case "soonest":
+      // Tours with no open departure sort last.
+      items.sort((a, b) => {
+        const at = a.nextDeparture ? a.nextDeparture.getTime() : Number.POSITIVE_INFINITY;
+        const bt = b.nextDeparture ? b.nextDeparture.getTime() : Number.POSITIVE_INFINITY;
+        return at - bt;
+      });
+      break;
+    case "featured":
+    default:
+      break; // keep createdAt-desc order
+  }
+}
+
+/**
+ * P6 advanced search — the unified, paginated query behind BOTH `/tours` and
+ * `/search`. It supersets `listPublishedTours` (facets) and
+ * `searchPublishedTours` (free-text) without changing either, so their other
+ * callers are untouched.
+ *
+ * Strategy mirrors `listPublishedTours`' hybrid split: destination, difficulty
+ * and free-text narrow in the DB; tag / length / departing-soon / price-range
+ * and all sorting run in-memory over the localized rows (`tags` is a Json
+ * column, `length` is derived from durationDays, and the catalog is small).
+ * Pagination is applied LAST over the fully-filtered, sorted set, so `total`
+ * and `pageCount` are exact and `page` is clamped into range.
+ */
+export async function searchTours(
+  filter: TourFilter,
+  locale: Locale = defaultLocale,
+): Promise<SearchToursResult> {
+  const pageSize =
+    filter.pageSize && filter.pageSize > 0 ? filter.pageSize : DEFAULT_TOUR_PAGE_SIZE;
+
+  // Cap the term so a pathological input can't build a huge LIKE scan.
+  const needle = filter.q?.trim().slice(0, 100) ?? "";
+
+  const where: Prisma.TourWhereInput = {
+    status: "PUBLISHED",
+    ...(filter.destinationSlug
+      ? { destinations: { some: { destination: { slug: filter.destinationSlug } } } }
+      : {}),
+    ...(filter.difficulty ? { difficulty: filter.difficulty } : {}),
+    ...(needle
+      ? {
+          OR: [
+            { title: { contains: needle } },
+            { summary: { contains: needle } },
+            { destinations: { some: { destination: { name: { contains: needle } } } } },
+          ],
+        }
+      : {}),
+  };
+
+  const rows = await db.tour.findMany({
+    where,
+    select: tourListSelect,
+    orderBy: { createdAt: "desc" },
+  });
+
+  const soonCutoff = new Date();
+  soonCutoff.setUTCDate(soonCutoff.getUTCDate() + DEPARTING_SOON_DAYS);
+
+  let items = await localizeTourList(rows, locale);
+
+  items = items.filter((t) => {
+    if (filter.tag && !t.tags.includes(filter.tag)) return false;
+    if (filter.length && !durationInBucket(t.durationDays, filter.length)) return false;
+    if (filter.departingSoon && !(t.nextDeparture && t.nextDeparture <= soonCutoff)) return false;
+    if (filter.priceMinCents != null && t.fromPriceCents < filter.priceMinCents) return false;
+    if (filter.priceMaxCents != null && t.fromPriceCents > filter.priceMaxCents) return false;
+    return true;
+  });
+
+  sortToursInPlace(items, filter.sort ?? "featured");
+
+  const total = items.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(Math.max(1, filter.page ?? 1), pageCount);
+  const start = (page - 1) * pageSize;
+  const paged = items.slice(start, start + pageSize);
+
+  return { items: paged, total, page, pageSize, pageCount };
 }
 
 /** Full detail for one published tour, or null (unpublished/absent → 404). */
-export async function getTourDetail(slug: string): Promise<TourDetail | null> {
+export async function getTourDetail(
+  slug: string,
+  locale: Locale = defaultLocale,
+): Promise<TourDetail | null> {
   const tour = await db.tour.findFirst({
     where: { slug, status: "PUBLISHED" },
     select: {
@@ -219,6 +416,8 @@ export async function getTourDetail(slug: string): Promise<TourDetail | null> {
       descriptionLong: true,
       durationDays: true,
       basePriceCents: true,
+      childPriceCents: true,
+      infantPriceCents: true,
       currency: true,
       difficulty: true,
       heroImage: true,
@@ -232,13 +431,14 @@ export async function getTourDetail(slug: string): Promise<TourDetail | null> {
       metaTitle: true,
       metaDesc: true,
       ogImage: true,
+      bookingClosed: true,
       destinations: {
         orderBy: { sortOrder: "asc" },
-        select: { destination: { select: { slug: true, name: true, region: true } } },
+        select: { destination: { select: { id: true, slug: true, name: true, region: true } } },
       },
       itinerary: {
         orderBy: [{ sortOrder: "asc" }, { dayNumber: "asc" }],
-        select: { dayNumber: true, title: true, description: true },
+        select: { id: true, dayNumber: true, title: true, description: true },
       },
       departures: {
         where: openFutureDepartureWhere(),
@@ -256,29 +456,59 @@ export async function getTourDetail(slug: string): Promise<TourDetail | null> {
   });
   if (!tour) return null;
 
+  // Overlay translations (English fallback per field). One batched query per model.
+  const fm = await getRecordTranslation("Tour", tour.id, locale);
+  const destTr = await getTranslations(
+    "Destination",
+    tour.destinations.map((d) => d.destination.id),
+    locale,
+  );
+  const itinTr = await getTranslations(
+    "ItineraryDay",
+    tour.itinerary.map((d) => d.id),
+    locale,
+  );
+
   return {
     id: tour.id,
     slug: tour.slug,
-    title: tour.title,
-    summary: tour.summary,
-    descriptionLong: tour.descriptionLong,
+    title: tString(fm, "title", tour.title),
+    summary: tString(fm, "summary", tour.summary),
+    descriptionLong: tString(fm, "descriptionLong", tour.descriptionLong),
     durationDays: tour.durationDays,
     basePriceCents: tour.basePriceCents,
+    childPriceCents: tour.childPriceCents,
+    infantPriceCents: tour.infantPriceCents,
     currency: tour.currency,
     difficulty: tour.difficulty,
     heroImage: tour.heroImage,
     gallery: toStringArray(tour.gallery),
-    inclusions: toStringArray(tour.inclusions),
-    exclusions: toStringArray(tour.exclusions),
-    faqs: toFaqArray(tour.faqs),
-    travelNotes: toStringArray(tour.travelNotes),
-    ctaLabel: tour.ctaLabel,
+    inclusions: tStringArray(fm, "inclusions", toStringArray(tour.inclusions)),
+    exclusions: tStringArray(fm, "exclusions", toStringArray(tour.exclusions)),
+    faqs: tFaqArray(fm, "faqs", toFaqArray(tour.faqs)),
+    travelNotes: tStringArray(fm, "travelNotes", toStringArray(tour.travelNotes)),
+    ctaLabel: tNullableString(fm, "ctaLabel", tour.ctaLabel),
     ctaHref: tour.ctaHref,
-    metaTitle: tour.metaTitle,
-    metaDesc: tour.metaDesc,
+    metaTitle: tNullableString(fm, "metaTitle", tour.metaTitle),
+    metaDesc: tNullableString(fm, "metaDesc", tour.metaDesc),
     ogImage: tour.ogImage,
-    destinations: tour.destinations.map((d) => d.destination),
-    itinerary: tour.itinerary,
+    bookingClosed: tour.bookingClosed,
+    destinations: tour.destinations.map((d) => {
+      const dfm = destTr.get(d.destination.id);
+      return {
+        slug: d.destination.slug,
+        name: tString(dfm, "name", d.destination.name),
+        region: tNullableString(dfm, "region", d.destination.region),
+      };
+    }),
+    itinerary: tour.itinerary.map((day) => {
+      const ifm = itinTr.get(day.id);
+      return {
+        dayNumber: day.dayNumber,
+        title: tString(ifm, "title", day.title),
+        description: tString(ifm, "description", day.description),
+      };
+    }),
     departures: tour.departures.map((d) => ({
       id: d.id,
       startDate: d.startDate,
@@ -301,12 +531,18 @@ export async function getTourDetail(slug: string): Promise<TourDetail | null> {
  * no SQLi). Returns the same `TourListItem[]` view-model as the catalog list so
  * the search page reuses the commerce `TourCard`. Empty/whitespace term → [].
  */
-export async function searchPublishedTours(term: string): Promise<TourListItem[]> {
+export async function searchPublishedTours(
+  term: string,
+  locale: Locale = defaultLocale,
+): Promise<TourListItem[]> {
   const q = term.trim();
   if (q.length === 0) return [];
   // Cap the term so a pathological input can't build a huge LIKE scan.
   const needle = q.slice(0, 100);
 
+  // Search matches the ENGLISH source (title/summary/destination name); the
+  // returned view-model is then localized for display. Localizing the match
+  // itself would require scanning translation rows — out of scope here.
   const tours = await db.tour.findMany({
     where: {
       status: "PUBLISHED",
@@ -316,49 +552,11 @@ export async function searchPublishedTours(term: string): Promise<TourListItem[]
         { destinations: { some: { destination: { name: { contains: needle } } } } },
       ],
     },
-    select: {
-      slug: true,
-      title: true,
-      summary: true,
-      durationDays: true,
-      basePriceCents: true,
-      currency: true,
-      difficulty: true,
-      heroImage: true,
-      tags: true,
-      destinations: {
-        orderBy: { sortOrder: "asc" },
-        select: { destination: { select: { name: true } } },
-      },
-      departures: {
-        where: openFutureDepartureWhere(),
-        orderBy: { startDate: "asc" },
-        select: { startDate: true, priceOverrideCents: true },
-      },
-    },
+    select: tourListSelect,
     orderBy: { createdAt: "desc" },
   });
 
-  return tours.map((t) => {
-    const overrides = t.departures
-      .map((d) => d.priceOverrideCents)
-      .filter((c): c is number => c !== null);
-    const fromPriceCents = Math.min(t.basePriceCents, ...overrides);
-    return {
-      slug: t.slug,
-      title: t.title,
-      summary: t.summary,
-      durationDays: t.durationDays,
-      fromPriceCents: Number.isFinite(fromPriceCents) ? fromPriceCents : t.basePriceCents,
-      currency: t.currency,
-      difficulty: t.difficulty,
-      heroImage: t.heroImage,
-      tags: toStringArray(t.tags),
-      destinations: t.destinations.map((d) => d.destination.name),
-      nextDeparture: t.departures[0]?.startDate ?? null,
-      openDepartureCount: t.departures.length,
-    };
-  });
+  return localizeTourList(tours, locale);
 }
 
 /** Slugs of all published tours — for generateStaticParams / sitemap. */
@@ -383,6 +581,7 @@ export async function listPublishedTourSlugs(): Promise<string[]> {
  */
 export async function listPublishedToursForDestinations(
   destinationSlugs: string[],
+  locale: Locale = defaultLocale,
 ): Promise<TourListItem[]> {
   if (destinationSlugs.length === 0) return [];
   const tours = await db.tour.findMany({
@@ -390,49 +589,11 @@ export async function listPublishedToursForDestinations(
       status: "PUBLISHED",
       destinations: { some: { destination: { slug: { in: destinationSlugs } } } },
     },
-    select: {
-      slug: true,
-      title: true,
-      summary: true,
-      durationDays: true,
-      basePriceCents: true,
-      currency: true,
-      difficulty: true,
-      heroImage: true,
-      tags: true,
-      destinations: {
-        orderBy: { sortOrder: "asc" },
-        select: { destination: { select: { name: true } } },
-      },
-      departures: {
-        where: openFutureDepartureWhere(),
-        orderBy: { startDate: "asc" },
-        select: { startDate: true, priceOverrideCents: true },
-      },
-    },
+    select: tourListSelect,
     orderBy: { createdAt: "desc" },
   });
 
-  return tours.map((t) => {
-    const overrides = t.departures
-      .map((d) => d.priceOverrideCents)
-      .filter((c): c is number => c !== null);
-    const fromPriceCents = Math.min(t.basePriceCents, ...overrides);
-    return {
-      slug: t.slug,
-      title: t.title,
-      summary: t.summary,
-      durationDays: t.durationDays,
-      fromPriceCents: Number.isFinite(fromPriceCents) ? fromPriceCents : t.basePriceCents,
-      currency: t.currency,
-      difficulty: t.difficulty,
-      heroImage: t.heroImage,
-      tags: toStringArray(t.tags),
-      destinations: t.destinations.map((d) => d.destination.name),
-      nextDeparture: t.departures[0]?.startDate ?? null,
-      openDepartureCount: t.departures.length,
-    };
-  });
+  return localizeTourList(tours, locale);
 }
 
 /**
@@ -454,17 +615,23 @@ export async function getPublishedTourCountsByDestination(): Promise<Record<stri
 }
 
 /** Destinations that have at least one published tour — for the catalog filter. */
-export async function listDestinationsWithTours(): Promise<{ slug: string; name: string }[]> {
+export async function listDestinationsWithTours(
+  locale: Locale = defaultLocale,
+): Promise<{ slug: string; name: string }[]> {
   const rows = await db.destination.findMany({
     where: { tours: { some: { tour: { status: "PUBLISHED" } } } },
-    select: { slug: true, name: true },
+    select: { id: true, slug: true, name: true },
     orderBy: { name: "asc" },
   });
-  return rows;
+  const tr = await getTranslations("Destination", rows.map((r) => r.id), locale);
+  return rows.map((r) => ({ slug: r.slug, name: tString(tr.get(r.id), "name", r.name) }));
 }
 
 /** One bookable departure with its tour context — for the booking page. */
-export async function getDepartureForBooking(departureId: string): Promise<{
+export async function getDepartureForBooking(
+  departureId: string,
+  locale: Locale = defaultLocale,
+): Promise<{
   id: string;
   startDate: Date;
   endDate: Date;
@@ -486,11 +653,12 @@ export async function getDepartureForBooking(departureId: string): Promise<{
       status: true,
       priceOverrideCents: true,
       tour: {
-        select: { slug: true, title: true, currency: true, basePriceCents: true, durationDays: true, status: true },
+        select: { id: true, slug: true, title: true, currency: true, basePriceCents: true, durationDays: true, status: true },
       },
     },
   });
   if (!dep || dep.tour.status !== "PUBLISHED") return null;
+  const fm = await getRecordTranslation("Tour", dep.tour.id, locale);
   return {
     id: dep.id,
     startDate: dep.startDate,
@@ -500,7 +668,7 @@ export async function getDepartureForBooking(departureId: string): Promise<{
     priceCents: dep.priceOverrideCents ?? dep.tour.basePriceCents,
     currency: dep.tour.currency,
     tourSlug: dep.tour.slug,
-    tourTitle: dep.tour.title,
+    tourTitle: tString(fm, "title", dep.tour.title),
     durationDays: dep.tour.durationDays,
   };
 }

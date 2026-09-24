@@ -76,9 +76,11 @@ async function main() {
     Array.from({ length: CONCURRENCY }, (_, i) =>
       reserveSeatsWith(db, {
         departureId: departure.id,
-        seats: 1,
+        counts: { adult: 1, child: 0, infant: 0 },
         userId: null,
         guestEmail: `race${i}@test.local`,
+        originCountry: null,
+        couponCode: null,
         contactInfo: { fullName: `Racer ${i}`, email: `race${i}@test.local`, phone: "+100000000" },
       }),
     ),

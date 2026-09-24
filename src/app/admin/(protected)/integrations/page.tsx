@@ -6,6 +6,7 @@ import {
   type IntegrationView,
 } from "@/server/integrations";
 import { saveIntegrationAction } from "./actions";
+import AdminHint from "@/components/admin/AdminHint";
 
 const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   analytics: "Analytics & tags",
@@ -47,6 +48,7 @@ function IntegrationCard({ item, canManage }: { item: IntegrationView; canManage
           <label className="admin-field" key={f.name}>
             <span>
               {f.label}
+              {f.help ? <AdminHint text={f.help} /> : null}
               {f.secret ? (
                 <em style={{ fontWeight: 400, opacity: 0.6 }}> · {f.isSet ? "set (leave blank to keep)" : "not set"}</em>
               ) : null}

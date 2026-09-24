@@ -19,6 +19,8 @@ const EXPECT: Record<Role, { staff: boolean; caps: Expect }> = {
       "branding.view": true, "branding.edit": true, "widgets.view": true, "widgets.edit": true,
       "events.view": true, "events.edit": true, "tripideas.view": true, "tripideas.edit": true,
       "enquiries.view": true, "enquiries.manage": true,
+      "coupons.view": true, "coupons.edit": true,
+      "reports.view": true,
     },
   },
   ADMIN: {
@@ -32,6 +34,8 @@ const EXPECT: Record<Role, { staff: boolean; caps: Expect }> = {
       "branding.view": true, "branding.edit": true, "widgets.view": true, "widgets.edit": true,
       "events.view": true, "events.edit": true, "tripideas.view": true, "tripideas.edit": true,
       "enquiries.view": true, "enquiries.manage": true,
+      "coupons.view": true, "coupons.edit": true,
+      "reports.view": true,
     },
   },
   EDITOR: {
@@ -45,6 +49,8 @@ const EXPECT: Record<Role, { staff: boolean; caps: Expect }> = {
       "branding.view": false, "branding.edit": false, "widgets.view": false, "widgets.edit": false,
       "events.view": true, "events.edit": true, "tripideas.view": true, "tripideas.edit": true,
       "enquiries.view": false, "enquiries.manage": false,
+      "coupons.view": true, "coupons.edit": false,
+      "reports.view": false,
     },
   },
   SUPPORT: {
@@ -58,6 +64,8 @@ const EXPECT: Record<Role, { staff: boolean; caps: Expect }> = {
       "branding.view": false, "branding.edit": false, "widgets.view": false, "widgets.edit": false,
       "events.view": true, "events.edit": false, "tripideas.view": true, "tripideas.edit": false,
       "enquiries.view": true, "enquiries.manage": false,
+      "coupons.view": true, "coupons.edit": false,
+      "reports.view": false,
     },
   },
   USER: {
@@ -71,6 +79,8 @@ const EXPECT: Record<Role, { staff: boolean; caps: Expect }> = {
       "branding.view": false, "branding.edit": false, "widgets.view": false, "widgets.edit": false,
       "events.view": false, "events.edit": false, "tripideas.view": false, "tripideas.edit": false,
       "enquiries.view": false, "enquiries.manage": false,
+      "coupons.view": false, "coupons.edit": false,
+      "reports.view": false,
     },
   },
 };

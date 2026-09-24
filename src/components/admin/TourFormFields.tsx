@@ -15,7 +15,10 @@ export interface TourFieldValues {
   descriptionLong: string;
   durationDays: number;
   basePrice: string; // major units, e.g. "1299.00"
+  childPrice: string; // major units; "" ⇒ children not offered
+  infantPrice: string; // major units; "" ⇒ infants not offered ("0.00" ⇒ free)
   currency: string;
+  bookingClosed: boolean;
   difficulty: TourInput["difficulty"];
   tags: TourTag[];
   heroImage: string | null;
@@ -47,7 +50,10 @@ const EMPTY: TourFieldValues = {
   descriptionLong: "",
   durationDays: 1,
   basePrice: "",
+  childPrice: "",
+  infantPrice: "",
   currency: "USD",
+  bookingClosed: false,
   difficulty: "EASY",
   tags: [],
   heroImage: null,
@@ -73,7 +79,10 @@ export function toFieldValues(input: (TourInput & { basePriceCents: number }) | 
     descriptionLong: input.descriptionLong,
     durationDays: input.durationDays,
     basePrice: centsToDollars(input.basePriceCents),
+    childPrice: input.childPriceCents == null ? "" : centsToDollars(input.childPriceCents),
+    infantPrice: input.infantPriceCents == null ? "" : centsToDollars(input.infantPriceCents),
     currency: input.currency,
+    bookingClosed: input.bookingClosed,
     difficulty: input.difficulty,
     tags: input.tags,
     heroImage: input.heroImage,
@@ -163,6 +172,27 @@ export default function TourFormFields({ initial, saved, pending }: TourFormFiel
           </select>
         </label>
       </div>
+
+      <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+        <legend className="admin-card__meta">Passenger pricing &amp; availability</legend>
+        <div className="admin-row" style={{ gap: "1rem" }}>
+          <label className="admin-field" style={{ flex: "1 1 140px" }}>
+            <span>Child price (optional)</span>
+            <input className="admin-input" type="text" name="childPrice" defaultValue={v.childPrice} inputMode="decimal" placeholder="e.g. 899.00" />
+          </label>
+          <label className="admin-field" style={{ flex: "1 1 140px" }}>
+            <span>Infant price (optional)</span>
+            <input className="admin-input" type="text" name="infantPrice" defaultValue={v.infantPrice} inputMode="decimal" placeholder="0.00 for free" />
+          </label>
+        </div>
+        <p className="admin-card__meta" style={{ margin: "0.25rem 0 0.75rem" }}>
+          Leave a price blank to hide that traveler type from the booking form. Enter <strong>0.00</strong> to offer it free (e.g. infants). The base price above is the adult price.
+        </p>
+        <label className="admin-row" style={{ gap: "0.5rem", alignItems: "center" }}>
+          <input type="checkbox" name="bookingClosed" defaultChecked={v.bookingClosed} />
+          <span>Pause online booking for this tour (shows a &ldquo;booking paused&rdquo; notice; existing bookings are unaffected)</span>
+        </label>
+      </fieldset>
 
       <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
         <legend className="admin-card__meta">Style &amp; special tags (drive the Tours menu filters)</legend>

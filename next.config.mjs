@@ -15,6 +15,13 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   experimental: {
+    // Phase 3 i18n: the app now uses MULTIPLE ROOT LAYOUTS (public site under
+    // app/[lang], plus separate admin/maintenance roots) and a top-level
+    // dynamic segment ([lang]) — both cases where a plain not-found.js cannot
+    // compose against a single root layout. globalNotFound serves
+    // app/global-not-found.tsx for URLs that match no route at all. Verified
+    // against 03-file-conventions/not-found.md (introduced v15.4.0, experimental).
+    globalNotFound: true,
     // Phase 7 media library: the upload Server Action receives image FormData.
     // Default cap is 1 MB; the app-layer validator enforces 4 MB raster / 512 KB
     // SVG (Vercel rejects request bodies over ~4.5 MB at the edge anyway), so

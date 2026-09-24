@@ -8,6 +8,13 @@ import "server-only";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import type { TourListItem } from "@/server/catalog";
+import { defaultLocale, type Locale } from "@/i18n/config";
+import {
+  getTranslations,
+  getRecordTranslation,
+  tString,
+  tNullableString,
+} from "@/server/translations";
 
 /** Coerce a Json column that should be string[] into a safe string[]. */
 function toStringArray(value: unknown): string[] {
@@ -90,14 +97,17 @@ export interface TripIdeaTourItem {
 // ── Events ─────────────────────────────────────────────────────────────────────
 
 /** Published events, upcoming first; recurring festivals always included. */
-export async function listPublishedEvents(): Promise<EventListItem[]> {
+export async function listPublishedEvents(
+  locale: Locale = defaultLocale,
+): Promise<EventListItem[]> {
   return safeRead(
     "listPublishedEvents",
-    () =>
-      db.event.findMany({
+    async () => {
+      const rows = await db.event.findMany({
         where: { status: "PUBLISHED" },
         orderBy: [{ sortOrder: "asc" }, { startDate: "asc" }],
         select: {
+          id: true,
           slug: true,
           title: true,
           summary: true,
@@ -107,17 +117,35 @@ export async function listPublishedEvents(): Promise<EventListItem[]> {
           recurring: true,
           heroImage: true,
         },
-      }),
+      });
+      const tr = await getTranslations("Event", rows.map((r) => r.id), locale);
+      return rows.map((e) => {
+        const fm = tr.get(e.id);
+        return {
+          slug: e.slug,
+          title: tString(fm, "title", e.title),
+          summary: tString(fm, "summary", e.summary),
+          location: tNullableString(fm, "location", e.location),
+          startDate: e.startDate,
+          endDate: e.endDate,
+          recurring: e.recurring,
+          heroImage: e.heroImage,
+        };
+      });
+    },
     [],
   );
 }
 
 /** Full detail for one published event, or null. */
-export async function getEventDetail(slug: string): Promise<EventDetail | null> {
+export async function getEventDetail(
+  slug: string,
+  locale: Locale = defaultLocale,
+): Promise<EventDetail | null> {
   return safeRead(
     "getEventDetail",
-    () =>
-      db.event.findFirst({
+    async () => {
+      const e = await db.event.findFirst({
         where: { slug, status: "PUBLISHED" },
         select: {
           id: true,
@@ -134,7 +162,25 @@ export async function getEventDetail(slug: string): Promise<EventDetail | null> 
           metaDesc: true,
           ogImage: true,
         },
-      }),
+      });
+      if (!e) return null;
+      const fm = await getRecordTranslation("Event", e.id, locale);
+      return {
+        id: e.id,
+        slug: e.slug,
+        title: tString(fm, "title", e.title),
+        summary: tString(fm, "summary", e.summary),
+        description: tString(fm, "description", e.description),
+        location: tNullableString(fm, "location", e.location),
+        startDate: e.startDate,
+        endDate: e.endDate,
+        recurring: e.recurring,
+        heroImage: e.heroImage,
+        metaTitle: tNullableString(fm, "metaTitle", e.metaTitle),
+        metaDesc: tNullableString(fm, "metaDesc", e.metaDesc),
+        ogImage: e.ogImage,
+      };
+    },
     null,
   );
 }
@@ -154,7 +200,9 @@ export async function listPublishedEventSlugs(): Promise<string[]> {
 // ── Trip Ideas ───────────────────────────────────────────────────────────────
 
 /** Published trip-idea themes with a count of their curated published tours. */
-export async function listPublishedTripIdeas(): Promise<TripIdeaListItem[]> {
+export async function listPublishedTripIdeas(
+  locale: Locale = defaultLocale,
+): Promise<TripIdeaListItem[]> {
   return safeRead(
     "listPublishedTripIdeas",
     async () => {
@@ -162,6 +210,7 @@ export async function listPublishedTripIdeas(): Promise<TripIdeaListItem[]> {
         where: { status: "PUBLISHED" },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
         select: {
+          id: true,
           slug: true,
           title: true,
           summary: true,
@@ -172,20 +221,27 @@ export async function listPublishedTripIdeas(): Promise<TripIdeaListItem[]> {
           },
         },
       });
-      return ideas.map((i) => ({
-        slug: i.slug,
-        title: i.title,
-        summary: i.summary,
-        heroImage: i.heroImage,
-        tourCount: i.tours.length,
-      }));
+      const tr = await getTranslations("TripIdea", ideas.map((i) => i.id), locale);
+      return ideas.map((i) => {
+        const fm = tr.get(i.id);
+        return {
+          slug: i.slug,
+          title: tString(fm, "title", i.title),
+          summary: tString(fm, "summary", i.summary),
+          heroImage: i.heroImage,
+          tourCount: i.tours.length,
+        };
+      });
     },
     [],
   );
 }
 
 /** Full detail for one published trip idea + its curated published tours. */
-export async function getTripIdeaDetail(slug: string): Promise<TripIdeaDetail | null> {
+export async function getTripIdeaDetail(
+  slug: string,
+  locale: Locale = defaultLocale,
+): Promise<TripIdeaDetail | null> {
   const idea = await db.tripIdea.findFirst({
     where: { slug, status: "PUBLISHED" },
     select: {
@@ -204,6 +260,7 @@ export async function getTripIdeaDetail(slug: string): Promise<TripIdeaDetail | 
         select: {
           tour: {
             select: {
+              id: true,
               slug: true,
               title: true,
               summary: true,
@@ -215,7 +272,7 @@ export async function getTripIdeaDetail(slug: string): Promise<TripIdeaDetail | 
               tags: true,
               destinations: {
                 orderBy: { sortOrder: "asc" },
-                select: { destination: { select: { name: true } } },
+                select: { destination: { select: { id: true, name: true } } },
               },
             },
           },
@@ -224,28 +281,43 @@ export async function getTripIdeaDetail(slug: string): Promise<TripIdeaDetail | 
     },
   });
   if (!idea) return null;
+
+  // Overlay translations (English fallback per field). Batched: one query for
+  // the idea, one for all its tours, one for all their destinations.
+  const ideaFm = await getRecordTranslation("TripIdea", idea.id, locale);
+  const tourTr = await getTranslations("Tour", idea.tours.map((t) => t.tour.id), locale);
+  const destIds = [
+    ...new Set(idea.tours.flatMap((t) => t.tour.destinations.map((d) => d.destination.id))),
+  ];
+  const destTr = await getTranslations("Destination", destIds, locale);
+
   return {
     id: idea.id,
     slug: idea.slug,
-    title: idea.title,
-    summary: idea.summary,
-    descriptionLong: idea.descriptionLong,
+    title: tString(ideaFm, "title", idea.title),
+    summary: tString(ideaFm, "summary", idea.summary),
+    descriptionLong: tString(ideaFm, "descriptionLong", idea.descriptionLong),
     heroImage: idea.heroImage,
-    metaTitle: idea.metaTitle,
-    metaDesc: idea.metaDesc,
+    metaTitle: tNullableString(ideaFm, "metaTitle", idea.metaTitle),
+    metaDesc: tNullableString(ideaFm, "metaDesc", idea.metaDesc),
     ogImage: idea.ogImage,
-    tours: idea.tours.map((t) => ({
-      slug: t.tour.slug,
-      title: t.tour.title,
-      summary: t.tour.summary,
-      durationDays: t.tour.durationDays,
-      fromPriceCents: t.tour.basePriceCents,
-      currency: t.tour.currency,
-      difficulty: t.tour.difficulty,
-      heroImage: t.tour.heroImage,
-      destinations: t.tour.destinations.map((d) => d.destination.name),
-      tags: toStringArray(t.tour.tags),
-    })),
+    tours: idea.tours.map((t) => {
+      const fm = tourTr.get(t.tour.id);
+      return {
+        slug: t.tour.slug,
+        title: tString(fm, "title", t.tour.title),
+        summary: tString(fm, "summary", t.tour.summary),
+        durationDays: t.tour.durationDays,
+        fromPriceCents: t.tour.basePriceCents,
+        currency: t.tour.currency,
+        difficulty: t.tour.difficulty,
+        heroImage: t.tour.heroImage,
+        destinations: t.tour.destinations.map((d) =>
+          tString(destTr.get(d.destination.id), "name", d.destination.name),
+        ),
+        tags: toStringArray(t.tour.tags),
+      };
+    }),
   };
 }
 

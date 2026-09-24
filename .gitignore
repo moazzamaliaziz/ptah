@@ -53,3 +53,13 @@ qa-screenshots/
 AGENTS.md
 CLAUDE.md
 
+# One-off DB ops artifacts + scratch captures (contain connection strings / not app source)
+diag.json
+diff-err.txt
+dump_err.txt
+import_err.txt
+aiven-seed.sql
+tidb-schema.sql
+tidb-setup.sql
+scripts/load-tidb.mjs
+

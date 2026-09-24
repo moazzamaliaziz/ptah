@@ -8,7 +8,7 @@
  * CSS-only and also fires on :focus-within for keyboard parity (§6.4 A-6,
  * §6.1 hover/focus parity).
  */
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import type { JSX } from "react";
 import Icon from "@/components/ui/Icon";
 import type { KbygItem } from "@/content/landing";

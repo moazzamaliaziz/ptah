@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { ChevronRight } from "lucide-react";
 
 export type Crumb = { label: string; href?: string };

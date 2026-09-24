@@ -1,10 +1,10 @@
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import type { JSX } from "react";
 
 /**
  * Presentational 404 body, shared by the two not-found entry points so the
  * copy and CTAs stay in one place:
- *   - src/app/(site)/not-found.tsx — in-app notFound() (invalid tour/city/
+ *   - src/app/[lang]/(site)/not-found.tsx — in-app notFound() (invalid tour/city/
  *     country slug); rendered INSIDE the full site chrome.
  *   - src/app/not-found.tsx — genuinely unmatched URLs; rendered BARE on the
  *     root layout, so that file supplies its own minimal chrome around this.

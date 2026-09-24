@@ -54,11 +54,11 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  sessions    Session[]
-  bookings    Booking[]
-  auditEvents AuditLog[] @relation("AuditActor")
+  sessions            Session[]
+  bookings            Booking[]
+  auditEvents         AuditLog[]           @relation("AuditActor")
   passwordResetTokens PasswordResetToken[]
-  wishlists   Wishlist[]
+  wishlists           Wishlist[]
 
   @@index([status])
   @@map("users")
@@ -70,13 +70,13 @@ model User {
 /// Auth.js adapter Session model (no OAuth adapter tables in Phase 0 — add
 /// Account/Authenticator models when social login ships).
 model Session {
-  id        String   @id @default(uuid()) @db.Char(36)
-  userId    String   @db.Char(36)
-  token     String   @unique @db.VarChar(512) // hashed session identifier
-  expiresAt DateTime
-  ip        String?  @db.VarChar(45) // IPv6 max length
-  userAgent String?  @db.VarChar(512)
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid()) @db.Char(36)
+  userId     String    @db.Char(36)
+  token      String    @unique @db.VarChar(512) // hashed session identifier
+  expiresAt  DateTime
+  ip         String?   @db.VarChar(45) // IPv6 max length
+  userAgent  String?   @db.VarChar(512)
+  createdAt  DateTime  @default(now())
   lastSeenAt DateTime? // sliding "last activity" for idle-timeout enforcement; null on legacy rows (falls back to createdAt)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -146,19 +146,33 @@ enum Difficulty {
 }
 
 model Tour {
-  id              String      @id @default(uuid()) @db.Char(36)
-  slug            String      @unique @db.VarChar(191) // lowercase, url-safe
-  title           String      @db.VarChar(255)
-  summary         String      @db.VarChar(512)
-  descriptionLong String      @db.Text
+  id              String     @id @default(uuid()) @db.Char(36)
+  slug            String     @unique @db.VarChar(191) // lowercase, url-safe
+  title           String     @db.VarChar(255)
+  summary         String     @db.VarChar(512)
+  descriptionLong String     @db.Text
   durationDays    Int
   /// Integer minor units (cents). Always pair with `currency`.
-  basePriceCents  Int
-  currency        String      @default("USD") @db.Char(3)
-  difficulty      Difficulty  @default(EASY)
+  /// This is the ADULT price. Per-passenger-type pricing (P4) layers the two
+  /// optional columns below on top; a departure `priceOverrideCents` overrides
+  /// the ADULT price only.
+  basePriceCents   Int
+  /// P4 per-passenger-type pricing (minor units). NULL ⇒ that passenger type is
+  /// NOT offered on this tour (its selector is hidden at checkout). May be 0
+  /// (e.g. infants travel free). Priced at tour level — departures do not carry
+  /// per-type overrides.
+  childPriceCents  Int?
+  infantPriceCents Int?
+  currency         String     @default("USD") @db.Char(3)
+  difficulty       Difficulty @default(EASY)
   /// Path under /public/assets (image library lands in a later phase) or CDN URL.
-  heroImage       String?     @db.VarChar(512)
-  status          TourStatus  @default(DRAFT)
+  heroImage        String?    @db.VarChar(512)
+  status           TourStatus @default(DRAFT)
+  /// P4 close-tour toggle: when true the tour stays PUBLISHED/visible but the
+  /// public booking funnel is disabled (an enquire CTA shows instead) and
+  /// booking-core rejects new reservations (defense in depth). Distinct from
+  /// status ARCHIVED (hidden) and per-departure CLOSED.
+  bookingClosed    Boolean    @default(false)
   // JSON string arrays — chosen over child tables because these lists are
   // read together with the tour and never filtered/joined relationally.
   inclusions      Json? // string[]
@@ -176,14 +190,14 @@ model Tour {
   tags            Json? // string[]  (TourTag[])
   /// Optional detail-page call-to-action. `ctaHref` is scheme-allowlisted
   /// (safeUrl) at the admin boundary; both null → the default "Book" CTA shows.
-  ctaLabel        String?     @db.VarChar(120)
-  ctaHref         String?     @db.VarChar(512)
+  ctaLabel        String?    @db.VarChar(120)
+  ctaHref         String?    @db.VarChar(512)
   // SEO
-  metaTitle       String?     @db.VarChar(255)
-  metaDesc        String?     @db.VarChar(320)
-  ogImage         String?     @db.VarChar(512)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  metaTitle       String?    @db.VarChar(255)
+  metaDesc        String?    @db.VarChar(320)
+  ogImage         String?    @db.VarChar(512)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   destinations TourDestination[]
   departures   TourDeparture[]
@@ -236,21 +250,21 @@ enum DepartureStatus {
 }
 
 model TourDeparture {
-  id                String          @id @default(uuid()) @db.Char(36)
-  tourId            String          @db.Char(36)
-  startDate         DateTime        @db.Date
-  endDate           DateTime        @db.Date
-  maxCapacity       Int
+  id                 String          @id @default(uuid()) @db.Char(36)
+  tourId             String          @db.Char(36)
+  startDate          DateTime        @db.Date
+  endDate            DateTime        @db.Date
+  maxCapacity        Int
   /// Decremented atomically at booking time:
   ///   UPDATE ... SET remainingCapacity = remainingCapacity - n
   ///   WHERE id = ? AND remainingCapacity >= n
   /// Race-safe seat claim — never read-modify-write from app code.
-  remainingCapacity Int
+  remainingCapacity  Int
   /// Minor units; NULL = inherit tour.basePriceCents.
   priceOverrideCents Int?
-  status            DepartureStatus @default(OPEN)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  status             DepartureStatus @default(OPEN)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings Booking[]
@@ -297,7 +311,26 @@ model Booking {
   currency    String        @default("USD") @db.Char(3)
   /// { fullName, email, phone, passengers: [{ name, ... }] } — zod-validated at
   /// the boundary; JSON because the shape evolves with product requirements.
+  /// P4: also carries an optional free-text `pickup` string.
   contactInfo Json
+  /// P4 frozen price breakdown captured at reservation time:
+  /// { items: [{ type, count, unitCents }], totalCents, currency }. NULL for
+  /// legacy bookings made before per-passenger-type pricing — readers fall back
+  /// to the single-line `round(totalCents / seats)` shape. `seats` stays the
+  /// TOTAL traveler count (adult + child + infant) so capacity/email/invoice
+  /// reads are unchanged.
+  pricing     Json?
+  /// P4 ISO-3166 alpha-2 origin country derived from checkout billing address.
+  /// A real indexed column so P7 reports can group bookings by country.
+  originCountry String?     @db.Char(2)
+  /// P5 coupon applied at checkout (UPPERCASE code), or NULL when none. Stored
+  /// as the code string (not an FK) so a booking's discount record survives even
+  /// if the coupon is later deleted — the money already charged must never change.
+  couponCode  String?       @db.VarChar(40)
+  /// P5 discount amount in cents subtracted from the GROSS price to reach
+  /// `totalCents`. Always ≥ 0; 0 when no coupon. `pricing` keeps the GROSS
+  /// breakdown unchanged; `totalCents` is the NET charge every payment path uses.
+  discountCents Int         @default(0)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -305,16 +338,20 @@ model Booking {
   /// Restrict: a departure with bookings can never be hard-deleted (cancel it).
   departure TourDeparture @relation(fields: [departureId], references: [id], onDelete: Restrict)
   payments  Payment[]
+  // NOTE: no separate BookingItem/Seat table — one booking = one departure × N
+  // seats; passenger details live in contactInfo. Revisit only if a multi-tour
+  // cart appears on the roadmap.
 
   @@index([userId])
   @@index([userId, createdAt])
   @@index([departureId])
   @@index([status, createdAt])
   @@index([createdAt])
+  @@index([originCountry])
+  /// P5: powers the live redemption count (couponCode = X AND status NOT IN
+  /// (FAILED, CANCELLED)) that enforces maxRedemptions without a counter column.
+  @@index([couponCode, status])
   @@map("bookings")
-  // NOTE: no separate BookingItem/Seat table — one booking = one departure × N
-  // seats; passenger details live in contactInfo. Revisit only if a multi-tour
-  // cart appears on the roadmap.
 }
 
 enum PaymentStatus {
@@ -562,20 +599,20 @@ model Event {
 // TourStatus lifecycle.
 
 model TripIdea {
-  id              String         @id @default(uuid()) @db.Char(36)
-  slug            String         @unique @db.VarChar(191) // lowercase, url-safe
-  title           String         @db.VarChar(255)
-  summary         String         @db.VarChar(512)
-  descriptionLong String         @db.Text // editorial intro (markdown-free paragraphs)
-  heroImage       String?        @db.VarChar(512)
-  status          TourStatus     @default(DRAFT)
+  id              String     @id @default(uuid()) @db.Char(36)
+  slug            String     @unique @db.VarChar(191) // lowercase, url-safe
+  title           String     @db.VarChar(255)
+  summary         String     @db.VarChar(512)
+  descriptionLong String     @db.Text // editorial intro (markdown-free paragraphs)
+  heroImage       String?    @db.VarChar(512)
+  status          TourStatus @default(DRAFT)
   // SEO
-  metaTitle       String?        @db.VarChar(255)
-  metaDesc        String?        @db.VarChar(320)
-  ogImage         String?        @db.VarChar(512)
-  sortOrder       Int            @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  metaTitle       String?    @db.VarChar(255)
+  metaDesc        String?    @db.VarChar(320)
+  ogImage         String?    @db.VarChar(512)
+  sortOrder       Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   tours TripIdeaTour[]
 
@@ -624,4 +661,87 @@ model ContactMessage {
 
   @@index([status, createdAt])
   @@map("contact_messages")
+}
+
+// ═══════════════════════════════════ I18N ════════════════════════════════════
+// Public-site content translations (Phase 3 / item #11 — PUBLIC site only; the
+// admin panel, API and system emails stay English).
+//
+// Generic side-table: one row per (model, recordId, locale, field). Chosen over
+// per-model translation columns because it is fully additive (one migration for
+// the whole feature — least-risk for the live DB), model-agnostic (translating a
+// new field is a new row, never a migration), and gives the admin one uniform
+// editing surface. `value` is JSON so a field can hold a plain string
+// (Tour.title), a string[] (Tour.inclusions) or a {q,a}[] (Tour.faqs); the read
+// layer coerces per field with an English fallback, so a missing/blank/invalid
+// translation always degrades to the English source instead of breaking a page.
+//
+// English is the SOURCE (the model rows themselves) and is NEVER stored here.
+// `recordId` is a SOFT reference (no FK — it spans many models, and SiteSetting
+// is keyed by a dotted string, not a uuid); delete paths remove a record's
+// translations, and an orphaned row is harmless (never read for a missing
+// record). Writes are admin-only and audited.
+model Translation {
+  id        String   @id @default(uuid()) @db.Char(36)
+  /// Source model name, e.g. "Tour", "Destination", "ItineraryDay".
+  model     String   @db.VarChar(48)
+  /// Source row identifier — a Char(36) uuid for most models, or a dotted key
+  /// for SiteSetting. VarChar(191) so it fits both and stays index-safe.
+  recordId  String   @db.VarChar(191)
+  /// Target locale (route segment): ar | fr | de | es | it. Never "en".
+  locale    String   @db.VarChar(5)
+  /// Translated field name on the source model, e.g. "title", "inclusions".
+  field     String   @db.VarChar(48)
+  /// Translated content: string | string[] | {q,a}[] — coerced per field on read.
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([model, recordId, locale, field])
+  @@index([model, recordId, locale])
+  @@map("translations")
+}
+
+// ═══════════════════════════════ COUPONS (P5) ════════════════════════════════
+// Discount codes applied at checkout. The redemption cap is enforced by counting
+// live bookings that carry the code (Booking.couponCode) rather than a mutable
+// counter column here — a counter drifts under concurrency and failed payments;
+// a COUNT over the indexed [couponCode, status] is always correct. The applied
+// discount is frozen onto the Booking (couponCode + discountCents), so deleting
+// or editing a coupon never rewrites money already charged.
+
+enum CouponType {
+  /// value = whole-number percent off the gross (1–100). Currency-agnostic.
+  PERCENT
+  /// value = fixed amount off, in cents of `currency`. Requires a currency match
+  /// with the booking (you cannot take 500 USD off an EGP order).
+  FIXED
+}
+
+model Coupon {
+  id             String     @id @default(uuid()) @db.Char(36)
+  /// UPPERCASE, unique. Normalised (trim + upper) at the write boundary so
+  /// lookups are case-insensitive without a functional index.
+  code           String     @unique @db.VarChar(40)
+  type           CouponType
+  /// PERCENT: 1–100. FIXED: amount in cents (> 0). Validated at the boundary.
+  value          Int
+  /// Required for FIXED (the cents currency), NULL for PERCENT. When set on a
+  /// PERCENT coupon it additionally restricts the coupon to that currency.
+  currency       String?    @db.Char(3)
+  /// Optional minimum GROSS spend (in the booking currency's cents) to qualify.
+  minSpendCents  Int?
+  /// Optional cap on how many live (non-FAILED, non-CANCELLED) bookings may use
+  /// the code. NULL = unlimited.
+  maxRedemptions Int?
+  /// Optional validity window (inclusive start, inclusive end). NULL = open.
+  startsAt       DateTime?
+  endsAt         DateTime?
+  /// Master on/off switch independent of the date window.
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([active])
+  @@map("coupons")
 }

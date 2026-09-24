@@ -40,7 +40,8 @@ export async function cancelBookingAction(fd: FormData): Promise<void> {
 export async function markBankTransferPaidAction(fd: FormData): Promise<void> {
   const user = await requireCapability("bookings.edit");
   const id = str(fd, "id");
-  const result = await confirmBankTransferBooking({ bookingId: id, actorId: user.id });
+  const reference = str(fd, "reference").trim() || undefined;
+  const result = await confirmBankTransferBooking({ bookingId: id, actorId: user.id, reference });
   revalidateBooking(id);
   redirect(`/admin/bookings/${id}?${result.ok ? "msg=paid" : "err=NOT_REFUNDABLE"}`);
 }

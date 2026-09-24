@@ -9,7 +9,12 @@ import type { JSX } from "react";
 export const COOKIE_MANAGE_EVENT = "ptah:open-cookie-preferences";
 
 /** Footer legal-bar button that re-opens the cookie preference center. */
-export function CookieManageButton(): JSX.Element {
+export function CookieManageButton({
+  labels,
+}: {
+  /** Localized trigger copy: `long` prefix (hidden on narrow screens) + `short`. */
+  labels: { long: string; short: string };
+}): JSX.Element {
   return (
     <button
       type="button"
@@ -17,8 +22,8 @@ export function CookieManageButton(): JSX.Element {
       aria-haspopup="dialog"
       onClick={() => window.dispatchEvent(new CustomEvent(COOKIE_MANAGE_EVENT))}
     >
-      <span className="cookie-manage__long">Manage Your </span>
-      Cookies
+      <span className="cookie-manage__long">{labels.long}</span>
+      {labels.short}
     </button>
   );
 }

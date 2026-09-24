@@ -14,7 +14,7 @@
  * scrim, label pinned left/right .75rem/bottom 1rem -> 1.25/1.5rem, whole-card
  * link, --card-image-scale hover zoom.
  */
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { useCallback, useRef, useState } from "react";
 import type { JSX } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";

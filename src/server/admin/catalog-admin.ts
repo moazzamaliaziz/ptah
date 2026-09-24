@@ -19,6 +19,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { z } from "zod";
 import { db } from "@/lib/db";
+import { deleteRecordTranslations } from "@/server/admin/translations-admin";
 import {
   tourInputSchema,
   destinationInputSchema,
@@ -136,7 +137,8 @@ export async function getAdminTour(id: string): Promise<AdminTourDetail | null> 
     where: { id },
     select: {
       id: true, slug: true, title: true, summary: true, descriptionLong: true,
-      durationDays: true, basePriceCents: true, currency: true, difficulty: true,
+      durationDays: true, basePriceCents: true, childPriceCents: true,
+      infantPriceCents: true, currency: true, bookingClosed: true, difficulty: true,
       heroImage: true, tags: true, gallery: true, inclusions: true, exclusions: true,
       faqs: true, travelNotes: true, ctaLabel: true, ctaHref: true,
       metaTitle: true, metaDesc: true, ogImage: true, status: true,
@@ -167,7 +169,10 @@ export async function getAdminTour(id: string): Promise<AdminTourDetail | null> 
     descriptionLong: t.descriptionLong,
     durationDays: t.durationDays,
     basePriceCents: t.basePriceCents,
+    childPriceCents: t.childPriceCents,
+    infantPriceCents: t.infantPriceCents,
     currency: t.currency,
+    bookingClosed: t.bookingClosed,
     difficulty: t.difficulty,
     heroImage: t.heroImage,
     tags: toTagArray(t.tags),
@@ -219,7 +224,10 @@ interface TourWriteData {
   descriptionLong: string;
   durationDays: number;
   basePriceCents: number;
+  childPriceCents: number | null;
+  infantPriceCents: number | null;
   currency: string;
+  bookingClosed: boolean;
   difficulty: TourInput["difficulty"];
   heroImage: string | null;
   tags: Prisma.InputJsonValue;
@@ -244,7 +252,10 @@ function tourWriteData(input: TourInput): TourWriteData {
     descriptionLong: input.descriptionLong,
     durationDays: input.durationDays,
     basePriceCents: input.basePriceCents,
+    childPriceCents: input.childPriceCents,
+    infantPriceCents: input.infantPriceCents,
     currency: input.currency,
+    bookingClosed: input.bookingClosed,
     difficulty: input.difficulty,
     heroImage: input.heroImage,
     tags: input.tags as Prisma.InputJsonValue,
@@ -322,7 +333,11 @@ export async function setTourStatus(id: string, status: string): Promise<Mutatio
 export async function deleteTour(id: string): Promise<MutationResult> {
   const found = await db.tour.findUnique({
     where: { id },
-    select: { id: true, departures: { select: { _count: { select: { bookings: true } } } } },
+    select: {
+      id: true,
+      itinerary: { select: { id: true } },
+      departures: { select: { _count: { select: { bookings: true } } } },
+    },
   });
   if (!found) return fail("Tour not found.");
   const bookingCount = found.departures.reduce((n, d) => n + d._count.bookings, 0);
@@ -330,6 +345,10 @@ export async function deleteTour(id: string): Promise<MutationResult> {
     return fail("This tour has departures with bookings — archive it instead of deleting.");
   }
   await db.tour.delete({ where: { id } });
+  // The DB cascade drops the itinerary_days rows, but translations are a soft
+  // reference (no FK) — clean the tour's and each day's translations explicitly.
+  await deleteRecordTranslations("Tour", id);
+  await Promise.all(found.itinerary.map((d) => deleteRecordTranslations("ItineraryDay", d.id)));
   return { ok: true };
 }
 
@@ -389,6 +408,7 @@ export async function deleteItineraryDay(tourId: string, dayId: string): Promise
   const day = await db.itineraryDay.findUnique({ where: { id: dayId }, select: { tourId: true } });
   if (!day || day.tourId !== tourId) return fail("Day not found.");
   await db.itineraryDay.delete({ where: { id: dayId } });
+  await deleteRecordTranslations("ItineraryDay", dayId);
   return { ok: true };
 }
 
@@ -606,6 +626,7 @@ export async function deleteDestination(id: string): Promise<MutationResult> {
   const found = await db.destination.findUnique({ where: { id }, select: { id: true } });
   if (!found) return fail("Destination not found.");
   await db.destination.delete({ where: { id } });
+  await deleteRecordTranslations("Destination", id);
   return { ok: true };
 }
 

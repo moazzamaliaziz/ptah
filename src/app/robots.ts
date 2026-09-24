@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
+import { locales } from "@/i18n/config";
 
 /**
  * robots.txt (Phase 5, Q15). Allow crawling of the public marketing/catalog
@@ -10,23 +11,34 @@ import { env } from "@/lib/env";
  */
 const base = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
 
+/* Index:false surfaces that the proxy locale-prefixes (`/en/account`, …). Both
+   the bare path and every `/{locale}` variant are disallowed so crawlers skip
+   them whatever URL form they discover (Phase 3 i18n). */
+const LOCALIZED_DISALLOW = [
+  "/account",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/search",
+  "/booking/",
+];
+
+/* Locale-exempt in the proxy (never prefixed) — disallowed bare. */
+const EXEMPT_DISALLOW = ["/admin", "/api/"];
+
 export default function robots(): MetadataRoute.Robots {
+  const disallow = [
+    ...LOCALIZED_DISALLOW,
+    ...locales.flatMap((loc) => LOCALIZED_DISALLOW.map((path) => `/${loc}${path}`)),
+    ...EXEMPT_DISALLOW,
+  ];
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: [
-        "/account",
-        "/login",
-        "/register",
-        "/forgot-password",
-        "/reset-password",
-        "/verify-email",
-        "/search",
-        "/booking/",
-        "/admin",
-        "/api/",
-      ],
+      disallow,
     },
     sitemap: `${base}/sitemap.xml`,
     host: base,

@@ -52,7 +52,13 @@ export function FormError({ message }: { message: string | null | undefined }) {
   );
 }
 
-export function SubmitButton({ children }: { children: React.ReactNode }) {
+export function SubmitButton({
+  children,
+  pendingLabel = "Please wait…",
+}: {
+  children: React.ReactNode;
+  pendingLabel?: string;
+}) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -60,7 +66,7 @@ export function SubmitButton({ children }: { children: React.ReactNode }) {
       disabled={pending}
       className="w-full rounded-full bg-nile px-6 py-3 text-btn text-white transition-colors hover:bg-nile/90 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? "Please wait…" : children}
+      {pending ? pendingLabel : children}
     </button>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, type JSX } from "react";
-import { submitContactAction, type ContactState } from "@/app/(site)/contact/actions";
+import { submitContactAction, type ContactState } from "@/app/[lang]/(site)/contact/actions";
 import { FormError, SubmitButton } from "@/components/account/ui";
 import { CONTACT_LIMITS } from "@/content/contact-schema";
 

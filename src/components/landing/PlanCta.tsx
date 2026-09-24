@@ -5,7 +5,7 @@
  * Crop set §1.4.2: 1095/1620 -> 1562/847 (>=744) -> 1988/1078 (>=1440).
  * Analytics hook (§7.5 vocabulary): data-ptah-type / data-ptah-value.
  */
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import type { JSX } from "react";
 import MultiCropImage from "@/components/site/MultiCropImage";
 import type { PlanCtaBlock } from "@/content/landing";

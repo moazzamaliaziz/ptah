@@ -67,7 +67,14 @@ export const tourInputSchema = z.object({
   descriptionLong: z.string().trim().min(1, "Description is required.").max(20000),
   durationDays: z.number().int().min(1, "At least one day.").max(365),
   basePriceCents: z.number().int().min(0, "Price cannot be negative.").max(1_000_000_00),
+  // Per-passenger-type prices (P4). null ⇒ that type is NOT offered on this tour
+  // (stepper hidden in the funnel); 0 is a valid free price. Adult uses basePriceCents.
+  childPriceCents: z.number().int().min(0, "Price cannot be negative.").max(1_000_000_00).nullable(),
+  infantPriceCents: z.number().int().min(0, "Price cannot be negative.").max(1_000_000_00).nullable(),
   currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, "Currency must be a 3-letter code (e.g. USD)."),
+  // When true, the public funnel shows a "booking paused" notice and the
+  // transactional core rejects new reservations (defense in depth).
+  bookingClosed: z.boolean(),
   difficulty: z.enum(DIFFICULTIES),
   tags: z.array(z.enum(TOUR_TAGS)).max(TOUR_TAGS.length),
   heroImage: imageSrc.nullable(),

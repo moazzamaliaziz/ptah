@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "ghost-dark" | "ghost-light";

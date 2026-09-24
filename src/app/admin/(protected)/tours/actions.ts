@@ -56,6 +56,10 @@ function readTourInput(fd: FormData): Record<string, unknown> {
   const cents = dollarsToCents(str(fd, "basePrice"));
   const ctaLabel = emptyToNull(str(fd, "ctaLabel"));
   const ctaHref = emptyToNull(str(fd, "ctaHref"));
+  // Optional per-type prices: blank → null (type not offered); a non-blank
+  // unparseable value → NaN so zod rejects it. Mirrors readDeparture's override.
+  const childRaw = str(fd, "childPrice").trim();
+  const infantRaw = str(fd, "infantPrice").trim();
   return {
     slug: str(fd, "slug"),
     title: str(fd, "title"),
@@ -63,7 +67,11 @@ function readTourInput(fd: FormData): Record<string, unknown> {
     descriptionLong: str(fd, "descriptionLong"),
     durationDays: Number.parseInt(str(fd, "durationDays"), 10),
     basePriceCents: cents ?? Number.NaN,
+    childPriceCents: childRaw === "" ? null : (dollarsToCents(childRaw) ?? Number.NaN),
+    infantPriceCents: infantRaw === "" ? null : (dollarsToCents(infantRaw) ?? Number.NaN),
     currency: str(fd, "currency") || "USD",
+    // Single checkbox: an unchecked box posts nothing, a checked one posts "on".
+    bookingClosed: str(fd, "bookingClosed") === "on",
     difficulty: str(fd, "difficulty"),
     // Checkbox group: each checked box posts its value under "tags".
     tags: fd.getAll("tags").map((v) => String(v)),

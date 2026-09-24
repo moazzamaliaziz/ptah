@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import type { TourListItem } from "@/server/catalog";
 import { formatPriceCents } from "@/lib/utils";
 import WishlistButton from "@/components/account/WishlistButton";

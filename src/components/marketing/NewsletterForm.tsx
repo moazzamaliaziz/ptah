@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, type JSX } from "react";
-import { subscribeNewsletterAction, type NewsletterState } from "@/app/(site)/newsletter/actions";
+import { subscribeNewsletterAction, type NewsletterState } from "@/app/[lang]/(site)/newsletter/actions";
 import { FormError, SubmitButton } from "@/components/account/ui";
 
 const INITIAL: NewsletterState = { ok: false, error: null };

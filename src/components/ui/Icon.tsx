@@ -19,6 +19,7 @@ export type IconName =
   | "mail"
   | "bookmark"
   | "user"
+  | "globe"
   /* quick-links / KBYG iconKeys (content module vocabulary) */
   | "calendar"
   | "weather"
@@ -53,6 +54,7 @@ const GLYPHS: Record<IconName, Glyph> = {
   mail: { stroke: "M3.5 6.5h17v11h-17zM3.8 7l8.2 6 8.2-6" },
   bookmark: { stroke: "M6.5 3.5h11V21L12 17.2 6.5 21z" },
   user: { stroke: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8.5a7 7 0 0 1 14 0" },
+  globe: { stroke: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.2 12h17.6M12 3c3.5 4.7 3.5 13.3 0 18M12 3c-3.5 4.7-3.5 13.3 0 18" },
   calendar: { stroke: "M5 5.5h14V20H5zM5 9.5h14M8.5 3.5v4M15.5 3.5v4M8.5 13h3M12.5 13h3M8.5 16.5h3M12.5 16.5h3" },
   weather: { stroke: "M17 12a5 5 0 1 1-9.9 1H7a4 4 0 1 0 .6 7.95h9.8A3.5 3.5 0 0 0 17 12Zm1-5.9V4M20.8 8.2l1.5-1.5M21.5 12.5H23M18.3 5.7l1.5-1.5" },
   ticket: { stroke: "M3.5 8.5a2 2 0 0 0 0 7V19a1 1 0 0 0 1 1h15a1 1 0 0 0 1-1v-3.5a2 2 0 0 1 0-7V5a1 1 0 0 0-1-1h-15a1 1 0 0 0-1 1zM13.5 5v2.2m0 3.6v2.4m0 3.6V19" },

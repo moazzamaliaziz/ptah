@@ -3,6 +3,8 @@ import { env } from "@/lib/env";
 import { listPublishedTourSlugs } from "@/server/catalog";
 import { listPublishedEventSlugs, listPublishedTripIdeaSlugs } from "@/server/events";
 import { logger } from "@/lib/logger";
+import { locales, localeHtmlLang, defaultLocale } from "@/i18n/config";
+import { localizePath } from "@/i18n/routing";
 
 /**
  * Dynamic sitemap (Phase 5, Q15). Lists the indexable public surface only —
@@ -37,15 +39,39 @@ const STATIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[numb
   { path: "/disclaimer", changeFrequency: "yearly", priority: 0.3 },
 ];
 
+/**
+ * A sitemap entry for a locale-agnostic path. The canonical `url` is the
+ * default-locale URL (`/en/...`); `alternates.languages` lists every locale's
+ * localized URL plus `x-default` (also the default locale) so search engines
+ * surface the right language version (Phase 3 i18n). All public URLs are now
+ * locale-prefixed, matching the proxy's negotiation redirect.
+ */
+function localizedEntry(
+  path: string,
+  lastModified: Date,
+  changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"],
+  priority: number,
+): MetadataRoute.Sitemap[number] {
+  const languages: Record<string, string> = {};
+  for (const loc of locales) {
+    languages[localeHtmlLang[loc]] = `${base}${localizePath(path, loc)}`;
+  }
+  languages["x-default"] = `${base}${localizePath(path, defaultLocale)}`;
+  return {
+    url: `${base}${localizePath(path, defaultLocale)}`,
+    lastModified,
+    changeFrequency,
+    priority,
+    alternates: { languages },
+  };
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
-    url: `${base}${r.path}`,
-    lastModified: now,
-    changeFrequency: r.changeFrequency,
-    priority: r.priority,
-  }));
+  const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) =>
+    localizedEntry(r.path, now, r.changeFrequency, r.priority),
+  );
 
   // Fetch the three dynamic slug sets in parallel; each degrades independently
   // (a DB hiccup drops that section rather than 500-ing the whole sitemap).
@@ -64,26 +90,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   ]);
 
-  const tourEntries: MetadataRoute.Sitemap = tourSlugs.map((slug) => ({
-    url: `${base}/tours/${slug}`,
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.8,
-  }));
+  const tourEntries: MetadataRoute.Sitemap = tourSlugs.map((slug) =>
+    localizedEntry(`/tours/${slug}`, now, "weekly", 0.8),
+  );
 
-  const tripIdeaEntries: MetadataRoute.Sitemap = tripIdeaSlugs.map((slug) => ({
-    url: `${base}/trip-ideas/${slug}`,
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.6,
-  }));
+  const tripIdeaEntries: MetadataRoute.Sitemap = tripIdeaSlugs.map((slug) =>
+    localizedEntry(`/trip-ideas/${slug}`, now, "weekly", 0.6),
+  );
 
-  const eventEntries: MetadataRoute.Sitemap = eventSlugs.map((slug) => ({
-    url: `${base}/events/${slug}`,
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.6,
-  }));
+  const eventEntries: MetadataRoute.Sitemap = eventSlugs.map((slug) =>
+    localizedEntry(`/events/${slug}`, now, "weekly", 0.6),
+  );
 
   return [...staticEntries, ...tourEntries, ...tripIdeaEntries, ...eventEntries];
 }

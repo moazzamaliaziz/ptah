@@ -28,37 +28,106 @@ import { writeAudit } from "@/server/audit";
 import { sendEmail } from "@/server/email/mailer";
 import { bookingConfirmationEmail } from "@/server/email/templates";
 import { formatPriceCents } from "@/lib/utils";
+import { localizePath } from "@/i18n/routing";
+import type { Locale } from "@/i18n/config";
 import {
   MAX_SEATS,
   MIN_SEATS,
+  PASSENGER_TYPES,
   ReserveError,
+  assertValidCounts,
+  evaluateCoupon,
+  priceBooking,
   reserveSeatsWith,
+  type CouponRejectionReason,
+  type PassengerCounts,
+  type PassengerType,
+  type PriceBreakdown,
+  type PriceLine,
   type ReserveFailureReason,
+  type TourPricing,
 } from "@/server/booking-core";
 
 export { MAX_SEATS, MIN_SEATS, ReserveError, type ReserveFailureReason };
 
+/** Gateway-facing (Stripe/PayPal) English labels for passenger types. The
+ *  customer-facing UI uses the localized labels from the page dictionary; these
+ *  only appear on the payment provider's checkout/line items. */
+const PAX_LABEL: Record<PassengerType, string> = {
+  adult: "Adult",
+  child: "Child",
+  infant: "Infant",
+};
+
 // ── Validation ────────────────────────────────────────────────────────────
+
+/**
+ * Billing address captured at checkout and stored inside the existing
+ * Booking.contactInfo JSON (no schema column). Country is an ISO 3166-1 alpha-2
+ * code (the <select> value), normalised to upper-case; the rest are free text
+ * with sane length caps. line2 is optional.
+ */
+export const billingAddressSchema = z.object({
+  line1: z.string().trim().min(1, "Enter your billing address").max(200),
+  line2: z.string().trim().max(200).optional(),
+  city: z.string().trim().min(1, "Enter your city").max(120),
+  region: z.string().trim().min(1, "Enter your state or region").max(120),
+  postalCode: z.string().trim().min(1, "Enter your postal or ZIP code").max(32),
+  country: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{2}$/, "Select your country")
+    .transform((c) => c.toUpperCase()),
+});
+export type BillingAddress = z.infer<typeof billingAddressSchema>;
 
 export const contactSchema = z.object({
   fullName: z.string().trim().min(2, "Please enter your full name").max(160),
   email: z.email("Enter a valid email address").max(255),
   phone: z.string().trim().min(5, "Enter a contact phone number").max(40),
   notes: z.string().trim().max(2000).optional(),
+  /** P4 optional free-text pickup point/hotel. Stored in contactInfo, no column. */
+  pickup: z.string().trim().max(200).optional(),
+  billing: billingAddressSchema,
 });
 export type ContactInfo = z.infer<typeof contactSchema>;
 
-export const createBookingSchema = z.object({
-  departureId: z.uuid("Choose a departure date"),
-  seats: z.coerce.number().int().min(MIN_SEATS).max(MAX_SEATS),
-  contact: contactSchema,
-});
+export const createBookingSchema = z
+  .object({
+    departureId: z.uuid("Choose a departure date"),
+    // P4 per-passenger-type counts. At least one adult; the total is bounded by
+    // MAX_SEATS via the refine below (booking-core re-validates as the SSOT).
+    adults: z.coerce.number().int().min(1, "At least one adult is required").max(MAX_SEATS),
+    children: z.coerce.number().int().min(0).max(MAX_SEATS),
+    infants: z.coerce.number().int().min(0).max(MAX_SEATS),
+    // P5 optional discount code. Empty/whitespace → no coupon; otherwise
+    // normalised (trim + upper) so lookups are case-insensitive. Re-validated
+    // atomically at reserve time — this only shapes the input.
+    coupon: z
+      .string()
+      .trim()
+      .max(40)
+      .optional()
+      .transform((c) => (c ? c.toUpperCase() : undefined)),
+    contact: contactSchema,
+  })
+  .refine((d) => d.adults + d.children + d.infants <= MAX_SEATS, {
+    message: `Up to ${MAX_SEATS} travelers per booking.`,
+    path: ["adults"],
+  });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 // ── Result types ──────────────────────────────────────────────────────────
 
 export type BookingResult =
-  | { ok: true; bookingId: string; totalCents: number; currency: string }
+  | {
+      ok: true;
+      bookingId: string;
+      totalCents: number;
+      currency: string;
+      discountCents: number;
+      couponCode: string | null;
+    }
   | { ok: false; reason: ReserveFailureReason | "INVALID_INPUT"; message: string };
 
 export type CheckoutResult =
@@ -74,7 +143,38 @@ const RESERVE_MESSAGES: Record<ReserveFailureReason, string> = {
   DEPARTURE_NOT_OPEN: "That departure is no longer open for booking.",
   INVALID_SEATS: "The number of travelers is invalid.",
   SOLD_OUT: "Not enough seats remain on that departure.",
+  BOOKING_CLOSED: "This tour is not accepting online bookings right now. Please contact us to arrange your trip.",
+  PRICE_UNAVAILABLE: "One of the selected traveler types is not available on this tour.",
+  COUPON_INVALID: "That discount code is not valid for this booking. Remove it or enter a different code.",
 };
+
+/**
+ * Parse the frozen price breakdown stored on a booking (Booking.pricing JSON).
+ * Returns null for legacy bookings made before P4 (no breakdown) or any shape
+ * that does not validate, so callers can fall back to the single-line pricing.
+ */
+function readBreakdown(value: unknown): PriceBreakdown | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  if (!Array.isArray(v.items) || typeof v.totalCents !== "number" || typeof v.currency !== "string") {
+    return null;
+  }
+  const items: PriceLine[] = [];
+  for (const raw of v.items) {
+    if (!raw || typeof raw !== "object") return null;
+    const o = raw as Record<string, unknown>;
+    if (
+      typeof o.type !== "string" ||
+      !(PASSENGER_TYPES as readonly string[]).includes(o.type) ||
+      typeof o.count !== "number" ||
+      typeof o.unitCents !== "number"
+    ) {
+      return null;
+    }
+    items.push({ type: o.type as PassengerType, count: o.count, unitCents: o.unitCents });
+  }
+  return { items, totalCents: v.totalCents, currency: v.currency };
+}
 
 // ── Create a pending booking (atomic seat claim) ────────────────────────────
 
@@ -89,20 +189,26 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
     const first = parsed.error.issues[0];
     return { ok: false, reason: "INVALID_INPUT", message: first?.message ?? "Invalid booking details." };
   }
-  const { departureId, seats, contact } = parsed.data;
+  const { departureId, adults, children, infants, coupon, contact } = parsed.data;
+  const counts: PassengerCounts = { adult: adults, child: children, infant: infants };
 
   const user = await getSessionUser();
   const userId = user?.id ?? null;
   // Guest email drives confirmation for anonymous bookings; a logged-in booking
   // still records the contact email in contactInfo.
   const guestEmail = userId ? null : contact.email.toLowerCase();
+  // Origin country for P7 reporting: the billing country is our best proxy for
+  // where the traveler is booking from. Already ISO alpha-2, uppercased by zod.
+  const originCountry = contact.billing.country;
 
   try {
     const reserved = await reserveSeatsWith(db, {
       departureId,
-      seats,
+      counts,
       userId,
       guestEmail,
+      originCountry,
+      couponCode: coupon ?? null,
       contactInfo: contact as unknown as Prisma.InputJsonValue,
     });
 
@@ -111,7 +217,17 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
       action: "booking.create",
       entity: "Booking",
       entityId: reserved.bookingId,
-      meta: { departureId, seats, totalCents: reserved.totalCents, guest: !userId },
+      meta: {
+        departureId,
+        seats: reserved.seats,
+        counts: { ...counts },
+        totalCents: reserved.totalCents,
+        ...(reserved.couponCode
+          ? { couponCode: reserved.couponCode, discountCents: reserved.discountCents }
+          : {}),
+        originCountry,
+        guest: !userId,
+      },
     });
 
     return {
@@ -119,6 +235,8 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
       bookingId: reserved.bookingId,
       totalCents: reserved.totalCents,
       currency: reserved.currency,
+      discountCents: reserved.discountCents,
+      couponCode: reserved.couponCode,
     };
   } catch (error) {
     if (error instanceof ReserveError) {
@@ -129,6 +247,114 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
   }
 }
 
+// ── Coupon live preview ─────────────────────────────────────────────────────
+
+/** Friendly, customer-facing reasons a previewed coupon did not apply. */
+const COUPON_REJECTION_MESSAGES: Record<CouponRejectionReason, string> = {
+  INACTIVE: "This code is not active.",
+  NOT_STARTED: "This code is not active yet.",
+  EXPIRED: "This code has expired.",
+  CURRENCY_MISMATCH: "This code can’t be used for this tour’s currency.",
+  MIN_SPEND: "Your total is below the minimum spend for this code.",
+  LIMIT_REACHED: "This code has reached its usage limit.",
+};
+
+const validateCouponSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .min(1, "Enter a discount code")
+      .max(40)
+      .transform((c) => c.toUpperCase()),
+    departureId: z.uuid("Choose a departure date"),
+    adults: z.coerce.number().int().min(1).max(MAX_SEATS),
+    children: z.coerce.number().int().min(0).max(MAX_SEATS),
+    infants: z.coerce.number().int().min(0).max(MAX_SEATS),
+  })
+  .refine((d) => d.adults + d.children + d.infants <= MAX_SEATS, {
+    message: `Up to ${MAX_SEATS} travelers per booking.`,
+    path: ["adults"],
+  });
+
+export type CouponPreview =
+  | { ok: true; code: string; discountCents: number; netCents: number; grossCents: number; currency: string }
+  | { ok: false; message: string };
+
+/**
+ * Live-preview a discount code against a specific departure + passenger mix,
+ * WITHOUT reserving anything. Prices the gross exactly as the reserve path does
+ * (departure override ?? base, per passenger type) then runs the same pure
+ * `evaluateCoupon`, so the previewed number always matches what the customer is
+ * finally charged. Read-only: it never creates a booking or claims seats; the
+ * authoritative check still happens atomically inside `reserveSeatsWith`.
+ */
+export async function validateCoupon(raw: unknown): Promise<CouponPreview> {
+  const parsed = validateCouponSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid discount code." };
+  }
+  const { code, departureId, adults, children, infants } = parsed.data;
+  const counts: PassengerCounts = { adult: adults, child: children, infant: infants };
+
+  try {
+    assertValidCounts(counts);
+  } catch {
+    return { ok: false, message: "Choose your travelers before applying a code." };
+  }
+
+  const dep = await db.tourDeparture.findUnique({
+    where: { id: departureId },
+    select: {
+      priceOverrideCents: true,
+      tour: {
+        select: {
+          basePriceCents: true,
+          childPriceCents: true,
+          infantPriceCents: true,
+          currency: true,
+          bookingClosed: true,
+        },
+      },
+    },
+  });
+  if (!dep) return { ok: false, message: "That departure could not be found." };
+  if (dep.tour.bookingClosed) {
+    return { ok: false, message: "This tour is not accepting online bookings right now." };
+  }
+
+  const pricing: TourPricing = {
+    adultCents: dep.priceOverrideCents ?? dep.tour.basePriceCents,
+    childCents: dep.tour.childPriceCents,
+    infantCents: dep.tour.infantPriceCents,
+    currency: dep.tour.currency,
+  };
+  let grossCents: number;
+  try {
+    grossCents = priceBooking(counts, pricing).totalCents;
+  } catch {
+    return { ok: false, message: "One of the selected traveler types is not available on this tour." };
+  }
+
+  const coupon = await db.coupon.findUnique({ where: { code } });
+  if (!coupon) return { ok: false, message: "That discount code was not recognised." };
+
+  const redemptions = await db.booking.count({
+    where: { couponCode: coupon.code, status: { notIn: ["FAILED", "CANCELLED"] } },
+  });
+  const outcome = evaluateCoupon({ coupon, grossCents, currency: dep.tour.currency, redemptions });
+  if (!outcome.ok) return { ok: false, message: COUPON_REJECTION_MESSAGES[outcome.reason] };
+
+  return {
+    ok: true,
+    code: coupon.code,
+    discountCents: outcome.discountCents,
+    netCents: outcome.netCents,
+    grossCents,
+    currency: dep.tour.currency,
+  };
+}
+
 // ── Start Stripe Checkout for a pending booking ─────────────────────────────
 
 /**
@@ -136,7 +362,7 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
  * persist a Payment row keyed by the session id. Returns the redirect URL.
  * Payments-unavailable (no Stripe configured) is a clean, non-throwing result.
  */
-export async function startStripeCheckout(bookingId: string): Promise<CheckoutResult> {
+export async function startStripeCheckout(bookingId: string, locale: Locale): Promise<CheckoutResult> {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     select: {
@@ -145,6 +371,9 @@ export async function startStripeCheckout(bookingId: string): Promise<CheckoutRe
       seats: true,
       totalCents: true,
       currency: true,
+      pricing: true,
+      discountCents: true,
+      couponCode: true,
       guestEmail: true,
       contactInfo: true,
       departure: { select: { startDate: true, tour: { select: { title: true, slug: true } } } },
@@ -170,7 +399,6 @@ export async function startStripeCheckout(bookingId: string): Promise<CheckoutRe
     };
   }
 
-  const unitAmount = Math.round(booking.totalCents / booking.seats);
   const contactEmail =
     booking.guestEmail ??
     (booking.contactInfo && typeof booking.contactInfo === "object" && "email" in booking.contactInfo
@@ -179,31 +407,59 @@ export async function startStripeCheckout(bookingId: string): Promise<CheckoutRe
   const baseUrl = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
   const departureLabel = booking.departure.startDate.toISOString().slice(0, 10);
 
+  // P4: one Stripe line item per passenger type from the frozen breakdown (its
+  // line totals sum EXACTLY to totalCents). Legacy bookings without a breakdown
+  // fall back to the original single line at the average per-seat amount.
+  // P5: when a coupon discounted the order, the GROSS breakdown no longer sums
+  // to the NET `totalCents`, and Stripe has no clean per-line discount here, so
+  // we collapse to ONE line item at the net total (the code is named for the
+  // buyer). PayPal/bank read `totalCents` directly and need no such handling.
+  const breakdown = readBreakdown(booking.pricing);
+  const discounted = booking.discountCents > 0;
+  const lineItems =
+    !discounted && breakdown && breakdown.items.length > 0
+      ? breakdown.items.map((line) => ({
+          quantity: line.count,
+          price_data: {
+            currency: booking.currency.toLowerCase(),
+            unit_amount: line.unitCents,
+            product_data: {
+              name: `${booking.departure.tour.title} — ${PAX_LABEL[line.type]}`,
+              description: `Departure ${departureLabel}`,
+            },
+          },
+        }))
+      : [
+          {
+            quantity: 1,
+            price_data: {
+              currency: booking.currency.toLowerCase(),
+              // Net total as a single unit (never divide — a discounted total
+              // rarely splits evenly across seats and must reconcile to the cent).
+              unit_amount: booking.totalCents,
+              product_data: {
+                name: booking.departure.tour.title,
+                description: discounted
+                  ? `Departure ${departureLabel} · ${booking.seats} traveler(s) · code ${booking.couponCode} applied`
+                  : `Departure ${departureLabel} · ${booking.seats} traveler(s)`,
+              },
+            },
+          },
+        ];
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       client_reference_id: booking.id,
       customer_email: contactEmail,
-      line_items: [
-        {
-          quantity: booking.seats,
-          price_data: {
-            currency: booking.currency.toLowerCase(),
-            unit_amount: unitAmount,
-            product_data: {
-              name: booking.departure.tour.title,
-              description: `Departure ${departureLabel} · ${booking.seats} traveler(s)`,
-            },
-          },
-        },
-      ],
+      line_items: lineItems,
       metadata: {
         bookingId: booking.id,
         tourSlug: booking.departure.tour.slug,
         seats: String(booking.seats),
       },
-      success_url: `${baseUrl}/booking/success?booking=${booking.id}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/booking/cancelled?booking=${booking.id}`,
+      success_url: `${baseUrl}${localizePath("/booking/success", locale)}?booking=${booking.id}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}${localizePath("/booking/cancelled", locale)}?booking=${booking.id}`,
       // Expire abandoned sessions in 30 min so seats can be released by the
       // checkout.session.expired webhook.
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
@@ -281,12 +537,19 @@ export async function startBankTransfer(bookingId: string): Promise<BankTransfer
  * exactly once (status-guarded), the bank_transfer payment → SUCCEEDED, audit,
  * and the confirmation email on the winning transition. Seats were already
  * claimed at reserve time, so confirmation changes no capacity.
+ *
+ * `reference` (optional) is the admin's proof-of-receipt note — a bank transfer
+ * confirmation code, the payer's name, etc. Offline payments carry no gateway
+ * id, so it is recorded on the Payment.raw JSON (no schema column) and echoed
+ * into the audit meta for the status-history trail.
  */
 export async function confirmBankTransferBooking(params: {
   bookingId: string;
   actorId: string;
+  reference?: string;
 }): Promise<{ ok: boolean }> {
   const { bookingId, actorId } = params;
+  const reference = params.reference?.trim().slice(0, 200) || undefined;
   const confirmed = await db.$transaction(async (tx) => {
     const flip = await tx.booking.updateMany({
       where: { id: bookingId, status: "PENDING_PAYMENT" },
@@ -296,7 +559,10 @@ export async function confirmBankTransferBooking(params: {
 
     await tx.payment.updateMany({
       where: { bookingId, method: "bank_transfer", status: "PENDING" },
-      data: { status: "SUCCEEDED" },
+      data: {
+        status: "SUCCEEDED",
+        ...(reference ? { raw: { reference, source: "admin.confirm" } } : {}),
+      },
     });
 
     await writeAudit({
@@ -304,7 +570,7 @@ export async function confirmBankTransferBooking(params: {
       action: "booking.confirm",
       entity: "Booking",
       entityId: bookingId,
-      meta: { via: "admin.bank_transfer" },
+      meta: { via: "admin.bank_transfer", ...(reference ? { reference } : {}) },
     });
     return true;
   });
@@ -323,7 +589,7 @@ export async function confirmBankTransferBooking(params: {
  * The admin PAYMENTS_PAYPAL_ENABLED toggle is authoritative even when creds
  * exist. Same clean PAYMENTS_UNAVAILABLE degradation as Stripe.
  */
-export async function startPaypalCheckout(bookingId: string): Promise<CheckoutResult> {
+export async function startPaypalCheckout(bookingId: string, locale: Locale): Promise<CheckoutResult> {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     select: {
@@ -355,8 +621,8 @@ export async function startPaypalCheckout(bookingId: string): Promise<CheckoutRe
     currency: booking.currency,
     referenceId: booking.id,
     description: `${booking.departure.tour.title} · ${booking.seats} traveler(s)`,
-    returnUrl: `${baseUrl}/booking/paypal-return?booking=${booking.id}`,
-    cancelUrl: `${baseUrl}/booking/cancelled?booking=${booking.id}`,
+    returnUrl: `${baseUrl}${localizePath("/booking/paypal-return", locale)}?booking=${booking.id}`,
+    cancelUrl: `${baseUrl}${localizePath("/booking/cancelled", locale)}?booking=${booking.id}`,
   });
   if (!order) {
     return { ok: false, reason: "GATEWAY_ERROR", message: "Could not start PayPal checkout. Please try again." };
@@ -480,14 +746,22 @@ export async function confirmBookingPaid(params: {
         data: { status: "SUCCEEDED", intentId: intentId ?? undefined, raw },
       });
     } else {
+      // No prior Payment row for this session (rare — e.g. a webhook arriving
+      // for a booking whose checkout row was never written). Price the fallback
+      // row from the booking itself so a non-USD (e.g. EGP) booking is never
+      // mislabelled as USD.
+      const bk = await tx.booking.findUnique({
+        where: { id: bookingId },
+        select: { currency: true, totalCents: true },
+      });
       await tx.payment.create({
         data: {
           bookingId,
           sessionId: sessionId ?? undefined,
           intentId: intentId ?? undefined,
           method: "stripe",
-          amountCents: amountCents ?? 0,
-          currency: "USD",
+          amountCents: amountCents ?? bk?.totalCents ?? 0,
+          currency: bk?.currency ?? "USD",
           status: "SUCCEEDED",
           raw,
         },

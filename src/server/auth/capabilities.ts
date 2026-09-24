@@ -38,7 +38,12 @@ export type Capability =
   | "tripideas.edit"
   // Contact-form inbox (customer enquiries).
   | "enquiries.view"
-  | "enquiries.manage";
+  | "enquiries.manage"
+  // Discount coupons (P5): commercial config — admins manage, all staff view.
+  | "coupons.view"
+  | "coupons.edit"
+  // Reports & analytics (P7): revenue + booking figures — admins only.
+  | "reports.view";
 
 /** Which roles hold each capability. Absence = denied (no implicit bypass). */
 export const CAPABILITY_MATRIX: Record<Capability, readonly Role[]> = {
@@ -73,6 +78,12 @@ export const CAPABILITY_MATRIX: Record<Capability, readonly Role[]> = {
   // (customer PII is a support/admin concern, not content editing).
   "enquiries.view": ["SUPER_ADMIN", "ADMIN", "SUPPORT"],
   "enquiries.manage": ["SUPER_ADMIN", "ADMIN"],
+  // Coupons: money-affecting discount rules. Admins create/edit; all staff can
+  // view them (support needs to see a code's terms when helping a customer).
+  "coupons.view": ["SUPER_ADMIN", "ADMIN", "EDITOR", "SUPPORT"],
+  "coupons.edit": ["SUPER_ADMIN", "ADMIN"],
+  // Reports: revenue is a finance/ownership concern — admins only.
+  "reports.view": ["SUPER_ADMIN", "ADMIN"],
 };
 
 export function can(user: { role: Role } | null | undefined, cap: Capability): boolean {

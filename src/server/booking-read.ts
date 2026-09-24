@@ -5,6 +5,7 @@
  */
 import "server-only";
 import { db } from "@/lib/db";
+import { parsePriceBreakdown, type PriceBreakdown } from "@/server/booking-core";
 
 export interface BookingOutcome {
   id: string;
@@ -22,6 +23,13 @@ export interface BookingOutcome {
    * the full PII email — the booker still recognizes their own masked address.
    */
   contactEmailMasked: string | null;
+  /** Frozen per-passenger-type price breakdown, or null for legacy bookings. */
+  pricing: PriceBreakdown | null;
+  /** P5: discount applied at checkout (minor units); 0 when no coupon. The
+   *  breakdown lines sum to the GROSS; `totalCents` is already the NET charge. */
+  discountCents: number;
+  /** Coupon code applied, or null. */
+  couponCode: string | null;
 }
 
 /** `john@example.com` → `j***@example.com`; keeps the domain for recognition. */
@@ -85,6 +93,9 @@ export async function getBookingOutcome(bookingId: string): Promise<BookingOutco
       currency: true,
       guestEmail: true,
       contactInfo: true,
+      pricing: true,
+      discountCents: true,
+      couponCode: true,
       departure: {
         select: { startDate: true, endDate: true, tour: { select: { title: true, slug: true } } },
       },
@@ -103,6 +114,9 @@ export async function getBookingOutcome(bookingId: string): Promise<BookingOutco
     startDate: booking.departure.startDate,
     endDate: booking.departure.endDate,
     contactEmailMasked: maskEmail(contactEmailOf(booking)),
+    pricing: parsePriceBreakdown(booking.pricing),
+    discountCents: booking.discountCents,
+    couponCode: booking.couponCode,
   };
 }
 
@@ -130,6 +144,13 @@ export interface BookingTracking {
   startDate: Date;
   endDate: Date;
   createdAt: Date;
+  /** Frozen per-passenger-type price breakdown, or null for legacy bookings. */
+  pricing: PriceBreakdown | null;
+  /** P5: discount applied at checkout (minor units); 0 when no coupon. The
+   *  breakdown lines sum to the GROSS; `totalCents` is already the NET charge. */
+  discountCents: number;
+  /** Coupon code applied, or null. */
+  couponCode: string | null;
 }
 
 /**
@@ -154,6 +175,9 @@ export async function lookupBooking(reference: string, email: string): Promise<B
       guestEmail: true,
       contactInfo: true,
       createdAt: true,
+      pricing: true,
+      discountCents: true,
+      couponCode: true,
       departure: {
         select: { startDate: true, endDate: true, tour: { select: { title: true, slug: true } } },
       },
@@ -175,5 +199,8 @@ export async function lookupBooking(reference: string, email: string): Promise<B
     startDate: booking.departure.startDate,
     endDate: booking.departure.endDate,
     createdAt: booking.createdAt,
+    pricing: parsePriceBreakdown(booking.pricing),
+    discountCents: booking.discountCents,
+    couponCode: booking.couponCode,
   };
 }

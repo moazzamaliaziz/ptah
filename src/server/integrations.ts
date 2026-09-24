@@ -33,6 +33,8 @@ export interface IntegrationField {
   /** Secret fields are write-only from the UI: never returned, masked as "set". */
   secret: boolean;
   placeholder?: string;
+  /** Optional plain-language help shown as a "?" hint next to the field (P8). */
+  help?: string;
 }
 
 export interface IntegrationDef {
@@ -44,13 +46,20 @@ export interface IntegrationDef {
 
 /** Registry of all 20 integrations — the seed's INTEGRATION_KEYS, described. */
 export const INTEGRATIONS: readonly IntegrationDef[] = [
-  { key: "GA4", label: "Google Analytics 4", category: "analytics", fields: [{ name: "MEASUREMENT_ID", label: "Measurement ID", secret: false, placeholder: "G-XXXXXXX" }] },
+  { key: "GA4", label: "Google Analytics 4", category: "analytics", fields: [
+    { name: "MEASUREMENT_ID", label: "Measurement ID (site tag)", secret: false, placeholder: "G-XXXXXXX", help: "Starts with 'G-'. This turns on visitor tracking on the public site. Found in Google Analytics under Admin → Data streams." },
+    // Data API (server-side reporting for the admin Reports page). Optional —
+    // only needed to show website traffic by country; the site tag works alone.
+    { name: "PROPERTY_ID", label: "Property ID (Data API)", secret: false, placeholder: "123456789", help: "Only needed to show website traffic on the Reports page. The numeric property ID from Google Analytics → Admin → Property settings." },
+    { name: "SA_CLIENT_EMAIL", label: "Service-account email (Data API)", secret: false, placeholder: "reporting@project.iam.gserviceaccount.com", help: "From a Google Cloud service-account JSON key file (the 'client_email' field). Give this email 'Viewer' access to the Analytics property." },
+    { name: "SA_PRIVATE_KEY", label: "Service-account private key (Data API)", secret: true, placeholder: "-----BEGIN PRIVATE KEY-----", help: "The 'private_key' from the same JSON key file. Paste the whole thing including the BEGIN/END lines. Stored encrypted." },
+  ] },
   { key: "GTM", label: "Google Tag Manager", category: "analytics", fields: [{ name: "CONTAINER_ID", label: "Container ID", secret: false, placeholder: "GTM-XXXXXX" }] },
   { key: "META_PIXEL", label: "Meta Pixel", category: "analytics", fields: [{ name: "PIXEL_ID", label: "Pixel ID", secret: false }] },
   { key: "STRIPE", label: "Stripe", category: "payments", fields: [
     { name: "PUBLISHABLE_KEY", label: "Publishable key", secret: false, placeholder: "pk_live_…" },
     { name: "SECRET_KEY", label: "Secret key", secret: true, placeholder: "sk_live_…" },
-    { name: "WEBHOOK_SECRET", label: "Webhook signing secret", secret: true, placeholder: "whsec_…" },
+    { name: "WEBHOOK_SECRET", label: "Webhook signing secret", secret: true, placeholder: "whsec_…", help: "Starts with 'whsec_'. Stripe gives you this when you add the webhook endpoint. It lets the site trust that a payment update really came from Stripe." },
   ] },
   { key: "PAYMOB", label: "Paymob", category: "payments", fields: [
     { name: "API_KEY", label: "API key", secret: true },
@@ -59,8 +68,8 @@ export const INTEGRATIONS: readonly IntegrationDef[] = [
   { key: "PAYPAL", label: "PayPal", category: "payments", fields: [
     { name: "CLIENT_ID", label: "Client ID", secret: false },
     { name: "CLIENT_SECRET", label: "Client secret", secret: true },
-    { name: "ENVIRONMENT", label: "Environment (sandbox or live)", secret: false, placeholder: "sandbox" },
-    { name: "WEBHOOK_ID", label: "Webhook ID (for signature verification)", secret: false },
+    { name: "ENVIRONMENT", label: "Environment (sandbox or live)", secret: false, placeholder: "sandbox", help: "Type 'live' to take real payments, or 'sandbox' for testing. This must match the type of Client ID and Secret you entered above." },
+    { name: "WEBHOOK_ID", label: "Webhook ID (for signature verification)", secret: false, help: "The ID of the webhook you created in the PayPal dashboard. Lets the site confirm payment updates really came from PayPal." },
   ] },
   { key: "RECAPTCHA", label: "reCAPTCHA v3", category: "security", fields: [
     { name: "SITE_KEY", label: "Site key", secret: false },

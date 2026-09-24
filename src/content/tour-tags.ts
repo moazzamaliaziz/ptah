@@ -73,3 +73,43 @@ export function durationInBucket(durationDays: number, token: LengthToken): bool
  * Used by both the catalog filter and any "last-minute" surfacing.
  */
 export const DEPARTING_SOON_DAYS = 45;
+
+/**
+ * P6 advanced search — sort options (`?sort=`). "featured" keeps the default
+ * catalog order (newest first); the others are stable and URL-shareable.
+ */
+export const TOUR_SORTS = [
+  "featured",
+  "price-asc",
+  "price-desc",
+  "duration-asc",
+  "duration-desc",
+  "soonest",
+] as const;
+
+export type TourSort = (typeof TOUR_SORTS)[number];
+
+/** Default sort when none is supplied / an unknown value is passed. */
+export const DEFAULT_TOUR_SORT: TourSort = "featured";
+
+const TOUR_SORT_SET: ReadonlySet<string> = new Set(TOUR_SORTS);
+
+/** Type guard: is an arbitrary string one of the known sort tokens? */
+export function isTourSort(value: string): value is TourSort {
+  return TOUR_SORT_SET.has(value);
+}
+
+/**
+ * Tour difficulty levels — mirrors the Prisma `Difficulty` enum, kept here as
+ * plain string literals so page/param validation needs no Prisma import.
+ */
+export const TOUR_DIFFICULTIES = ["EASY", "MODERATE", "CHALLENGING"] as const;
+
+export type TourDifficulty = (typeof TOUR_DIFFICULTIES)[number];
+
+const DIFFICULTY_SET: ReadonlySet<string> = new Set(TOUR_DIFFICULTIES);
+
+/** Type guard: is an arbitrary string one of the known difficulty levels? */
+export function isTourDifficulty(value: string): value is TourDifficulty {
+  return DIFFICULTY_SET.has(value);
+}

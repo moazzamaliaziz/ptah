@@ -131,6 +131,52 @@
 
 .admin-cat { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.55; margin: 1.5rem 0 0.5rem; }
 
+/* ── Help hints (P8) ──────────────────────────────────────────────────────────
+   A small "?" chip that reveals a plain-language explanation on hover or keyboard
+   focus. Pure CSS, no client JS (admin screens are server components). The bubble
+   text resets the uppercase/tracking it may inherit inside table headers. */
+.admin-hint { position: relative; display: inline-flex; vertical-align: middle; margin-left: 0.3rem; }
+.admin-hint__trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: rgba(26, 35, 64, 0.12);
+  color: #1a2340;
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: help;
+  user-select: none;
+}
+.admin-hint__trigger:focus-visible { outline: 2px solid var(--color-gold, #d9822b); outline-offset: 1px; }
+.admin-hint__bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 240px;
+  background: #1a2340;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(26, 35, 64, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  z-index: 20;
+  pointer-events: none;
+}
+.admin-hint:hover .admin-hint__bubble,
+.admin-hint:focus-within .admin-hint__bubble { opacity: 1; visibility: visible; }
+
 /* ── Mid-desktop / tablet-landscape (769–1024px) ──────────────────────────────
    Between the phone stack (≤768px) and roomy desktop, the fixed 248px rail left
    the content column cramped. Narrow the rail a little so content breathes; it

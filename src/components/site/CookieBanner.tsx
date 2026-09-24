@@ -13,7 +13,8 @@
  * - Persistence: versioned localStorage record; "necessary" is always on.
  */
 import { useCallback, useEffect, useId, useRef, useState, type JSX } from "react";
-import { footerContent } from "@/content/landing";
+import type { FooterContent } from "@/content/landing";
+import type { CookieLabels } from "@/i18n/chrome";
 import { COOKIE_MANAGE_EVENT } from "@/components/site/CookieManageButton";
 
 const STORAGE_KEY = "ptah:cookie-consent:v1";
@@ -61,7 +62,14 @@ function saveConsent(state: ConsentState): void {
   }
 }
 
-export function CookieBanner(): JSX.Element | null {
+export interface CookieBannerProps {
+  /** Localized cookie copy (heading, body, category names/descriptions). */
+  content: FooterContent["cookie"];
+  /** Localized cookie control labels (buttons, aria, "necessary" strings). */
+  labels: CookieLabels;
+}
+
+export function CookieBanner({ content, labels }: CookieBannerProps): JSX.Element | null {
   // Two-phase mount: an element inserted already in its open pose has no
   // "before" computed style, so its CSS transition would never run. Mount
   // closed, then flip data-open on the next frame (design.md §4.8.13 entrance).
@@ -76,7 +84,6 @@ export function CookieBanner(): JSX.Element | null {
   const headingId = useId();
   const panelId = useId();
   const closeTimer = useRef<number | null>(null);
-  const content = footerContent.cookie;
 
   const openBanner = useCallback((showManage: boolean) => {
     setManaging(showManage);
@@ -176,7 +183,7 @@ export function CookieBanner(): JSX.Element | null {
   if (!mounted) return null;
 
   return (
-    <div className="cookie-banner" data-open={open} role="region" aria-label="Cookie consent">
+    <div className="cookie-banner" data-open={open} role="region" aria-label={labels.regionAria}>
       <div className="cookie-banner__inner" aria-labelledby={headingId}>
         <div className="cookie-banner__row">
           <div className="cookie-banner__copy">
@@ -187,7 +194,7 @@ export function CookieBanner(): JSX.Element | null {
           </div>
           <div className="cookie-banner__actions">
             <button type="button" className="pill pill--solid" onClick={acceptAll}>
-              Accept All
+              {labels.acceptAll}
             </button>
             <button
               type="button"
@@ -196,14 +203,14 @@ export function CookieBanner(): JSX.Element | null {
               aria-expanded={managing}
               aria-controls={panelId}
             >
-              Manage
+              {labels.manage}
             </button>
             <button
               type="button"
               className="cookie-manage text-meta"
               onClick={rejectAll}
             >
-              Reject All
+              {labels.rejectAll}
             </button>
           </div>
         </div>
@@ -214,10 +221,10 @@ export function CookieBanner(): JSX.Element | null {
               <input type="checkbox" id="cookie-cat-necessary" checked disabled />
               <div>
                 <label className="cookie-cat__name text-meta" htmlFor="cookie-cat-necessary">
-                  Strictly Necessary
+                  {labels.necessaryName}
                 </label>
                 <p className="cookie-cat__desc">
-                  Required for security, consent storage and core booking flows. Always on.
+                  {labels.necessaryDesc}
                 </p>
               </div>
             </div>
@@ -239,7 +246,7 @@ export function CookieBanner(): JSX.Element | null {
             ))}
             <div className="cookie-manage-actions">
               <button type="button" className="pill pill--solid" onClick={saveSelection}>
-                Save My Choices
+                {labels.saveChoices}
               </button>
             </div>
           </div>

@@ -38,6 +38,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { integrationCspOrigins } from "@/lib/integration-csp";
+import { defaultLocale, isLocale, locales, type Locale } from "@/i18n/config";
+import { localizePath, pathnameHasLocale, stripLocalePrefix } from "@/i18n/routing";
 
 /* Env override: force the strict nonce policy on EVERY matched path (backward
  * compatible with the previous global gate). With it unset, the strict policy
@@ -56,6 +58,55 @@ function isStrictSurface(pathname: string): boolean {
   return STRICT_SURFACE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+/* ── Locale routing (Phase 3 i18n) ───────────────────────────────────────────
+ * The public site is served under /{locale}/… . A request to a non-localized
+ * PUBLIC path is redirected to the visitor's negotiated locale; admin, API, the
+ * maintenance page, Next internals and file-like paths (robots.txt, sitemap.xml)
+ * are never localized. Negotiation order: NEXT_LOCALE cookie → Accept-Language →
+ * defaultLocale. The i18n modules are dependency-free, so importing them here
+ * does not violate the proxy's "no server-only imports" boundary. */
+const LOCALE_COOKIE = "NEXT_LOCALE";
+const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+
+/* Paths that must NOT receive a locale prefix (and so are never redirected). */
+function isLocaleExempt(pathname: string): boolean {
+  return (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname === "/maintenance" ||
+    pathname.startsWith("/maintenance/") ||
+    /\.[^/]+$/.test(pathname) // anything file-like (has an extension)
+  );
+}
+
+/* Best supported locale from cookie → Accept-Language → default. Minimal
+ * q-value parser kept inline so the proxy pulls no extra dependency. */
+function negotiateLocale(request: NextRequest): Locale {
+  const cookie = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (isLocale(cookie)) return cookie;
+
+  const header = request.headers.get("accept-language");
+  if (header) {
+    const ranked = header
+      .split(",")
+      .map((part) => {
+        const [tag, q] = part.trim().split(";q=");
+        return {
+          base: (tag ?? "").toLowerCase().split("-")[0] ?? "",
+          q: q ? Number.parseFloat(q) : 1,
+        };
+      })
+      .filter((x) => x.base.length > 0 && !Number.isNaN(x.q))
+      .sort((a, b) => b.q - a.q);
+    for (const { base } of ranked) {
+      const hit = locales.find((l) => l === base);
+      if (hit) return hit;
+    }
+  }
+  return defaultLocale;
 }
 
 /* Trusted origin for the internal site-state poll. Pinned to the configured
@@ -192,12 +243,35 @@ function buildCsp(nonce: string | null, cspIntegrations: string[]): string {
 export function proxy(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
 
+  // Locale redirect (Phase 3): send non-localized PUBLIC paths to the visitor's
+  // negotiated locale before any other handling, so the CSP/maintenance logic
+  // below always sees a settled path. `/` → `/{locale}`, `/tours` →
+  // `/{locale}/tours`. Query string and hash are preserved (only the pathname
+  // changes). Exempt surfaces (admin, api, maintenance, _next, files) pass
+  // through untouched. 307 (temporary): the chosen locale can change per cookie/
+  // header, so browsers must not hard-cache it.
+  if (!isLocaleExempt(pathname) && !pathnameHasLocale(pathname)) {
+    const locale = negotiateLocale(request);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = localizePath(pathname, locale);
+    const redirect = NextResponse.redirect(redirectUrl, 307);
+    redirect.cookies.set(LOCALE_COOKIE, locale, {
+      path: "/",
+      maxAge: LOCALE_COOKIE_MAX_AGE,
+      sameSite: "lax",
+    });
+    return redirect;
+  }
+
   // Per-path policy selection: emit the strict nonce policy on the sensitive
   // surfaces (admin + booking), or everywhere when the env override is set;
   // otherwise the compatible (nonce-free) policy. A nonce is generated only
   // when the strict policy applies, so compatible pages stay nonce-free and
-  // cacheable.
-  const useStrictCsp = STRICT_NONCE_FORCED || isStrictSurface(pathname);
+  // cacheable. The check uses the locale-agnostic path so a localized
+  // `/{locale}/booking` is still recognized as the strict checkout surface
+  // (admin is never localized, so it is unaffected).
+  const agnosticPath = stripLocalePrefix(pathname);
+  const useStrictCsp = STRICT_NONCE_FORCED || isStrictSurface(agnosticPath);
   const nonce = useStrictCsp
     ? Buffer.from(crypto.randomUUID()).toString("base64")
     : null;

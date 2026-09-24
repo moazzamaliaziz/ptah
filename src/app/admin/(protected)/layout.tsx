@@ -14,7 +14,10 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
 
   const items: AdminNavItem[] = [{ href: "/admin", label: "Dashboard" }];
   if (can(user, "bookings.view")) items.push({ href: "/admin/bookings", label: "Orders" });
+  if (can(user, "reports.view")) items.push({ href: "/admin/reports", label: "Reports" });
+  if (can(user, "coupons.view")) items.push({ href: "/admin/coupons", label: "Coupons" });
   if (can(user, "content.view")) items.push({ href: "/admin/content", label: "Content (CMS)" });
+  if (can(user, "content.view")) items.push({ href: "/admin/translations", label: "Translations" });
   if (can(user, "catalog.view")) items.push({ href: "/admin/tours", label: "Tours" });
   if (can(user, "catalog.view")) items.push({ href: "/admin/destinations", label: "Destinations" });
   if (can(user, "events.view")) items.push({ href: "/admin/events", label: "Events" });

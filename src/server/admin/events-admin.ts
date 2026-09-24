@@ -8,6 +8,7 @@
 import "server-only";
 import type { z } from "zod";
 import { db } from "@/lib/db";
+import { deleteRecordTranslations } from "@/server/admin/translations-admin";
 import {
   eventInputSchema,
   tripIdeaInputSchema,
@@ -165,6 +166,7 @@ export async function deleteEvent(id: string): Promise<MutationResult> {
   const found = await db.event.findUnique({ where: { id }, select: { id: true } });
   if (!found) return fail("Event not found.");
   await db.event.delete({ where: { id } });
+  await deleteRecordTranslations("Event", id);
   return { ok: true };
 }
 
@@ -293,6 +295,7 @@ export async function deleteTripIdea(id: string): Promise<MutationResult> {
   const found = await db.tripIdea.findUnique({ where: { id }, select: { id: true } });
   if (!found) return fail("Trip idea not found.");
   await db.tripIdea.delete({ where: { id } });
+  await deleteRecordTranslations("TripIdea", id);
   return { ok: true };
 }
 

@@ -13,6 +13,8 @@ import { redirect } from "next/navigation";
 import type { SessionUser } from "@/server/auth/session";
 import { getSessionUser } from "@/server/auth/session";
 import { can, isStaff, type Capability } from "@/server/auth/capabilities";
+import { localizePath } from "@/i18n/routing";
+import type { Locale } from "@/i18n/config";
 
 export {
   can,
@@ -53,11 +55,14 @@ export async function requireCapability(cap: Capability, returnTo?: string): Pro
  * pass (they are users too), so the account area is reachable by everyone signed
  * in. Returns the user on success.
  */
-export async function requireUser(returnTo?: string): Promise<SessionUser> {
+export async function requireUser(returnTo?: string, locale?: Locale): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) {
     const q = returnTo ? `?from=${encodeURIComponent(returnTo)}` : "";
-    redirect(`/login${q}`);
+    // Localize the public login redirect when the caller knows the active
+    // locale (Server Components under /[lang]); otherwise fall back to bare
+    // `/login`, which the proxy re-localizes via the NEXT_LOCALE cookie.
+    redirect(locale ? localizePath(`/login${q}`, locale) : `/login${q}`);
   }
   return user;
 }

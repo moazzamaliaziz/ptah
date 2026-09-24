@@ -16,8 +16,9 @@
  * Server wrapper: SiteHeader.tsx reads the content module and passes plain
  * props, so nav copy never ships in the client manifest beyond this island.
  */
-import Link from "next/link";
+import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { usePathname } from "next/navigation";
+import { stripLocalePrefix } from "@/i18n/routing";
 import {
   useCallback,
   useEffect,
@@ -32,22 +33,29 @@ import MultiCropImage from "@/components/site/MultiCropImage";
 import SiteLogo from "@/components/site/SiteLogo";
 import BookmarkPill from "@/components/site/BookmarkPill";
 import SearchDialog from "@/components/site/SearchDialog";
+import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
+import type { HeaderChromeStrings } from "@/i18n/chrome";
 import { MQ_DESKTOP, useMediaQuery } from "@/hooks/use-media-query";
 
 type ScrollState = "top" | "up" | "down";
 
 export interface SiteHeaderChromeProps {
   nav: SiteNav;
+  /** Localized chrome strings (aria labels, search + bookmark copy). */
+  t: HeaderChromeStrings;
   /** DB-driven header logo src ("/api/media/<id>"); null → built-in SVG wordmark. */
   logoSrc?: string | null;
   /** Site name for the logo's alt text (DB-driven). */
   siteName?: string;
 }
 
-export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" }: SiteHeaderChromeProps): JSX.Element {
+export function SiteHeaderChrome({ nav, t, logoSrc = null, siteName = "Ptah Tours" }: SiteHeaderChromeProps): JSX.Element {
   const pathname = usePathname();
   const isDesktop = useMediaQuery(MQ_DESKTOP);
-  const isHome = pathname === "/";
+  // Locale-agnostic home check: the home route is `/{locale}` (e.g. /en, /ar),
+  // never bare `/`, so strip the locale prefix before comparing (drives the
+  // on-dark hero theme swap in §2.1.3).
+  const isHome = stripLocalePrefix(pathname) === "/";
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuClosing, setMenuClosing] = useState(false);
@@ -246,7 +254,7 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
       <header className="site-header" data-theme="on-dark">
         <span className="site-header__backdrop" aria-hidden="true" />
         <div className="mobile-bar hd">
-          <Link href="/" className="brand-logo" aria-label={`${siteName} — home`}>
+          <Link href="/" className="brand-logo" aria-label={`${siteName} — ${t.home}`}>
             {brandMark}
           </Link>
         </div>
@@ -263,7 +271,7 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
       {isDesktop ? (
         <>
           {/* Quick-links bar (§2.1.1) */}
-          <nav className="quick-links hd text-quick-link" aria-label="Quick links">
+          <nav className="quick-links hd text-quick-link" aria-label={t.header.quickLinksAria}>
             {nav.quickLinks.map((link) => (
               <Link key={link.href} href={link.href}>
                 <Icon name={link.iconKey} size={14} />
@@ -274,11 +282,11 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
 
           {/* Primary nav row (§2.1.2) */}
           <div className="primary-bar hd">
-            <Link href="/" className="brand-logo" aria-label={`${siteName} — home`}>
+            <Link href="/" className="brand-logo" aria-label={`${siteName} — ${t.home}`}>
               {brandMark}
             </Link>
 
-            <nav className="primary-nav text-nav" aria-label="Primary">
+            <nav className="primary-nav text-nav" aria-label={t.header.primaryAria}>
               {nav.sections.map((section) => (
                 <button
                   key={section.key}
@@ -308,10 +316,11 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
             </nav>
 
             <div className="primary-bar__actions">
+              <LocaleSwitcher />
               <button
                 type="button"
                 className="icon-button icon-button--dip"
-                aria-label="Search"
+                aria-label={t.search.triggerAria}
                 onClick={(e) => {
                   searchTriggerRef.current = e.currentTarget;
                   setSearchOpen(true);
@@ -322,11 +331,11 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
               <Link
                 href="/track-booking"
                 className="icon-button icon-button--dip"
-                aria-label="Track your booking"
+                aria-label={t.header.trackBooking}
               >
                 <Icon name="ticket" size={20} />
               </Link>
-              <BookmarkPill href={nav.bookmarksHref} />
+              <BookmarkPill href={nav.bookmarksHref} labels={t.bookmarks} />
               <Link href={nav.buildTripCta.href} className="pill build-pill text-btn">
                 {nav.buildTripCta.label}
               </Link>
@@ -384,13 +393,13 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
         <>
           {/* Mobile bar (§2.2, 73px) */}
           <div className="mobile-bar hd">
-            <Link href="/" className="brand-logo" aria-label={`${siteName} — home`}>
+            <Link href="/" className="brand-logo" aria-label={`${siteName} — ${t.home}`}>
               {brandMark}
             </Link>
             <button
               type="button"
               className="icon-button"
-              aria-label="Search"
+              aria-label={t.search.triggerAria}
               onClick={(e) => {
                 searchTriggerRef.current = e.currentTarget;
                 setSearchOpen(true);
@@ -401,7 +410,7 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
             <Link
               href={nav.bookmarksHref}
               className="icon-button"
-              aria-label="View your bookmarks"
+              aria-label={t.header.viewBookmarks}
             >
               <Icon name="bookmark" size={20} />
             </Link>
@@ -409,7 +418,7 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
               type="button"
               ref={hamburgerRef}
               className="icon-button"
-              aria-label={curtainOpen ? "Close menu" : "Open menu"}
+              aria-label={curtainOpen ? t.header.closeMenu : t.header.openMenu}
               aria-expanded={curtainOpen}
               aria-controls="primary-nav-panel"
               onClick={() => setCurtainOpen((v) => !v)}
@@ -421,7 +430,7 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
           {/* Curtain (§2.2) — full-viewport white veil, spec beziers */}
           <div className="curtain" id="primary-nav-panel" data-open={curtainOpen} aria-hidden={!curtainOpen}>
             <div className="curtain__scroll" ref={curtainRef}>
-              <nav aria-label="Site (mobile)">
+              <nav aria-label={t.header.mobileNavAria}>
                 {nav.sections.map((section) => (
                   <div className="curtain-accordion" key={section.key}>
                     <button
@@ -462,7 +471,7 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
                 ))}
               </nav>
 
-              <nav className="curtain__quicklinks" aria-label="Quick links">
+              <nav className="curtain__quicklinks" aria-label={t.header.quickLinksAria}>
                 {nav.quickLinks.map((link) => (
                   <Link key={link.href} href={link.href}>
                     <Icon name={link.iconKey} size={16} />
@@ -471,9 +480,11 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
                 ))}
                 <Link href="/track-booking">
                   <Icon name="ticket" size={16} />
-                  Track your booking
+                  {t.header.trackBooking}
                 </Link>
               </nav>
+
+              <LocaleSwitcher variant="inline" />
 
               <div style={{ marginTop: "1.75rem" }}>
                 <Link href={nav.buildTripCta.href} className="pill build-pill text-btn">
@@ -489,6 +500,7 @@ export function SiteHeaderChrome({ nav, logoSrc = null, siteName = "Ptah Tours" 
         <SearchDialog
           popularSearches={nav.popularSearches}
           searchHref={nav.searchHref}
+          labels={t.search}
           onClose={closeSearch}
         />
       ) : null}
