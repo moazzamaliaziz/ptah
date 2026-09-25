@@ -13,9 +13,17 @@ import { useEffect, useRef, useState } from "react";
 export default function BookingsSearch({
   status,
   defaultValue,
+  hiddenLabel,
+  placeholder,
+  ariaLabel,
+  buttonLabel,
 }: {
   status?: string;
   defaultValue: string;
+  hiddenLabel: string;
+  placeholder: string;
+  ariaLabel: string;
+  buttonLabel: string;
 }): JSX.Element {
   const [value, setValue] = useState(defaultValue);
   const formRef = useRef<HTMLFormElement>(null);
@@ -36,7 +44,7 @@ export default function BookingsSearch({
     <form ref={formRef} method="get" className="admin-row" role="search">
       {status ? <input type="hidden" name="status" value={status} /> : null}
       <label className="admin-field" style={{ margin: 0, flex: "1 1 260px" }}>
-        <span className="admin-visually-hidden">Search orders</span>
+        <span className="admin-visually-hidden">{hiddenLabel}</span>
         <input
           type="search"
           name="q"
@@ -46,13 +54,13 @@ export default function BookingsSearch({
             setValue(e.target.value);
           }}
           className="admin-input"
-          placeholder="Search by reference or email…"
+          placeholder={placeholder}
           autoComplete="off"
-          aria-label="Search orders by reference or email"
+          aria-label={ariaLabel}
         />
       </label>
       <button type="submit" className="admin-btn admin-btn--ghost">
-        Search
+        {buttonLabel}
       </button>
     </form>
   );

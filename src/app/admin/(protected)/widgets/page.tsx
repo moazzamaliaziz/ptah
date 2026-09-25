@@ -2,6 +2,8 @@ import type { JSX } from "react";
 import Link from "next/link";
 import { requireCapability, can } from "@/server/auth/rbac";
 import { listAdminWidgets } from "@/server/admin/widgets-admin";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import { setWidgetEnabledAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -16,36 +18,38 @@ export default async function WidgetsPage(): Promise<JSX.Element> {
   const user = await requireCapability("widgets.view");
   const editable = can(user, "widgets.edit");
   const widgets = await listAdminWidgets();
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.widgets;
 
   return (
     <>
       <div className="admin-head">
         <div className="admin-row admin-row--between">
           <div>
-            <h1>Floating widgets</h1>
-            <p>Contact buttons anchored to the corner of every public page (phone, WhatsApp, Tripadvisor, email, …). The database is the source of truth; changes appear within seconds.</p>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
           </div>
-          {editable ? <Link className="admin-btn" href="/admin/widgets/new">New widget</Link> : null}
+          {editable ? <Link className="admin-btn" href="/admin/widgets/new">{t.newWidget}</Link> : null}
         </div>
       </div>
 
       {!editable ? (
-        <div className="admin-alert admin-alert--ok" role="status">Your role can view widgets but not change them.</div>
+        <div className="admin-alert admin-alert--ok" role="status">{t.viewOnlyNote}</div>
       ) : null}
 
       {widgets.length === 0 ? (
-        <div className="admin-card"><p className="admin-card__meta">No widgets yet.{editable ? " Create one to add a floating contact button." : ""}</p></div>
+        <div className="admin-card"><p className="admin-card__meta">{t.noWidgets}{editable ? t.noWidgetsCreateHint : ""}</p></div>
       ) : (
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Label</th>
-              <th>Type</th>
-              <th>Position</th>
-              <th>Devices</th>
-              <th>Order</th>
-              <th>Status</th>
-              <th aria-label="Actions" />
+              <th>{t.colLabel}</th>
+              <th>{t.colType}</th>
+              <th>{t.colPosition}</th>
+              <th>{t.colDevices}</th>
+              <th>{t.colOrder}</th>
+              <th>{t.colStatus}</th>
+              <th aria-label={t.actionsAria} />
             </tr>
           </thead>
           <tbody>
@@ -54,10 +58,10 @@ export default async function WidgetsPage(): Promise<JSX.Element> {
                 <td><Link href={`/admin/widgets/${w.id}`}>{w.label}</Link></td>
                 <td>{w.type}</td>
                 <td>{w.position}</td>
-                <td>{[w.showDesktop ? "desktop" : null, w.showMobile ? "mobile" : null].filter(Boolean).join(" + ") || "hidden"}</td>
+                <td>{[w.showDesktop ? t.deviceDesktop : null, w.showMobile ? t.deviceMobile : null].filter(Boolean).join(" + ") || t.deviceHidden}</td>
                 <td>{w.sortOrder}</td>
                 <td>
-                  <span className={`admin-badge ${w.enabled ? "admin-badge--on" : "admin-badge--off"}`}>{w.enabled ? "On" : "Off"}</span>
+                  <span className={`admin-badge ${w.enabled ? "admin-badge--on" : "admin-badge--off"}`}>{w.enabled ? t.on : t.off}</span>
                 </td>
                 <td>
                   {editable ? (
@@ -65,7 +69,7 @@ export default async function WidgetsPage(): Promise<JSX.Element> {
                       <input type="hidden" name="id" value={w.id} />
                       <input type="hidden" name="enabled" value={w.enabled ? "false" : "true"} />
                       <button className={`admin-btn admin-btn--ghost ${w.enabled ? "admin-btn--danger" : ""}`} type="submit">
-                        {w.enabled ? "Disable" : "Enable"}
+                        {w.enabled ? dict.common.disable : dict.common.enable}
                       </button>
                     </form>
                   ) : null}

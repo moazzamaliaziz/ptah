@@ -123,7 +123,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
           )}
         </section>
       )}
-      <section className="admin-kpis" aria-label="Booking totals">
+      <section className="admin-kpis" aria-label={dash.kpisAria}>
         <div className="admin-kpi">
           <span className="admin-kpi__label">{dash.totalBookings}</span>
           <strong className="admin-kpi__value">{totalBookings.toLocaleString("en-US")}</strong>
@@ -148,7 +148,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
         <div className="admin-row admin-row--between" style={{ marginBottom: "0.5rem" }}>
           <h2 style={{ margin: 0 }}>
             {dash.revenueToDate}
-            <AdminHint text={dash.revenueHint} />
+            <AdminHint text={dash.revenueHint} helpLabel={dict.common.help} />
           </h2>
           {can(user, "reports.view") && <Link href="/admin/reports">{dash.fullReports}</Link>}
         </div>
@@ -228,7 +228,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
           </table>
         )}
       </div>
-      <section aria-label="System overview">
+      <section aria-label={dash.system}>
         <h2>{dash.system}</h2>
         <div className="admin-grid">
           <div className="admin-card">
@@ -257,7 +257,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
             <div className="admin-row admin-row--between">
               <h3 style={{ margin: 0 }}>
                 {dash.landingOverrides}
-                <AdminHint text={dash.landingOverridesHint} />
+                <AdminHint text={dash.landingOverridesHint} helpLabel={dict.common.help} />
               </h3>
               {can(user, "content.view") && (
                 <Link href="/admin/content" className="admin-card__meta">

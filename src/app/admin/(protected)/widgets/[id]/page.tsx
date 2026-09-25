@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCapability } from "@/server/auth/rbac";
 import { getAdminWidget } from "@/server/admin/widgets-admin";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import WidgetEditor from "../WidgetEditor";
 import { deleteWidgetAction } from "../actions";
 
@@ -18,23 +20,26 @@ export default async function WidgetEditPage({
   const widget = await getAdminWidget(id);
   if (!widget) notFound();
 
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.widgets;
+
   return (
     <>
       <div className="admin-head">
         <div className="admin-row admin-row--between">
           <div><h1>{widget.label}</h1><p>{widget.type} · {widget.position}</p></div>
-          <Link className="admin-btn admin-btn--ghost" href="/admin/widgets">← All widgets</Link>
+          <Link className="admin-btn admin-btn--ghost" href="/admin/widgets">{t.backToList}</Link>
         </div>
       </div>
 
-      <WidgetEditor widget={widget} />
+      <WidgetEditor widget={widget} labels={t.editor} />
 
       <section className="admin-card" style={{ borderColor: "rgba(154,92,27,0.4)", marginTop: "1.25rem" }}>
-        <h2>Delete widget</h2>
-        <p className="admin-card__meta">Removes this widget from the site. This cannot be undone.</p>
+        <h2>{t.deleteHeading}</h2>
+        <p className="admin-card__meta">{t.deleteHint}</p>
         <form action={deleteWidgetAction} style={{ marginTop: "0.5rem" }}>
           <input type="hidden" name="id" value={widget.id} />
-          <button className="admin-btn admin-btn--danger" type="submit">Delete permanently</button>
+          <button className="admin-btn admin-btn--danger" type="submit">{dict.common.deletePermanently}</button>
         </form>
       </section>
     </>

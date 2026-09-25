@@ -2,6 +2,8 @@ import type { JSX } from "react";
 import Link from "next/link";
 import { requireCapability, can } from "@/server/auth/rbac";
 import { listAdminDestinations } from "@/server/admin/catalog-admin";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -9,17 +11,19 @@ export default async function AdminDestinationsPage(): Promise<JSX.Element> {
   const user = await requireCapability("catalog.view");
   const destinations = await listAdminDestinations();
   const editable = can(user, "catalog.edit");
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.destinations;
 
   return (
     <>
       <div className="admin-head">
         <div className="admin-row admin-row--between">
           <div>
-            <h1>Destinations</h1>
-            <p>Cities and regions tours are grouped under.</p>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
           </div>
           {editable ? (
-            <Link className="admin-btn" href="/admin/destinations/new">+ New destination</Link>
+            <Link className="admin-btn" href="/admin/destinations/new">{t.newDestination}</Link>
           ) : null}
         </div>
       </div>
@@ -28,16 +32,16 @@ export default async function AdminDestinationsPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Region</th>
-              <th>Tours</th>
-              <th style={{ textAlign: "right" }}>Edit</th>
+              <th>{t.colName}</th>
+              <th>{t.colRegion}</th>
+              <th>{t.colTours}</th>
+              <th style={{ textAlign: "right" }}>{dict.common.edit}</th>
             </tr>
           </thead>
           <tbody>
             {destinations.length === 0 ? (
               <tr>
-                <td colSpan={4}><span className="admin-card__meta">No destinations yet.</span></td>
+                <td colSpan={4}><span className="admin-card__meta">{t.noDestinations}</span></td>
               </tr>
             ) : (
               destinations.map((d) => (
@@ -50,7 +54,7 @@ export default async function AdminDestinationsPage(): Promise<JSX.Element> {
                   <td>{d.tourCount}</td>
                   <td style={{ textAlign: "right" }}>
                     <Link className="admin-btn admin-btn--ghost" href={`/admin/destinations/${d.id}`}>
-                      {editable ? "Edit" : "View"}
+                      {editable ? dict.common.edit : dict.common.view}
                     </Link>
                   </td>
                 </tr>

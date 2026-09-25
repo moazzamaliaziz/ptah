@@ -1,5 +1,7 @@
 import type { JSX } from "react";
 import Skeleton from "@/components/ui/Skeleton";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 /* Stable keys for the placeholder tiles (no array-index keys). */
 const TILE_KEYS = ["a", "b", "c"] as const;
@@ -9,10 +11,11 @@ const TILE_KEYS = ["a", "b", "c"] as const;
  * layout's requireStaff() has already resolved by the time this renders).
  * Neutral heading + stat-tile skeletons; Tailwind utilities resolve app-wide.
  */
-export default function AdminLoading(): JSX.Element {
+export default async function AdminLoading(): Promise<JSX.Element> {
+  const t = getAdminDict(await getAdminLocale()).common;
   return (
     <div role="status" aria-live="polite">
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">{t.loading}</span>
       <Skeleton className="h-8 w-56" />
       <Skeleton className="mt-6 h-4 w-full max-w-xl" />
       <Skeleton className="mt-2 h-4 w-2/3 max-w-lg" />

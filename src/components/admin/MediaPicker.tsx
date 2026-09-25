@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, type JSX } from "react";
 import { pickerListMediaAction, pickerUploadMediaAction } from "./media-picker-actions";
+import { useMediaPickerLabels } from "./MediaPickerLabels";
 import type { MediaSummary } from "@/lib/media-shared";
 
 export interface MediaPickerProps {
@@ -42,6 +43,7 @@ export default function MediaPicker({
   label,
 }: MediaPickerProps): JSX.Element {
   const isUrl = emit === "url";
+  const t = useMediaPickerLabels();
   const [value, setValue] = useState<string>(
     (isUrl ? initialUrl : defaultMediaId) ?? "",
   );
@@ -77,7 +79,7 @@ export default function MediaPicker({
     startUploading(async () => {
       const result = await pickerUploadMediaAction({}, fd);
       if (!result.ok || !result.asset) {
-        setUploadError(result.error ?? "Upload failed.");
+        setUploadError(result.error ?? t.uploadFailed);
         return;
       }
       const asset = result.asset;
@@ -109,17 +111,17 @@ export default function MediaPicker({
             // eslint-disable-next-line @next/next/no-img-element -- admin preview thumbnail.
             <img src={previewSrc} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
           ) : (
-            <span className="admin-card__meta" style={{ fontSize: "0.7rem" }}>None</span>
+            <span className="admin-card__meta" style={{ fontSize: "0.7rem" }}>{t.none}</span>
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", flex: 1 }}>
           <div className="admin-row" style={{ gap: "0.4rem" }}>
             <button type="button" className="admin-btn admin-btn--ghost" onClick={() => setOpen(true)}>
-              {value ? "Change" : "Select"}
+              {value ? t.change : t.select}
             </button>
             {value ? (
               <button type="button" className="admin-btn admin-btn--ghost" onClick={() => setValue("")}>
-                Clear
+                {t.clear}
               </button>
             ) : null}
           </div>
@@ -130,8 +132,8 @@ export default function MediaPicker({
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="/assets/… or https://… or pick from library"
-              aria-label={`${label} path`}
+              placeholder={t.urlPlaceholder}
+              aria-label={`${label}${t.pathAriaSuffix}`}
               style={{ fontSize: "0.8rem" }}
             />
           ) : null}
@@ -142,7 +144,7 @@ export default function MediaPicker({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Select image — ${label}`}
+          aria-label={`${t.selectImage} — ${label}`}
           onClick={(e) => {
             if (e.target === e.currentTarget) setOpen(false);
           }}
@@ -168,8 +170,8 @@ export default function MediaPicker({
             }}
           >
             <div className="admin-row admin-row--between" style={{ marginBottom: "1rem" }}>
-              <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Select image</h2>
-              <button type="button" className="admin-btn admin-btn--ghost" onClick={() => setOpen(false)}>Close</button>
+              <h2 style={{ margin: 0, fontSize: "1.1rem" }}>{t.selectImage}</h2>
+              <button type="button" className="admin-btn admin-btn--ghost" onClick={() => setOpen(false)}>{t.close}</button>
             </div>
 
             {/* Upload — nested action; not a nested <form> (this modal renders inside the parent editor form). */}
@@ -179,7 +181,7 @@ export default function MediaPicker({
             <div className="admin-card" style={{ marginBottom: "1rem" }}>
               <div className="admin-row" style={{ gap: "0.6rem", alignItems: "flex-end" }}>
                 <label className="admin-field" style={{ flex: 1, marginBottom: 0 }}>
-                  <span>Upload new</span>
+                  <span>{t.uploadNew}</span>
                   <input
                     className="admin-input"
                     type="file"
@@ -193,17 +195,17 @@ export default function MediaPicker({
                     }}
                   />
                   <span className="admin-card__meta" style={{ fontSize: "0.72rem", marginTop: "0.25rem" }}>
-                    JPEG, PNG, WebP, GIF, SVG, ICO, AVIF, BMP, TIFF — max 4 MB.
+                    {t.formatsHintShort}
                   </span>
                 </label>
-                {uploading ? <span className="admin-card__meta">Uploading…</span> : null}
+                {uploading ? <span className="admin-card__meta">{t.uploading}</span> : null}
               </div>
             </div>
 
             {loading ? (
-              <p className="admin-card__meta">Loading library…</p>
+              <p className="admin-card__meta">{t.loadingLibrary}</p>
             ) : assets.length === 0 ? (
-              <p className="admin-card__meta">No images yet — upload one above.</p>
+              <p className="admin-card__meta">{t.noImagesUploadAbove}</p>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "0.6rem" }}>
                 {assets.map((a) => {

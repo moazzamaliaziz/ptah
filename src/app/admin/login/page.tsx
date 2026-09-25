@@ -2,13 +2,10 @@ import type { JSX } from "react";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth/session";
 import { isStaff } from "@/server/auth/rbac";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import { loginAction } from "./actions";
 import SubmitButton from "@/components/admin/SubmitButton";
-
-const ERRORS: Record<string, string> = {
-  invalid: "Incorrect email or password.",
-  rate: "Too many attempts. Please wait a minute and try again.",
-};
 
 export default async function AdminLoginPage({
   searchParams,
@@ -19,15 +16,18 @@ export default async function AdminLoginPage({
   const current = await getSessionUser();
   if (current && isStaff(current)) redirect("/admin");
 
+  const t = getAdminDict(await getAdminLocale()).auth;
+  const errors: Record<string, string> = { invalid: t.errInvalid, rate: t.errRate };
+
   const { error, from } = await searchParams;
-  const message = error ? ERRORS[error] ?? "Sign-in failed." : null;
+  const message = error ? errors[error] ?? t.errGeneric : null;
   const safeFrom = typeof from === "string" && from.startsWith("/admin") && !from.startsWith("//") && !from.includes("\\") ? from : "/admin";
 
   return (
     <div className="admin-login">
       <div className="admin-login__card">
-        <h1>Ptah Admin</h1>
-        <p>Sign in to manage the platform.</p>
+        <h1>{t.loginTitle}</h1>
+        <p>{t.loginSubtitle}</p>
         {message ? (
           <div className="admin-alert admin-alert--error" role="alert">
             {message}
@@ -36,7 +36,7 @@ export default async function AdminLoginPage({
         <form action={loginAction}>
           <input type="hidden" name="from" value={safeFrom} />
           <label className="admin-field">
-            <span>Email</span>
+            <span>{t.email}</span>
             <input
               className="admin-input"
               type="email"
@@ -47,7 +47,7 @@ export default async function AdminLoginPage({
             />
           </label>
           <label className="admin-field">
-            <span>Password</span>
+            <span>{t.password}</span>
             <input
               className="admin-input"
               type="password"
@@ -56,8 +56,8 @@ export default async function AdminLoginPage({
               required
             />
           </label>
-          <SubmitButton pendingLabel="Signing in…" style={{ width: "100%", marginTop: "0.5rem" }}>
-            Sign in
+          <SubmitButton pendingLabel={t.signingIn} style={{ width: "100%", marginTop: "0.5rem" }}>
+            {t.signIn}
           </SubmitButton>
         </form>
       </div>

@@ -4,10 +4,21 @@ import { useActionState, type JSX } from "react";
 import TourFormFields, { toFieldValues } from "@/components/admin/TourFormFields";
 import { updateTourAction, type CatalogFormState } from "../actions";
 import type { TourInput } from "@/content/catalog-admin-schema";
+import type { TourFormFieldsDict, FaqEditorDict } from "@/i18n/admin/dictionary";
 
 export interface TourEditorProps {
   /** Core tour fields — itinerary/departures/links are sibling page sections. */
   tour: TourInput & { id: string; status: string; basePriceCents: number };
+  /** Localized field labels forwarded to <TourFormFields>. */
+  fields: TourFormFieldsDict;
+  /** Localized labels for the nested FAQ editor. */
+  faqLabels: FaqEditorDict;
+  /** "Saved." success notice. */
+  savedLabel: string;
+  /** Submit button label while pending. */
+  savingLabel: string;
+  /** Submit button label at rest. */
+  saveLabel: string;
 }
 
 /**
@@ -17,7 +28,7 @@ export interface TourEditorProps {
  * status/delete live in sibling sections on the page. An unsaved-changes guard
  * (inside TourFormFields) warns before navigating away with pending edits.
  */
-export default function TourEditor({ tour }: TourEditorProps): JSX.Element {
+export default function TourEditor({ tour, fields, faqLabels, savedLabel, savingLabel, saveLabel }: TourEditorProps): JSX.Element {
   const [state, formAction, pending] = useActionState<CatalogFormState, FormData>(
     updateTourAction,
     {},
@@ -30,14 +41,14 @@ export default function TourEditor({ tour }: TourEditorProps): JSX.Element {
         <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
       ) : null}
       {state.ok ? (
-        <div className="admin-alert admin-alert--ok" role="status">Saved.</div>
+        <div className="admin-alert admin-alert--ok" role="status">{savedLabel}</div>
       ) : null}
 
-      <TourFormFields initial={toFieldValues(tour)} saved={state.ok} pending={pending} />
+      <TourFormFields initial={toFieldValues(tour)} saved={state.ok} pending={pending} labels={fields} faqLabels={faqLabels} />
 
       <div className="admin-row" style={{ marginTop: "0.75rem" }}>
         <button className="admin-btn" type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save tour"}
+          {pending ? savingLabel : saveLabel}
         </button>
       </div>
     </form>

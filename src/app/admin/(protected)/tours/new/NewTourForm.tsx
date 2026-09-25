@@ -3,6 +3,20 @@
 import { useActionState, type JSX } from "react";
 import TourFormFields from "@/components/admin/TourFormFields";
 import { createTourAction, type CatalogFormState } from "../actions";
+import type { TourFormFieldsDict, FaqEditorDict } from "@/i18n/admin/dictionary";
+
+export interface NewTourFormProps {
+  /** Localized field labels forwarded to <TourFormFields>. */
+  fields: TourFormFieldsDict;
+  /** Localized labels for the nested FAQ editor. */
+  faqLabels: FaqEditorDict;
+  /** Submit button label while pending. */
+  creatingLabel: string;
+  /** Submit button label at rest. */
+  createLabel: string;
+  /** Draft-mode explanatory note beside the button. */
+  createHint: string;
+}
 
 /**
  * Create form. Renders the SAME complete field set as the editor
@@ -10,7 +24,7 @@ import { createTourAction, type CatalogFormState } from "../actions";
  * creation — not only later. The tour is created as a DRAFT and the action
  * redirects into its editor (where itinerary + departures live).
  */
-export default function NewTourForm(): JSX.Element {
+export default function NewTourForm({ fields, faqLabels, creatingLabel, createLabel, createHint }: NewTourFormProps): JSX.Element {
   const [state, formAction, pending] = useActionState<CatalogFormState, FormData>(createTourAction, {});
 
   return (
@@ -19,14 +33,14 @@ export default function NewTourForm(): JSX.Element {
         <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
       ) : null}
 
-      <TourFormFields pending={pending} />
+      <TourFormFields pending={pending} labels={fields} faqLabels={faqLabels} />
 
       <div className="admin-row" style={{ marginTop: "0.75rem" }}>
         <button className="admin-btn" type="submit" disabled={pending}>
-          {pending ? "Creating…" : "Create draft & continue"}
+          {pending ? creatingLabel : createLabel}
         </button>
         <span className="admin-card__meta">
-          Created as a draft — add itinerary &amp; departures, then publish from the editor.
+          {createHint}
         </span>
       </div>
     </form>

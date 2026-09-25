@@ -4,16 +4,18 @@ import { useEffect, useRef, useState, useActionState, type JSX } from "react";
 import { useBeforeUnloadWarning } from "@/hooks/use-beforeunload-warning";
 import { localeNames } from "@/i18n/config";
 import { saveTranslationsAction, type TranslationFormState } from "../../actions";
+import type { TranslationEditorDict } from "@/i18n/admin/dictionary";
 import type {
   TranslatableRecordView,
   TranslatableFieldView,
 } from "@/server/admin/translations-admin";
 
 /** Editor hint per field kind (line/text are self-explanatory → none). */
-const KIND_HELP: Partial<Record<string, string>> = {
-  list: "One item per line.",
-  faq: "One per line, written as  question :: answer",
-};
+function helpFor(kind: string, labels: TranslationEditorDict): string | undefined {
+  if (kind === "list") return labels.helpList;
+  if (kind === "faq") return labels.helpFaq;
+  return undefined;
+}
 
 function rowsFor(kind: string): number {
   if (kind === "text") return 4;
@@ -27,9 +29,9 @@ function rowsFor(kind: string): number {
  * the English source shown beneath for reference. `field.<name>` naming keeps
  * these inputs clear of the control inputs the action also reads.
  */
-function FieldControl({ field }: { field: TranslatableFieldView }): JSX.Element {
+function FieldControl({ field, labels }: { field: TranslatableFieldView; labels: TranslationEditorDict }): JSX.Element {
   const name = `field.${field.name}`;
-  const help = KIND_HELP[field.kind];
+  const help = helpFor(field.kind, labels);
   return (
     <label className="admin-field">
       <span>{field.label}</span>
@@ -48,7 +50,7 @@ function FieldControl({ field }: { field: TranslatableFieldView }): JSX.Element 
         className="admin-card__meta"
         style={{ whiteSpace: "pre-wrap", marginTop: "0.25rem", opacity: 0.8 }}
       >
-        English: {field.sourceText || "(empty)"}
+        {labels.englishLabel} {field.sourceText || labels.emptyPlaceholder}
       </small>
     </label>
   );
@@ -56,8 +58,10 @@ function FieldControl({ field }: { field: TranslatableFieldView }): JSX.Element 
 
 export default function TranslationEditor({
   record,
+  labels,
 }: {
   record: TranslatableRecordView;
+  labels: TranslationEditorDict;
 }): JSX.Element {
   const [state, action, pending] = useActionState<TranslationFormState, FormData>(
     saveTranslationsAction,
@@ -89,21 +93,21 @@ export default function TranslationEditor({
         <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
       ) : null}
       {state.ok ? (
-        <div className="admin-alert admin-alert--ok" role="status">Saved.</div>
+        <div className="admin-alert admin-alert--ok" role="status">{labels.savedNote}</div>
       ) : null}
       {dirty ? (
         <div className="admin-alert admin-alert--warn" role="status">
-          Unsaved changes — save before leaving this page.
+          {labels.unsavedChanges}
         </div>
       ) : null}
 
       {record.fields.map((f) => (
-        <FieldControl key={f.name} field={f} />
+        <FieldControl key={f.name} field={f} labels={labels} />
       ))}
 
       <div className="admin-row" style={{ marginTop: "0.5rem" }}>
         <button className="admin-btn" type="submit" disabled={pending}>
-          {pending ? "Saving…" : `Save ${localeNames[record.locale]} translation`}
+          {pending ? labels.saving : `${labels.saveTranslationPre}${localeNames[record.locale]}${labels.saveTranslationPost}`}
         </button>
       </div>
     </form>

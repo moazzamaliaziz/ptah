@@ -5,6 +5,8 @@ import { requireCapability } from "@/server/auth/rbac";
 import { listTranslatableRecords } from "@/server/admin/translations-admin";
 import { getTranslatableModel } from "@/content/translatable-fields";
 import { isLocale, localeNames } from "@/i18n/config";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,8 @@ export default async function TranslationRecordsPage({
   if (!def) notFound();
 
   const records = await listTranslatableRecords(model);
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.translations;
 
   return (
     <>
@@ -26,20 +30,20 @@ export default async function TranslationRecordsPage({
         <div className="admin-row admin-row--between">
           <div>
             <h1>{def.label}</h1>
-            <p>Pick a {def.singular.toLowerCase()} to translate. The chips show which languages already have text.</p>
+            <p>{t.pickHint}</p>
           </div>
-          <Link className="admin-btn admin-btn--ghost" href="/admin/translations">← All content types</Link>
+          <Link className="admin-btn admin-btn--ghost" href="/admin/translations">{t.backToTypes}</Link>
         </div>
       </div>
 
       {records.length === 0 ? (
-        <div className="admin-card"><p className="admin-card__meta">Nothing to translate here yet.</p></div>
+        <div className="admin-card"><p className="admin-card__meta">{t.nothingToTranslate}</p></div>
       ) : (
         <table className="admin-table">
           <thead>
             <tr>
               <th>{def.singular}</th>
-              <th>Languages done</th>
+              <th>{t.colLanguagesDone}</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -52,7 +56,7 @@ export default async function TranslationRecordsPage({
                 </td>
                 <td>
                   {r.locales.length === 0 ? (
-                    <span className="admin-card__meta">None yet</span>
+                    <span className="admin-card__meta">{t.noneYet}</span>
                   ) : (
                     <span className="admin-row" style={{ gap: "0.35rem", flexWrap: "wrap" }}>
                       {r.locales.map((l) => (
@@ -65,7 +69,7 @@ export default async function TranslationRecordsPage({
                 </td>
                 <td style={{ textAlign: "right" }}>
                   <Link className="admin-btn admin-btn--ghost" href={`/admin/translations/${model}/${r.id}`}>
-                    Translate →
+                    {t.translate}
                   </Link>
                 </td>
               </tr>

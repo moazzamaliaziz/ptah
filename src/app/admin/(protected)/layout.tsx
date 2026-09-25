@@ -7,6 +7,7 @@ import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import AdminNav, { type AdminNavItem } from "./AdminNav";
 import AdminLocaleSwitcher from "@/components/admin/AdminLocaleSwitcher";
+import { MediaPickerLabelsProvider } from "@/components/admin/MediaPickerLabels";
 import SubmitButton from "@/components/admin/SubmitButton";
 
 export default async function ProtectedAdminLayout({ children }: { children: ReactNode }): Promise<JSX.Element> {
@@ -47,7 +48,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           Ptah Tours
           <small>{dict.chrome.adminPanel}</small>
         </div>
-        <AdminNav items={items} />
+        <AdminNav items={items} navLabel={dict.chrome.navLabel} />
         <Link
           href="/"
           target="_blank"
@@ -70,7 +71,9 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           </SubmitButton>
         </form>
       </aside>
-      <main className="admin-main">{children}</main>
+      <main className="admin-main">
+        <MediaPickerLabelsProvider labels={dict.mediaPicker}>{children}</MediaPickerLabelsProvider>
+      </main>
     </div>
   );
 }

@@ -10,10 +10,13 @@ import {
   type WidgetInput,
 } from "@/content/widget-admin-schema";
 import { createWidgetAction, updateWidgetAction, type WidgetFormState } from "./actions";
+import type { WidgetEditorDict } from "@/i18n/admin/dictionary";
 
 export interface WidgetEditorProps {
   /** Present → edit (update); absent → create with sensible defaults. */
   widget?: WidgetInput & { id: string };
+  /** Localized labels. */
+  labels: WidgetEditorDict;
 }
 
 /**
@@ -22,7 +25,7 @@ export interface WidgetEditorProps {
  * re-validates + normalizes the href regardless). The href is normalized per
  * type on save (phone→tel:, WhatsApp→wa.me, email→mailto:).
  */
-export default function WidgetEditor({ widget }: WidgetEditorProps): JSX.Element {
+export default function WidgetEditor({ widget, labels }: WidgetEditorProps): JSX.Element {
   const isEdit = widget !== undefined;
   const [state, formAction, pending] = useActionState<WidgetFormState, FormData>(
     isEdit ? updateWidgetAction : createWidgetAction,
@@ -46,11 +49,11 @@ export default function WidgetEditor({ widget }: WidgetEditorProps): JSX.Element
     <form action={formAction} className="admin-card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       {isEdit ? <input type="hidden" name="id" value={widget.id} /> : null}
       {state.error ? <div className="admin-alert admin-alert--error" role="alert">{state.error}</div> : null}
-      {state.ok ? <div className="admin-alert admin-alert--ok" role="status">Saved. Widgets update on the live site within seconds.</div> : null}
+      {state.ok ? <div className="admin-alert admin-alert--ok" role="status">{labels.savedNote}</div> : null}
 
       <div className="admin-row" style={{ gap: "1rem", flexWrap: "wrap" }}>
         <label className="admin-field" style={{ flex: "1 1 180px" }}>
-          <span>Type</span>
+          <span>{labels.type}</span>
           <select className="admin-input" name="type" value={type} onChange={(e) => onTypeChange(e.target.value as WidgetInput["type"])}>
             {WIDGET_TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -58,20 +61,20 @@ export default function WidgetEditor({ widget }: WidgetEditorProps): JSX.Element
           </select>
         </label>
         <label className="admin-field" style={{ flex: "2 1 220px" }}>
-          <span>Label (tooltip / aria-label)</span>
+          <span>{labels.label}</span>
           <input className="admin-input" type="text" name="label" defaultValue={widget?.label ?? meta.label} maxLength={120} required />
         </label>
       </div>
 
       <label className="admin-field">
-        <span>Link</span>
+        <span>{labels.link}</span>
         <input className="admin-input" type="text" name="href" defaultValue={widget?.href ?? ""} maxLength={512} required placeholder="+20 100 000 0000 / hello@… / https://…" />
         <small className="admin-card__meta">{meta.hrefHint}</small>
       </label>
 
       <div className="admin-row" style={{ gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Icon</span>
+          <span>{labels.icon}</span>
           <select className="admin-input" name="iconKey" value={iconKey} onChange={(e) => setIconKey(e.target.value as WidgetInput["iconKey"])}>
             {WIDGET_ICON_KEYS.map((k) => (
               <option key={k} value={k}>{k}</option>
@@ -79,7 +82,7 @@ export default function WidgetEditor({ widget }: WidgetEditorProps): JSX.Element
           </select>
         </label>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Background color</span>
+          <span>{labels.bgColor}</span>
           <input className="admin-input" type="text" name="bgColor" value={bgColor} onChange={(e) => setBgColor(e.target.value)} pattern="^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$" placeholder="#1a2340" />
         </label>
         {/* Live preview of the pill */}
@@ -98,14 +101,14 @@ export default function WidgetEditor({ widget }: WidgetEditorProps): JSX.Element
             }}
           >
             <Icon name={iconKey} size={22} />
-            <span style={{ fontWeight: 700 }}>Preview</span>
+            <span style={{ fontWeight: 700 }}>{labels.preview}</span>
           </span>
         </div>
       </div>
 
       <div className="admin-row" style={{ gap: "1.5rem", flexWrap: "wrap" }}>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Position</span>
+          <span>{labels.position}</span>
           <select className="admin-input" name="position" defaultValue={widget?.position ?? "bottom-right"}>
             {WIDGET_POSITIONS.map((p) => (
               <option key={p} value={p}>{p}</option>
@@ -113,26 +116,26 @@ export default function WidgetEditor({ widget }: WidgetEditorProps): JSX.Element
           </select>
         </label>
         <label className="admin-field" style={{ flex: "0 1 120px" }}>
-          <span>Sort order</span>
+          <span>{labels.sortOrder}</span>
           <input className="admin-input" type="number" name="sortOrder" defaultValue={widget?.sortOrder ?? 0} min={0} max={9999} />
         </label>
       </div>
 
       <div className="admin-row" style={{ gap: "1.5rem", flexWrap: "wrap" }}>
         <label className="admin-row" style={{ gap: "0.5rem", alignItems: "center" }}>
-          <input type="checkbox" name="enabled" defaultChecked={widget?.enabled ?? true} /> <span>Enabled</span>
+          <input type="checkbox" name="enabled" defaultChecked={widget?.enabled ?? true} /> <span>{labels.enabled}</span>
         </label>
         <label className="admin-row" style={{ gap: "0.5rem", alignItems: "center" }}>
-          <input type="checkbox" name="showDesktop" defaultChecked={widget?.showDesktop ?? true} /> <span>Show on desktop</span>
+          <input type="checkbox" name="showDesktop" defaultChecked={widget?.showDesktop ?? true} /> <span>{labels.showDesktop}</span>
         </label>
         <label className="admin-row" style={{ gap: "0.5rem", alignItems: "center" }}>
-          <input type="checkbox" name="showMobile" defaultChecked={widget?.showMobile ?? true} /> <span>Show on mobile</span>
+          <input type="checkbox" name="showMobile" defaultChecked={widget?.showMobile ?? true} /> <span>{labels.showMobile}</span>
         </label>
       </div>
 
       <div>
         <button className="admin-btn" type="submit" disabled={pending}>
-          {pending ? "Saving…" : isEdit ? "Save widget" : "Create widget"}
+          {pending ? labels.saving : isEdit ? labels.saveWidget : labels.createWidget}
         </button>
       </div>
     </form>

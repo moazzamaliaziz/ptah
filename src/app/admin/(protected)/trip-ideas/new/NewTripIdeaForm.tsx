@@ -3,8 +3,17 @@
 import { useActionState, type JSX } from "react";
 import TripIdeaFormFields from "@/components/admin/TripIdeaFormFields";
 import { createTripIdeaAction, type TripIdeaFormState } from "../actions";
+import type { TripIdeaFormFieldsDict } from "@/i18n/admin/dictionary";
 
-export default function NewTripIdeaForm(): JSX.Element {
+export default function NewTripIdeaForm({
+  fields,
+  creatingLabel,
+  createLabel,
+}: {
+  fields: TripIdeaFormFieldsDict;
+  creatingLabel: string;
+  createLabel: string;
+}): JSX.Element {
   const [state, action, pending] = useActionState<TripIdeaFormState, FormData>(createTripIdeaAction, {});
 
   return (
@@ -13,11 +22,11 @@ export default function NewTripIdeaForm(): JSX.Element {
         <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
       ) : null}
 
-      <TripIdeaFormFields pending={pending} />
+      <TripIdeaFormFields pending={pending} labels={fields} />
 
       <div className="admin-row" style={{ marginTop: "1rem" }}>
         <button className="admin-btn" type="submit" disabled={pending}>
-          {pending ? "Creating…" : "Create trip idea (draft)"}
+          {pending ? creatingLabel : createLabel}
         </button>
       </div>
     </form>

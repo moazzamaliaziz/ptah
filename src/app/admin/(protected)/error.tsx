@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { getAdminDict } from "@/i18n/admin/dictionary";
+import type { AdminLocale } from "@/i18n/admin/config";
 
 /**
  * Admin error boundary (App Router convention — Client Component). Catches
@@ -8,6 +10,11 @@ import { useEffect } from "react";
  * shell's <main>. Inline-styled with brand hexes so it doesn't depend on the
  * admin CSS classes resolving; logs only the framework `digest`, never raw
  * error text (server detail is captured by onRequestError).
+ *
+ * It can't read the ADMIN_LOCALE cookie (Client Component), so it picks its
+ * language from <html lang> after mount — first paint is English, then it
+ * swaps to Arabic if the shell is Arabic (no hydration mismatch: server and
+ * first client render agree on "en").
  */
 export default function AdminError({
   error,
@@ -16,22 +23,29 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [locale, setLocale] = useState<AdminLocale>("en");
+
   useEffect(() => {
     console.error("admin error boundary", { digest: error.digest });
   }, [error]);
 
+  useEffect(() => {
+    if (document.documentElement.lang === "ar") setLocale("ar");
+  }, []);
+
+  const t = getAdminDict(locale).errors;
+
   return (
     <div style={{ maxWidth: "40rem" }}>
       <h1 style={{ fontSize: "1.5rem", margin: 0, color: "#1a2340" }}>
-        Something went wrong
+        {t.title}
       </h1>
       <p style={{ marginTop: "0.75rem", lineHeight: 1.5, color: "rgba(38,38,38,0.7)" }}>
-        This admin view failed to load. Try again — if it persists, check the server
-        logs for the reference below.
+        {t.body}
       </p>
       {error.digest && (
         <p style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "rgba(38,38,38,0.45)" }}>
-          Reference: {error.digest}
+          {t.referenceLabel} {error.digest}
         </p>
       )}
       <button
@@ -49,7 +63,7 @@ export default function AdminError({
           cursor: "pointer",
         }}
       >
-        Try again
+        {t.tryAgain}
       </button>
     </div>
   );

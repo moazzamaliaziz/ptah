@@ -1,6 +1,8 @@
 import type { JSX } from "react";
 import { requireCapability, can } from "@/server/auth/rbac";
 import { getSettings } from "@/server/settings";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import BrandingEditor from "./BrandingEditor";
 
 export const dynamic = "force-dynamic";
@@ -14,20 +16,23 @@ export default async function BrandingPage(): Promise<JSX.Element> {
   const user = await requireCapability("branding.view");
   const editable = can(user, "branding.edit");
   const s = await getSettings();
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.branding;
 
   return (
     <>
       <div className="admin-head">
-        <h1>Branding</h1>
-        <p>Logo, favicon, social links, contact details and theme — used across the public site and document metadata. The database is the source of truth; changes take effect within seconds.</p>
+        <h1>{t.title}</h1>
+        <p>{t.subtitle}</p>
       </div>
 
       {!editable ? (
         <div className="admin-alert admin-alert--ok" role="status">
-          Your role can view branding but not change it.
+          {t.viewOnlyNote}
         </div>
       ) : (
         <BrandingEditor
+          labels={t.editor}
           siteName={s["branding.siteName"]}
           tagline={s["branding.tagline"]}
           legalName={s["branding.legalName"]}

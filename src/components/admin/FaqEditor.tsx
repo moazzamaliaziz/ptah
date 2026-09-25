@@ -2,12 +2,15 @@
 
 import { useState, type JSX } from "react";
 import type { FaqItem } from "@/content/catalog-admin-schema";
+import type { FaqEditorDict } from "@/i18n/admin/dictionary";
 
 export interface FaqEditorProps {
   /** Hidden field name the serialized JSON array posts under. */
   name: string;
   /** Initial FAQ rows (edit forms). */
   initial?: FaqItem[];
+  /** Localized labels. */
+  labels: FaqEditorDict;
 }
 
 /**
@@ -15,7 +18,7 @@ export interface FaqEditorProps {
  * JSON field (`name`) that the server action parses + validates against the
  * catalog schema. Friendlier than raw-JSON editing for a no-code admin.
  */
-export default function FaqEditor({ name, initial }: FaqEditorProps): JSX.Element {
+export default function FaqEditor({ name, initial, labels }: FaqEditorProps): JSX.Element {
   const [rows, setRows] = useState<FaqItem[]>(initial ?? []);
 
   function update(i: number, patch: Partial<FaqItem>): void {
@@ -35,20 +38,20 @@ export default function FaqEditor({ name, initial }: FaqEditorProps): JSX.Elemen
 
   return (
     <div className="admin-field">
-      <span>FAQs</span>
+      <span>{labels.faqsLabel}</span>
       <input type="hidden" name={name} value={serialized} />
       {incomplete ? (
         <div className="admin-alert admin-alert--warn" role="status" style={{ marginBottom: "0.5rem" }}>
-          A FAQ with only a question or only an answer won&apos;t be saved — fill in both, or remove the row.
+          {labels.incompleteWarn}
         </div>
       ) : null}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         {rows.map((row, i) => (
           <div key={i} className="admin-card" style={{ padding: "0.75rem" }}>
             <div className="admin-row admin-row--between" style={{ marginBottom: "0.4rem" }}>
-              <span className="admin-card__meta">Question {i + 1}</span>
+              <span className="admin-card__meta">{labels.questionWord} {i + 1}</span>
               <button type="button" className="admin-btn admin-btn--ghost" onClick={() => remove(i)}>
-                Remove
+                {labels.remove}
               </button>
             </div>
             <input
@@ -56,8 +59,8 @@ export default function FaqEditor({ name, initial }: FaqEditorProps): JSX.Elemen
               type="text"
               value={row.q}
               maxLength={300}
-              placeholder="Question"
-              aria-label={`FAQ ${i + 1} question`}
+              placeholder={labels.questionPlaceholder}
+              aria-label={`${labels.questionPlaceholder} ${i + 1}`}
               onChange={(e) => update(i, { q: e.target.value })}
               style={{ marginBottom: "0.4rem" }}
             />
@@ -65,8 +68,8 @@ export default function FaqEditor({ name, initial }: FaqEditorProps): JSX.Elemen
               className="admin-textarea"
               value={row.a}
               maxLength={2000}
-              placeholder="Answer"
-              aria-label={`FAQ ${i + 1} answer`}
+              placeholder={labels.answerPlaceholder}
+              aria-label={`${labels.answerPlaceholder} ${i + 1}`}
               onChange={(e) => update(i, { a: e.target.value })}
               style={{ minHeight: "5rem" }}
             />
@@ -74,7 +77,7 @@ export default function FaqEditor({ name, initial }: FaqEditorProps): JSX.Elemen
         ))}
       </div>
       <button type="button" className="admin-btn admin-btn--ghost" onClick={add} style={{ marginTop: "0.5rem" }}>
-        + Add FAQ
+        {labels.addFaq}
       </button>
     </div>
   );

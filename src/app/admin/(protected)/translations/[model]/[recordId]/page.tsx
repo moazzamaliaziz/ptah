@@ -5,6 +5,8 @@ import { requireCapability } from "@/server/auth/rbac";
 import { getTranslatableRecord } from "@/server/admin/translations-admin";
 import { getTranslatableModel } from "@/content/translatable-fields";
 import { locales, defaultLocale, localeNames, toLocale } from "@/i18n/config";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import TranslationEditor from "./TranslationEditor";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +36,9 @@ export default async function TranslationEditorPage({
   const record = await getTranslatableRecord(model, recordId, locale);
   if (!record) notFound();
 
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.translations;
+
   return (
     <>
       <div className="admin-head">
@@ -42,12 +47,12 @@ export default async function TranslationEditorPage({
             <h1>{record.recordLabel}</h1>
             <p>
               {record.modelSingular}
-              {record.sublabel ? ` · ${record.sublabel}` : ""} — translating into{" "}
-              <strong>{localeNames[locale]}</strong>
+              {record.sublabel ? ` · ${record.sublabel}` : ""}
+              {t.translatingInto(localeNames[locale])}
             </p>
           </div>
           <Link className="admin-btn admin-btn--ghost" href={`/admin/translations/${model}`}>
-            ← All {def.label.toLowerCase()}
+            {t.backToRecords(def.label.toLowerCase())}
           </Link>
         </div>
       </div>
@@ -66,12 +71,11 @@ export default async function TranslationEditorPage({
           ))}
         </div>
         <p className="admin-card__meta" style={{ marginTop: "0.6rem" }}>
-          Leave a box empty to use the English text on the public site. The grey text under each box
-          is the English source, for reference.
+          {t.emptyHint}
         </p>
       </div>
 
-      <TranslationEditor record={record} />
+      <TranslationEditor record={record} labels={t.editor} />
     </>
   );
 }

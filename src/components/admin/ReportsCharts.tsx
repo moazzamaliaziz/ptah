@@ -12,6 +12,7 @@
  * currency-agnostic; per-currency money stays in the tables below the charts.
  */
 import type { ReactNode } from "react";
+import type { ReportsChartsDict } from "@/i18n/admin/dictionary";
 import {
   PieChart,
   Pie,
@@ -77,14 +78,16 @@ export function ReportsCharts({
   status,
   topTours,
   countries,
+  labels,
 }: {
   status: StatusDatum[];
   topTours: BookingsDatum[];
   countries: BookingsDatum[];
+  labels: ReportsChartsDict;
 }) {
   return (
     <div className="admin-charts">
-      <ChartCard title="Bookings by status" subtitle="Every booking this period, by stage">
+      <ChartCard title={labels.statusTitle} subtitle={labels.statusSubtitle}>
         <ResponsiveContainer width="100%" height={240}>
           <PieChart>
             <Pie
@@ -105,7 +108,7 @@ export function ReportsCharts({
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Top tours" subtitle="Confirmed bookings per tour">
+      <ChartCard title={labels.toursTitle} subtitle={labels.toursSubtitle}>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart
             layout="vertical"
@@ -121,12 +124,12 @@ export function ReportsCharts({
               tickFormatter={(v: string) => truncate(v)}
             />
             <Tooltip />
-            <Bar dataKey="bookings" name="Bookings" fill={GOLD} radius={[0, 4, 4, 0]} />
+            <Bar dataKey="bookings" name={labels.bookingsSeries} fill={GOLD} radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Bookings by country" subtitle="Confirmed buyers by checkout country">
+      <ChartCard title={labels.countriesTitle} subtitle={labels.countriesSubtitle}>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart
             layout="vertical"
@@ -142,7 +145,7 @@ export function ReportsCharts({
               tickFormatter={(v: string) => truncate(v)}
             />
             <Tooltip />
-            <Bar dataKey="bookings" name="Bookings" fill={NILE} radius={[0, 4, 4, 0]} />
+            <Bar dataKey="bookings" name={labels.bookingsSeries} fill={NILE} radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>

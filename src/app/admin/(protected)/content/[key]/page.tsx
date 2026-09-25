@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { requireCapability } from "@/server/auth/rbac";
 import { LANDING_SECTIONS, getLandingSection } from "@/server/content";
 import type { LandingSectionKey } from "@/content/landing-schema";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import ContentEditor from "./ContentEditor";
 import { resetContentAction } from "../actions";
 
@@ -21,34 +23,42 @@ export default async function ContentEditorPage({
   if (!isSectionKey(key)) notFound();
 
   const section = await getLandingSection(key);
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.content;
 
   return (
     <>
       <div className="admin-head">
         <div className="admin-row admin-row--between">
           <div>
-            <h1>{section.label}</h1>
-            <p>
-              Edit the section payload as JSON. It is validated against the section schema on save; an invalid
-              shape is rejected and the current content is kept.
-            </p>
+            <h1>{t.sectionLabels[section.key] ?? section.label}</h1>
+            <p>{t.editSubtitle}</p>
           </div>
           <Link className="admin-btn admin-btn--ghost" href="/admin/content">
-            ← All sections
+            {t.backToList}
           </Link>
         </div>
         <span className={`admin-badge ${section.overridden ? "admin-badge--gold" : "admin-badge--off"}`}>
-          {section.overridden ? "Currently overridden" : "Serving default"}
+          {section.overridden ? t.badgeCurrentlyOverridden : t.badgeServingDefault}
         </span>
       </div>
 
-      <ContentEditor sectionKey={section.key} initialJson={section.json} />
+      <ContentEditor
+        sectionKey={section.key}
+        initialJson={section.json}
+        labels={{
+          saved: t.savedNote,
+          save: t.saveOverride,
+          saving: dict.common.saving,
+          payloadAria: t.payloadAria(section.key),
+        }}
+      />
 
       {section.overridden ? (
         <form action={resetContentAction} style={{ marginTop: "1rem" }}>
           <input type="hidden" name="key" value={section.key} />
           <button className="admin-btn admin-btn--danger" type="submit">
-            Reset to default
+            {t.resetToDefault}
           </button>
         </form>
       ) : null}

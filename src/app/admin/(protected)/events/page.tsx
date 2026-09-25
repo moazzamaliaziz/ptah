@@ -2,6 +2,8 @@ import type { JSX } from "react";
 import Link from "next/link";
 import { requireCapability, can } from "@/server/auth/rbac";
 import { listAdminEvents } from "@/server/admin/events-admin";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -13,33 +15,35 @@ export default async function EventsPage(): Promise<JSX.Element> {
   const user = await requireCapability("events.view");
   const editable = can(user, "events.edit");
   const events = await listAdminEvents();
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.events;
 
   return (
     <>
       <div className="admin-head">
         <div className="admin-row admin-row--between">
           <div>
-            <h1>Events &amp; festivals</h1>
-            <p>Cultural events and festivals shown at /events. Only published events appear on the public site.</p>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
           </div>
-          {editable ? <Link className="admin-btn" href="/admin/events/new">New event</Link> : null}
+          {editable ? <Link className="admin-btn" href="/admin/events/new">{t.newEvent}</Link> : null}
         </div>
       </div>
 
       {!editable ? (
-        <div className="admin-alert admin-alert--ok" role="status">Your role can view events but not change them.</div>
+        <div className="admin-alert admin-alert--ok" role="status">{t.viewOnlyNote}</div>
       ) : null}
 
       {events.length === 0 ? (
-        <div className="admin-card"><p className="admin-card__meta">No events yet.{editable ? " Create one to populate the Events page." : ""}</p></div>
+        <div className="admin-card"><p className="admin-card__meta">{t.noEvents}{editable ? t.noEventsCreateHint : ""}</p></div>
       ) : (
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Dates</th>
-              <th>Recurring</th>
-              <th>Status</th>
+              <th>{t.colTitle}</th>
+              <th>{t.colDates}</th>
+              <th>{t.colRecurring}</th>
+              <th>{t.colStatus}</th>
             </tr>
           </thead>
           <tbody>
@@ -47,9 +51,9 @@ export default async function EventsPage(): Promise<JSX.Element> {
               <tr key={e.id}>
                 <td><Link href={`/admin/events/${e.id}`}>{e.title}</Link></td>
                 <td>{e.startDate}{e.endDate ? ` → ${e.endDate}` : ""}</td>
-                <td>{e.recurring ? "Yes" : "—"}</td>
+                <td>{e.recurring ? dict.common.yes : "—"}</td>
                 <td>
-                  <span className={`admin-badge ${e.status === "PUBLISHED" ? "admin-badge--gold" : "admin-badge--off"}`}>{e.status}</span>
+                  <span className={`admin-badge ${e.status === "PUBLISHED" ? "admin-badge--gold" : "admin-badge--off"}`}>{t.statusLabels[e.status] ?? e.status}</span>
                 </td>
               </tr>
             ))}

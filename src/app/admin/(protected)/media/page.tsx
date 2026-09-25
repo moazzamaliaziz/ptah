@@ -1,6 +1,8 @@
 import type { JSX } from "react";
 import { requireCapability, can } from "@/server/auth/rbac";
 import { listMedia, MEDIA_FOLDERS } from "@/server/media";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import MediaUploadForm from "./MediaUploadForm";
 import { updateAltTextAction, deleteMediaAction } from "./actions";
 
@@ -29,24 +31,27 @@ export default async function MediaPage({
     folder && (MEDIA_FOLDERS as readonly string[]).includes(folder) ? folder : undefined;
   const assets = await listMedia(activeFolder);
 
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.media;
+
   return (
     <>
       <div className="admin-head">
-        <h1>Media library</h1>
-        <p>Upload and manage images. Stored in the database; served via a cached route and optimized by the image pipeline.</p>
+        <h1>{t.title}</h1>
+        <p>{t.subtitle}</p>
       </div>
 
       {!manage ? (
         <div className="admin-alert admin-alert--ok" role="status">
-          Your role can view media but not upload or change it.
+          {t.viewOnlyNote}
         </div>
       ) : null}
 
-      {manage ? <MediaUploadForm /> : null}
+      {manage ? <MediaUploadForm labels={t.upload} /> : null}
 
       <div className="admin-row" style={{ marginBottom: "1rem", gap: "0.4rem" }}>
         <a className={`admin-badge ${!activeFolder ? "admin-badge--gold" : "admin-badge--off"}`} href="/admin/media" style={{ textDecoration: "none" }}>
-          All
+          {t.folderAll}
         </a>
         {MEDIA_FOLDERS.map((f) => (
           <a
@@ -63,7 +68,7 @@ export default async function MediaPage({
       {assets.length === 0 ? (
         <div className="admin-card">
           <p className="admin-card__meta" style={{ margin: 0 }}>
-            No images{activeFolder ? ` in “${activeFolder}”` : ""} yet.
+            {activeFolder ? t.noImagesInFolder(activeFolder) : t.noImages}
           </p>
         </div>
       ) : (
@@ -99,18 +104,18 @@ export default async function MediaPage({
                   <form action={updateAltTextAction} style={{ marginTop: "0.6rem" }}>
                     <input type="hidden" name="id" value={a.id} />
                     <label className="admin-field" style={{ marginBottom: "0.4rem" }}>
-                      <span>Alt text</span>
+                      <span>{t.altText}</span>
                       <input className="admin-input" type="text" name="altText" defaultValue={a.altText ?? ""} maxLength={512} />
                     </label>
-                    <button className="admin-btn admin-btn--ghost" type="submit">Save alt</button>
+                    <button className="admin-btn admin-btn--ghost" type="submit">{t.saveAlt}</button>
                   </form>
                   <form action={deleteMediaAction} style={{ marginTop: "0.5rem" }}>
                     <input type="hidden" name="id" value={a.id} />
-                    <button className="admin-btn admin-btn--danger" type="submit">Delete</button>
+                    <button className="admin-btn admin-btn--danger" type="submit">{dict.common.delete}</button>
                   </form>
                 </>
               ) : (
-                <div className="admin-card__meta" style={{ marginTop: "0.5rem" }}>{a.altText ?? "— no alt text —"}</div>
+                <div className="admin-card__meta" style={{ marginTop: "0.5rem" }}>{a.altText ?? t.noAltText}</div>
               )}
             </div>
           ))}

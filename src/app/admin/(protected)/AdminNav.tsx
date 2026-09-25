@@ -11,10 +11,10 @@ export interface AdminNavItem {
 
 /** Sidebar nav with active-item highlighting. Links are pre-filtered by
     capability on the server; this only owns aria-current. */
-export default function AdminNav({ items }: { items: AdminNavItem[] }): JSX.Element {
+export default function AdminNav({ items, navLabel }: { items: AdminNavItem[]; navLabel: string }): JSX.Element {
   const pathname = usePathname();
   return (
-    <nav aria-label="Admin sections" style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+    <nav aria-label={navLabel} style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
       {items.map((item) => {
         const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
         return (

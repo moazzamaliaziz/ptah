@@ -6,6 +6,7 @@ import FaqEditor from "@/components/admin/FaqEditor";
 import { useBeforeUnloadWarning } from "@/hooks/use-beforeunload-warning";
 import { DIFFICULTIES, centsToDollars, type TourInput } from "@/content/catalog-admin-schema";
 import { TOUR_TAGS, TOUR_TAG_LABELS, type TourTag } from "@/content/tour-tags";
+import type { TourFormFieldsDict, FaqEditorDict } from "@/i18n/admin/dictionary";
 
 /** Editable core-field values, pre-formatted for the DOM inputs. */
 export interface TourFieldValues {
@@ -41,6 +42,10 @@ export interface TourFormFieldsProps {
   saved?: boolean;
   /** True while the parent form action is pending (disables the FAQ hint churn). */
   pending?: boolean;
+  /** Localized field labels. */
+  labels: TourFormFieldsDict;
+  /** Localized labels forwarded to the nested FAQ editor. */
+  faqLabels: FaqEditorDict;
 }
 
 const EMPTY: TourFieldValues = {
@@ -105,7 +110,7 @@ export function toFieldValues(input: (TourInput & { basePriceCents: number }) | 
  * parent owns the <form>, action state, alerts and submit button; this renders
  * the inputs and tracks a dirty flag that warns before accidental navigation.
  */
-export default function TourFormFields({ initial, saved, pending }: TourFormFieldsProps): JSX.Element {
+export default function TourFormFields({ initial, saved, pending, labels, faqLabels }: TourFormFieldsProps): JSX.Element {
   const v = { ...EMPTY, ...initial };
   const [dirty, setDirty] = useState(false);
   const savedRef = useRef(saved);
@@ -125,137 +130,137 @@ export default function TourFormFields({ initial, saved, pending }: TourFormFiel
     >
       {dirty ? (
         <div className="admin-alert admin-alert--warn" role="status" style={{ marginBottom: "0.75rem" }}>
-          Unsaved changes — remember to save before leaving this page.
+          {labels.unsavedChanges}
         </div>
       ) : null}
 
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: "2 1 260px" }}>
-          <span>Title</span>
+          <span>{labels.title}</span>
           <input className="admin-input" type="text" name="title" defaultValue={v.title} maxLength={255} required />
         </label>
         <label className="admin-field" style={{ flex: "1 1 200px" }}>
-          <span>Slug</span>
+          <span>{labels.slug}</span>
           <input className="admin-input" type="text" name="slug" defaultValue={v.slug} maxLength={191} placeholder="nile-cruise" required />
         </label>
       </div>
 
       <label className="admin-field">
-        <span>Summary</span>
+        <span>{labels.summary}</span>
         <input className="admin-input" type="text" name="summary" defaultValue={v.summary} maxLength={512} required />
       </label>
 
       <label className="admin-field">
-        <span>Description</span>
+        <span>{labels.description}</span>
         <textarea className="admin-textarea" name="descriptionLong" defaultValue={v.descriptionLong} required style={{ minHeight: "9rem" }} />
       </label>
 
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: "1 1 120px" }}>
-          <span>Duration (days)</span>
+          <span>{labels.durationDays}</span>
           <input className="admin-input" type="number" name="durationDays" defaultValue={v.durationDays} min={1} max={365} required />
         </label>
         <label className="admin-field" style={{ flex: "1 1 140px" }}>
-          <span>Base price</span>
+          <span>{labels.basePrice}</span>
           <input className="admin-input" type="text" name="basePrice" defaultValue={v.basePrice} inputMode="decimal" placeholder="1299.00" required />
         </label>
         <label className="admin-field" style={{ flex: "0 1 100px" }}>
-          <span>Currency</span>
+          <span>{labels.currency}</span>
           <input className="admin-input" type="text" name="currency" defaultValue={v.currency} maxLength={3} required />
         </label>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Difficulty</span>
+          <span>{labels.difficulty}</span>
           <select className="admin-input" name="difficulty" defaultValue={v.difficulty}>
             {DIFFICULTIES.map((d) => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d}>{labels.difficultyLabels[d] ?? d}</option>
             ))}
           </select>
         </label>
       </div>
 
       <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <legend className="admin-card__meta">Passenger pricing &amp; availability</legend>
+        <legend className="admin-card__meta">{labels.pricingLegend}</legend>
         <div className="admin-row" style={{ gap: "1rem" }}>
           <label className="admin-field" style={{ flex: "1 1 140px" }}>
-            <span>Child price (optional)</span>
-            <input className="admin-input" type="text" name="childPrice" defaultValue={v.childPrice} inputMode="decimal" placeholder="e.g. 899.00" />
+            <span>{labels.childPrice}</span>
+            <input className="admin-input" type="text" name="childPrice" defaultValue={v.childPrice} inputMode="decimal" placeholder={labels.childPlaceholder} />
           </label>
           <label className="admin-field" style={{ flex: "1 1 140px" }}>
-            <span>Infant price (optional)</span>
-            <input className="admin-input" type="text" name="infantPrice" defaultValue={v.infantPrice} inputMode="decimal" placeholder="0.00 for free" />
+            <span>{labels.infantPrice}</span>
+            <input className="admin-input" type="text" name="infantPrice" defaultValue={v.infantPrice} inputMode="decimal" placeholder={labels.infantPlaceholder} />
           </label>
         </div>
         <p className="admin-card__meta" style={{ margin: "0.25rem 0 0.75rem" }}>
-          Leave a price blank to hide that traveler type from the booking form. Enter <strong>0.00</strong> to offer it free (e.g. infants). The base price above is the adult price.
+          {labels.pricingNote}
         </p>
         <label className="admin-row" style={{ gap: "0.5rem", alignItems: "center" }}>
           <input type="checkbox" name="bookingClosed" defaultChecked={v.bookingClosed} />
-          <span>Pause online booking for this tour (shows a &ldquo;booking paused&rdquo; notice; existing bookings are unaffected)</span>
+          <span>{labels.bookingClosedLabel}</span>
         </label>
       </fieldset>
 
       <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <legend className="admin-card__meta">Style &amp; special tags (drive the Tours menu filters)</legend>
+        <legend className="admin-card__meta">{labels.tagsLegend}</legend>
         <div className="admin-row" style={{ gap: "0.5rem 1.25rem", flexWrap: "wrap" }}>
           {TOUR_TAGS.map((tag) => (
             <label key={tag} className="admin-row" style={{ gap: "0.4rem", alignItems: "center", flex: "0 1 auto" }}>
               <input type="checkbox" name="tags" value={tag} defaultChecked={v.tags.includes(tag)} />
-              <span>{TOUR_TAG_LABELS[tag]}</span>
+              <span>{labels.tagLabels[tag] ?? TOUR_TAG_LABELS[tag]}</span>
             </label>
           ))}
         </div>
       </fieldset>
 
       <div className="admin-row" style={{ gap: "1rem" }}>
-        <MediaPicker name="heroImage" emit="url" initialUrl={v.heroImage} folder="tours" label="Hero image" />
-        <MediaPicker name="ogImage" emit="url" initialUrl={v.ogImage} folder="tours" label="Social share image (OG)" />
+        <MediaPicker name="heroImage" emit="url" initialUrl={v.heroImage} folder="tours" label={labels.heroImage} />
+        <MediaPicker name="ogImage" emit="url" initialUrl={v.ogImage} folder="tours" label={labels.ogImage} />
       </div>
 
       <label className="admin-field">
-        <span>Gallery image paths (one per line)</span>
-        <textarea className="admin-textarea" name="gallery" defaultValue={v.gallery.join("\n")} placeholder="/assets/… or https://…" style={{ minHeight: "5rem" }} />
+        <span>{labels.galleryLabel}</span>
+        <textarea className="admin-textarea" name="gallery" defaultValue={v.gallery.join("\n")} placeholder={labels.galleryPlaceholder} style={{ minHeight: "5rem" }} />
       </label>
 
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: 1 }}>
-          <span>What&apos;s included (one per line)</span>
+          <span>{labels.inclusionsLabel}</span>
           <textarea className="admin-textarea" name="inclusions" defaultValue={v.inclusions.join("\n")} style={{ minHeight: "7rem" }} />
         </label>
         <label className="admin-field" style={{ flex: 1 }}>
-          <span>Not included (one per line)</span>
+          <span>{labels.exclusionsLabel}</span>
           <textarea className="admin-textarea" name="exclusions" defaultValue={v.exclusions.join("\n")} style={{ minHeight: "7rem" }} />
         </label>
       </div>
 
       <label className="admin-field">
-        <span>Good to know / travel notes (one per line)</span>
+        <span>{labels.travelNotesLabel}</span>
         <textarea className="admin-textarea" name="travelNotes" defaultValue={v.travelNotes.join("\n")} style={{ minHeight: "5rem" }} />
       </label>
 
-      <FaqEditor name="faqs" initial={v.faqs} />
+      <FaqEditor name="faqs" initial={v.faqs} labels={faqLabels} />
 
       <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <legend className="admin-card__meta">Custom call-to-action (optional — set both or neither)</legend>
+        <legend className="admin-card__meta">{labels.ctaLegend}</legend>
         <div className="admin-row" style={{ gap: "1rem" }}>
           <label className="admin-field" style={{ flex: "1 1 200px" }}>
-            <span>CTA label</span>
-            <input className="admin-input" type="text" name="ctaLabel" defaultValue={v.ctaLabel ?? ""} maxLength={120} placeholder="e.g. Download itinerary" />
+            <span>{labels.ctaLabelField}</span>
+            <input className="admin-input" type="text" name="ctaLabel" defaultValue={v.ctaLabel ?? ""} maxLength={120} placeholder={labels.ctaLabelPlaceholder} />
           </label>
           <label className="admin-field" style={{ flex: "2 1 260px" }}>
-            <span>CTA link</span>
-            <input className="admin-input" type="text" name="ctaHref" defaultValue={v.ctaHref ?? ""} maxLength={512} placeholder="/contact or https://…" />
+            <span>{labels.ctaHrefField}</span>
+            <input className="admin-input" type="text" name="ctaHref" defaultValue={v.ctaHref ?? ""} maxLength={512} placeholder={labels.ctaHrefPlaceholder} />
           </label>
         </div>
       </fieldset>
 
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: 1 }}>
-          <span>Meta title (SEO)</span>
+          <span>{labels.metaTitle}</span>
           <input className="admin-input" type="text" name="metaTitle" defaultValue={v.metaTitle ?? ""} maxLength={255} />
         </label>
       </div>
       <label className="admin-field">
-        <span>Meta description (SEO)</span>
+        <span>{labels.metaDesc}</span>
         <textarea className="admin-textarea" name="metaDesc" defaultValue={v.metaDesc ?? ""} maxLength={320} style={{ minHeight: "4rem" }} />
       </label>
     </div>

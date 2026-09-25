@@ -2,42 +2,43 @@ import type { JSX } from "react";
 import Link from "next/link";
 import { requireCapability } from "@/server/auth/rbac";
 import { listLandingSections } from "@/server/content";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 export default async function ContentIndexPage(): Promise<JSX.Element> {
   await requireCapability("content.view");
   const sections = await listLandingSections();
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.content;
 
   return (
     <>
       <div className="admin-head">
-        <h1>Content (CMS)</h1>
-        <p>
-          The seven landing sections. Each can be overridden by an editable payload; an unset section
-          serves the built-in default. Overrides are validated against the section schema before they go live.
-        </p>
+        <h1>{t.title}</h1>
+        <p>{t.subtitle}</p>
       </div>
 
       <div className="admin-card" style={{ padding: 0 }}>
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Section</th>
-              <th>Source</th>
-              <th style={{ textAlign: "right" }}>Edit</th>
+              <th>{t.colSection}</th>
+              <th>{t.colSource}</th>
+              <th style={{ textAlign: "right" }}>{dict.common.edit}</th>
             </tr>
           </thead>
           <tbody>
             {sections.map((s) => (
               <tr key={s.key}>
-                <td>{s.label}</td>
+                <td>{t.sectionLabels[s.key] ?? s.label}</td>
                 <td>
                   <span className={`admin-badge ${s.overridden ? "admin-badge--gold" : "admin-badge--off"}`}>
-                    {s.overridden ? "Override" : "Default"}
+                    {s.overridden ? t.badgeOverride : t.badgeDefault}
                   </span>
                 </td>
                 <td style={{ textAlign: "right" }}>
                   <Link className="admin-btn admin-btn--ghost" href={`/admin/content/${s.key}`}>
-                    Edit
+                    {dict.common.edit}
                   </Link>
                 </td>
               </tr>

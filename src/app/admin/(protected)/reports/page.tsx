@@ -15,27 +15,12 @@ import {
   type CountryCount,
 } from "@/server/admin/reports";
 import { getGa4CountryTraffic, type Ga4TrafficResult } from "@/server/admin/analytics-ga4";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict, type ReportsDict } from "@/i18n/admin/dictionary";
 import AdminHint from "@/components/admin/AdminHint";
 import { ReportsCharts } from "@/components/admin/ReportsCharts";
 
 export const dynamic = "force-dynamic";
-
-const RANGE_TAB_LABEL: Record<ReportRangeKey, string> = {
-  "7d": "7 days",
-  "30d": "30 days",
-  "90d": "90 days",
-  "12m": "12 months",
-  ytd: "Year to date",
-  all: "All time",
-};
-
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  PENDING_PAYMENT: "Pending",
-  CONFIRMED: "Confirmed",
-  CANCELLED: "Cancelled",
-  REFUNDED: "Refunded",
-  FAILED: "Failed",
-};
 
 /** Never let one flaky read blank the whole page (mirrors the dashboard). */
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -58,19 +43,22 @@ function currencyLine(revenue: { currency: string; netCents: number }[]): string
  * under <Suspense> instead of blocking the whole report. Never throws — the
  * GA4 service returns a typed ok/err result, wrapped in safe() as a last resort.
  */
-async function Ga4Panel({ since }: { since: Date | null }): Promise<JSX.Element> {
+async function Ga4Panel({ since, t }: { since: Date | null; t: ReportsDict }): Promise<JSX.Element> {
   const ga4 = await safe<Ga4TrafficResult>(() => getGa4CountryTraffic(since), {
     ok: false,
     reason: "error",
-    message: "Analytics unavailable right now.",
+    message: "",
   });
   if (!ga4.ok) {
+    // Copy is chosen by machine-readable reason, not the server's English message,
+    // so the panel is fully localized (and the message prop can stay untranslated).
+    const msg = ga4.reason === "not_configured" ? t.ga4NotConfigured : t.ga4Error;
     return (
       <div className="admin-card">
-        <p className="admin-card__meta">{ga4.message}</p>
+        <p className="admin-card__meta">{msg}</p>
         {ga4.reason === "not_configured" && (
           <Link href="/admin/integrations" className="admin-btn admin-btn--ghost" style={{ marginTop: "0.5rem" }}>
-            Set up Google Analytics →
+            {t.ga4Setup}
           </Link>
         )}
       </div>
@@ -79,7 +67,7 @@ async function Ga4Panel({ since }: { since: Date | null }): Promise<JSX.Element>
   if (ga4.rows.length === 0) {
     return (
       <div className="admin-card">
-        <p className="admin-card__meta">No visitor data reported for this period yet.</p>
+        <p className="admin-card__meta">{t.ga4NoData}</p>
       </div>
     );
   }
@@ -87,9 +75,9 @@ async function Ga4Panel({ since }: { since: Date | null }): Promise<JSX.Element>
     <table className="admin-table">
       <thead>
         <tr>
-          <th>Country</th>
-          <th>Sessions</th>
-          <th>Active users</th>
+          <th>{t.colCountry}</th>
+          <th>{t.colSessions}</th>
+          <th>{t.colActiveUsers}</th>
         </tr>
       </thead>
       <tbody>
@@ -111,6 +99,9 @@ export default async function AdminReportsPage({
   searchParams: Promise<{ range?: string }>;
 }): Promise<JSX.Element> {
   await requireCapability("reports.view");
+  const locale = await getAdminLocale();
+  const dict = getAdminDict(locale);
+  const t = dict.reports;
   const { range: rawRange } = await searchParams;
   const range = parseReportRange(rawRange);
 
@@ -132,19 +123,19 @@ export default async function AdminReportsPage({
   // Chart inputs — COUNTS only (currency-agnostic); money is never charted.
   const statusChart = money.statusCounts
     .filter((s) => s.count > 0)
-    .map((s) => ({ key: s.status, name: STATUS_LABEL[s.status], value: s.count }));
+    .map((s) => ({ key: s.status, name: dict.status[s.status], value: s.count }));
   const toursChart = topTours.slice(0, 8).map((t) => ({ name: t.tourTitle, bookings: t.confirmedBookings }));
   const countriesChart = byCountry.slice(0, 8).map((c) => ({ name: c.name, bookings: c.count }));
 
   return (
     <>
       <div className="admin-head">
-        <h1>Reports</h1>
-        <p>Revenue and bookings for the selected period. Money is shown per currency and never mixed.</p>
+        <h1>{t.title}</h1>
+        <p>{t.subtitle}</p>
       </div>
 
       <div className="admin-row admin-row--between" style={{ marginBottom: "1rem", gap: "1rem" }}>
-        <nav className="admin-row" aria-label="Report period">
+        <nav className="admin-row" aria-label={t.rangeAria}>
           {REPORT_RANGES.map((k) => {
             const active = k === range.key;
             return (
@@ -154,50 +145,50 @@ export default async function AdminReportsPage({
                 className={`admin-btn ${active ? "" : "admin-btn--ghost"}`}
                 aria-current={active ? "page" : undefined}
               >
-                {RANGE_TAB_LABEL[k]}
+                {t.rangeTab[k]}
               </Link>
             );
           })}
         </nav>
         <a href={csvHref} className="admin-btn admin-btn--ghost admin-btn--sm" download>
-          ↓ Download CSV
+          {t.downloadCsv}
         </a>
       </div>
 
-      <section className="admin-kpis" aria-label="Key totals">
+      <section className="admin-kpis" aria-label={t.kpiAria}>
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Total bookings</span>
+          <span className="admin-kpi__label">{t.kpiTotalBookings}</span>
           <strong className="admin-kpi__value">{totalBookings.toLocaleString("en-US")}</strong>
         </div>
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Confirmed</span>
+          <span className="admin-kpi__label">{t.kpiConfirmed}</span>
           <strong className="admin-kpi__value">{countOf("CONFIRMED").toLocaleString("en-US")}</strong>
         </div>
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Awaiting payment</span>
+          <span className="admin-kpi__label">{t.kpiAwaitingPayment}</span>
           <strong className="admin-kpi__value">{countOf("PENDING_PAYMENT").toLocaleString("en-US")}</strong>
         </div>
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Refunded</span>
+          <span className="admin-kpi__label">{t.kpiRefunded}</span>
           <strong className="admin-kpi__value">{countOf("REFUNDED").toLocaleString("en-US")}</strong>
         </div>
       </section>
 
       {totalBookings > 0 && (
-        <ReportsCharts status={statusChart} topTours={toursChart} countries={countriesChart} />
+        <ReportsCharts status={statusChart} topTours={toursChart} countries={countriesChart} labels={t.charts} />
       )}
 
       <section style={{ marginBottom: "1.5rem" }}>
         <div className="admin-row admin-row--between" style={{ marginBottom: "0.5rem" }}>
           <h2 style={{ margin: 0 }}>
-            Revenue (confirmed)
-            <AdminHint text="Money actually taken from paid (confirmed) bookings, after any coupon discounts. Each currency is shown on its own — EGP and USD are never added together." />
+            {t.revenueHeading}
+            <AdminHint text={t.revenueHint} helpLabel={dict.common.help} />
           </h2>
-          <span className="admin-badge admin-badge--gold">{range.label}</span>
+          <span className="admin-badge admin-badge--gold">{t.rangeLabel[range.key]}</span>
         </div>
         {money.revenue.length === 0 ? (
           <div className="admin-card">
-            <p className="admin-card__meta">No confirmed revenue in this period.</p>
+            <p className="admin-card__meta">{t.noRevenue}</p>
           </div>
         ) : (
           <div className="admin-grid">
@@ -205,16 +196,18 @@ export default async function AdminReportsPage({
               <div key={r.currency} className="admin-card">
                 <div className="admin-row admin-row--between">
                   <strong>{r.currency}</strong>
-                  <span className="admin-badge admin-badge--on">{r.confirmedBookings} bookings</span>
+                  <span className="admin-badge admin-badge--on">{t.bookingsCount(r.confirmedBookings)}</span>
                 </div>
                 <p style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.35rem 0" }}>
                   {formatPriceCents(r.netCents, r.currency)}
                 </p>
-                <p className="admin-card__meta">Net taken (after discounts)</p>
+                <p className="admin-card__meta">{t.netTaken}</p>
                 {r.discountCents > 0 && (
                   <p className="admin-card__meta">
-                    Gross {formatPriceCents(r.grossCents, r.currency)} · discounts −
-                    {formatPriceCents(r.discountCents, r.currency)}
+                    {t.grossLine(
+                      formatPriceCents(r.grossCents, r.currency),
+                      formatPriceCents(r.discountCents, r.currency),
+                    )}
                   </p>
                 )}
               </div>
@@ -226,15 +219,15 @@ export default async function AdminReportsPage({
       {money.refunds.length > 0 && (
         <section style={{ marginBottom: "1.5rem" }}>
           <h2>
-            Refunds
-            <AdminHint text="Money paid back to customers on refunded bookings, shown per currency." />
+            {t.refundsHeading}
+            <AdminHint text={t.refundsHint} helpLabel={dict.common.help} />
           </h2>
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Currency</th>
-                <th>Refunded bookings</th>
-                <th>Amount refunded</th>
+                <th>{t.refundColCurrency}</th>
+                <th>{t.refundColBookings}</th>
+                <th>{t.refundColAmount}</th>
               </tr>
             </thead>
             <tbody>
@@ -252,31 +245,31 @@ export default async function AdminReportsPage({
 
       <section style={{ marginBottom: "1.5rem" }}>
         <h2>
-          Bookings by status
-          <AdminHint text="How many bookings fall into each stage — pending payment, confirmed, cancelled, refunded or failed. This counts bookings, not money, so all currencies are included together." />
+          {t.byStatusHeading}
+          <AdminHint text={t.byStatusHint} helpLabel={dict.common.help} />
         </h2>
         {money.statusCounts.length === 0 ? (
           <div className="admin-card">
-            <p className="admin-card__meta">No bookings in this period.</p>
+            <p className="admin-card__meta">{t.noBookings}</p>
           </div>
         ) : (
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Status</th>
-                <th>Bookings</th>
+                <th>{t.colStatus}</th>
+                <th>{t.colBookings}</th>
               </tr>
             </thead>
             <tbody>
               {money.statusCounts.map((s) => (
                 <tr key={s.status}>
-                  <td>{STATUS_LABEL[s.status]}</td>
+                  <td>{dict.status[s.status]}</td>
                   <td>{s.count}</td>
                 </tr>
               ))}
               <tr>
                 <td>
-                  <strong>Total</strong>
+                  <strong>{t.totalRow}</strong>
                 </td>
                 <td>
                   <strong>{totalBookings}</strong>
@@ -289,30 +282,30 @@ export default async function AdminReportsPage({
 
       <section style={{ marginBottom: "1.5rem" }}>
         <h2>
-          Top tours (confirmed)
-          <AdminHint text="Your best-selling tours in this period, ordered by number of confirmed bookings. Revenue is listed per currency for each tour." />
+          {t.topToursHeading}
+          <AdminHint text={t.topToursHint} helpLabel={dict.common.help} />
         </h2>
         {topTours.length === 0 ? (
           <div className="admin-card">
-            <p className="admin-card__meta">No confirmed tour bookings in this period.</p>
+            <p className="admin-card__meta">{t.noTourBookings}</p>
           </div>
         ) : (
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Tour</th>
-                <th>Bookings</th>
-                <th>Seats</th>
-                <th>Revenue</th>
+                <th>{t.colTour}</th>
+                <th>{t.colBookings}</th>
+                <th>{t.colSeats}</th>
+                <th>{t.colRevenue}</th>
               </tr>
             </thead>
             <tbody>
-              {topTours.map((t) => (
-                <tr key={t.tourSlug}>
-                  <td>{t.tourTitle}</td>
-                  <td>{t.confirmedBookings}</td>
-                  <td>{t.seats}</td>
-                  <td>{currencyLine(t.revenue)}</td>
+              {topTours.map((tour) => (
+                <tr key={tour.tourSlug}>
+                  <td>{tour.tourTitle}</td>
+                  <td>{tour.confirmedBookings}</td>
+                  <td>{tour.seats}</td>
+                  <td>{currencyLine(tour.revenue)}</td>
                 </tr>
               ))}
             </tbody>
@@ -322,22 +315,22 @@ export default async function AdminReportsPage({
 
       <section style={{ marginBottom: "1.5rem" }}>
         <h2>
-          Bookings by country
-          <AdminHint text="Where your paying customers are — grouped by the country they entered at checkout. This is buyers only, not general website visitors." />
+          {t.byCountryHeading}
+          <AdminHint text={t.byCountryHint} helpLabel={dict.common.help} />
         </h2>
         <p className="admin-card__meta" style={{ marginTop: "-0.35rem" }}>
-          From the customer&apos;s country at checkout (confirmed bookings).
+          {t.byCountryNote}
         </p>
         {byCountry.length === 0 ? (
           <div className="admin-card">
-            <p className="admin-card__meta">No confirmed bookings in this period.</p>
+            <p className="admin-card__meta">{t.noConfirmedBookings}</p>
           </div>
         ) : (
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Country</th>
-                <th>Bookings</th>
+                <th>{t.colCountry}</th>
+                <th>{t.colBookings}</th>
               </tr>
             </thead>
             <tbody>
@@ -354,20 +347,20 @@ export default async function AdminReportsPage({
 
       <section>
         <h2>
-          Website traffic by country
-          <AdminHint text="Everyone who visited the site, from Google Analytics — not just buyers. Sessions = visits; active users = distinct people. Needs Google Analytics set up in Integrations." />
+          {t.trafficHeading}
+          <AdminHint text={t.trafficHint} helpLabel={dict.common.help} />
         </h2>
         <p className="admin-card__meta" style={{ marginTop: "-0.35rem" }}>
-          Visitor sessions from Google Analytics (all site traffic, not only buyers).
+          {t.trafficNote}
         </p>
         <Suspense
           fallback={
             <div className="admin-card">
-              <p className="admin-card__meta">Loading visitor analytics…</p>
+              <p className="admin-card__meta">{t.ga4Loading}</p>
             </div>
           }
         >
-          <Ga4Panel since={range.since} />
+          <Ga4Panel since={range.since} t={t} />
         </Suspense>
       </section>
     </>

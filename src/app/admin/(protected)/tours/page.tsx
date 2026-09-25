@@ -2,6 +2,8 @@ import type { JSX } from "react";
 import Link from "next/link";
 import { requireCapability, can } from "@/server/auth/rbac";
 import { listAdminTours } from "@/server/admin/catalog-admin";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 import { formatPriceCents } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -16,18 +18,20 @@ export default async function AdminToursPage(): Promise<JSX.Element> {
   const user = await requireCapability("catalog.view");
   const tours = await listAdminTours();
   const editable = can(user, "catalog.edit");
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.tours;
 
   return (
     <>
       <div className="admin-head">
         <div className="admin-row admin-row--between">
           <div>
-            <h1>Tours</h1>
-            <p>Every tour, all statuses. Only PUBLISHED tours appear on the public site.</p>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
           </div>
           {editable ? (
             <Link className="admin-btn" href="/admin/tours/new">
-              + New tour
+              {t.newTour}
             </Link>
           ) : null}
         </div>
@@ -37,45 +41,45 @@ export default async function AdminToursPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Status</th>
-              <th>From</th>
-              <th>Days</th>
-              <th>Departures</th>
-              <th>Destinations</th>
-              <th style={{ textAlign: "right" }}>Edit</th>
+              <th>{t.colTitle}</th>
+              <th>{t.colStatus}</th>
+              <th>{t.colFrom}</th>
+              <th>{t.colDays}</th>
+              <th>{t.colDepartures}</th>
+              <th>{t.colDestinations}</th>
+              <th style={{ textAlign: "right" }}>{t.colEdit}</th>
             </tr>
           </thead>
           <tbody>
             {tours.length === 0 ? (
               <tr>
                 <td colSpan={7}>
-                  <span className="admin-card__meta">No tours yet.</span>
+                  <span className="admin-card__meta">{t.noTours}</span>
                 </td>
               </tr>
             ) : (
-              tours.map((t) => (
-                <tr key={t.id}>
+              tours.map((tour) => (
+                <tr key={tour.id}>
                   <td>
-                    <strong>{t.title}</strong>
-                    <div className="admin-card__meta">/{t.slug}</div>
+                    <strong>{tour.title}</strong>
+                    <div className="admin-card__meta">/{tour.slug}</div>
                   </td>
                   <td>
-                    <span className={`admin-badge ${STATUS_BADGE[t.status] ?? "admin-badge--off"}`}>
-                      {t.status}
+                    <span className={`admin-badge ${STATUS_BADGE[tour.status] ?? "admin-badge--off"}`}>
+                      {t.statusLabels[tour.status] ?? tour.status}
                     </span>
                   </td>
-                  <td>{formatPriceCents(t.basePriceCents, t.currency)}</td>
-                  <td>{t.durationDays}</td>
-                  <td>{t.departureCount}</td>
+                  <td>{formatPriceCents(tour.basePriceCents, tour.currency)}</td>
+                  <td>{tour.durationDays}</td>
+                  <td>{tour.departureCount}</td>
                   <td>
                     <span className="admin-card__meta">
-                      {t.destinationNames.length > 0 ? t.destinationNames.join(", ") : "—"}
+                      {tour.destinationNames.length > 0 ? tour.destinationNames.join(", ") : "—"}
                     </span>
                   </td>
                   <td style={{ textAlign: "right" }}>
-                    <Link className="admin-btn admin-btn--ghost" href={`/admin/tours/${t.id}`}>
-                      {editable ? "Edit" : "View"}
+                    <Link className="admin-btn admin-btn--ghost" href={`/admin/tours/${tour.id}`}>
+                      {editable ? t.colEdit : dict.common.view}
                     </Link>
                   </td>
                 </tr>

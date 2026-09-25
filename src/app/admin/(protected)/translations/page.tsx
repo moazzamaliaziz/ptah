@@ -3,6 +3,8 @@ import Link from "next/link";
 import { requireCapability } from "@/server/auth/rbac";
 import { listTranslationModels } from "@/server/admin/translations-admin";
 import { locales, defaultLocale, localeNames } from "@/i18n/config";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -12,25 +14,24 @@ const targetLocales = locales.filter((l) => l !== defaultLocale);
 export default async function TranslationsIndexPage(): Promise<JSX.Element> {
   await requireCapability("content.view");
   const models = await listTranslationModels();
+  const dict = getAdminDict(await getAdminLocale());
+  const t = dict.translations;
+  const langs = targetLocales.map((l) => localeNames[l]).join(", ");
 
   return (
     <>
       <div className="admin-head">
-        <h1>Translations</h1>
-        <p>
-          English is the source — you write it on each Tour, Event, etc. Here you add the{" "}
-          {targetLocales.map((l) => localeNames[l]).join(", ")} versions. Anything you leave blank
-          simply shows the English text on the public site.
-        </p>
+        <h1>{t.title}</h1>
+        <p>{t.intro(langs)}</p>
       </div>
 
       <div className="admin-card">
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Content type</th>
-              <th style={{ textAlign: "right" }}>Records</th>
-              <th style={{ textAlign: "right" }}>Translated fields</th>
+              <th>{t.colContentType}</th>
+              <th style={{ textAlign: "right" }}>{t.colRecords}</th>
+              <th style={{ textAlign: "right" }}>{t.colTranslatedFields}</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -44,7 +45,7 @@ export default async function TranslationsIndexPage(): Promise<JSX.Element> {
                 <td style={{ textAlign: "right" }}>{m.translationRows}</td>
                 <td style={{ textAlign: "right" }}>
                   <Link className="admin-btn admin-btn--ghost" href={`/admin/translations/${m.model}`}>
-                    Open →
+                    {t.open}
                   </Link>
                 </td>
               </tr>

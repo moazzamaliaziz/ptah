@@ -1,4 +1,3 @@
-import type { BookingStatus } from "@prisma/client";
 import { requireCapability } from "@/server/auth/rbac";
 import {
   parseReportRange,
@@ -6,6 +5,8 @@ import {
   getTopTours,
   getBookingsByCountry,
 } from "@/server/admin/reports";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 /**
  * Staff-only CSV export of the reports page (Wave 3). Same period + same
@@ -17,17 +18,13 @@ import {
  * dedicated column and is never summed across currencies. Amounts are written
  * as major-unit decimals (cents / 100, 2 dp — every currency the shop takes,
  * EGP and USD, has 2 minor digits) so spreadsheets read them as numbers.
+ *
+ * Section titles / headers / status names follow the admin locale cookie, so an
+ * Arabic-reading operator gets an Arabic export. Numbers stay Latin (see amount)
+ * and the "Ptah Tours" brand line is intentionally not translated.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  PENDING_PAYMENT: "Pending",
-  CONFIRMED: "Confirmed",
-  CANCELLED: "Cancelled",
-  REFUNDED: "Refunded",
-  FAILED: "Failed",
-};
 
 /**
  * Escape one CSV cell. Two jobs:
@@ -54,6 +51,9 @@ function row(cells: (string | number)[]): string {
 
 export async function GET(req: Request): Promise<Response> {
   await requireCapability("reports.view");
+  const locale = await getAdminLocale();
+  const dict = getAdminDict(locale);
+  const t = dict.reports.csv;
 
   const url = new URL(req.url);
   const range = parseReportRange(url.searchParams.get("range") ?? undefined);
@@ -66,14 +66,14 @@ export async function GET(req: Request): Promise<Response> {
 
   const lines: string[] = [];
   lines.push(row(["Ptah Tours — Reports export"]));
-  lines.push(row(["Period", range.label]));
-  lines.push(row(["Generated", new Date().toISOString()]));
+  lines.push(row([t.period, dict.reports.rangeLabel[range.key]]));
+  lines.push(row([t.generated, new Date().toISOString()]));
   lines.push("");
 
-  lines.push(row(["Revenue (confirmed) — per currency"]));
-  lines.push(row(["Currency", "Confirmed bookings", "Net", "Discount", "Gross"]));
+  lines.push(row([t.revenueSection]));
+  lines.push(row([t.colCurrency, t.colConfirmedBookings, t.colNet, t.colDiscount, t.colGross]));
   if (money.revenue.length === 0) {
-    lines.push(row(["No confirmed revenue in this period"]));
+    lines.push(row([t.noRevenue]));
   } else {
     for (const r of money.revenue) {
       lines.push(
@@ -83,10 +83,10 @@ export async function GET(req: Request): Promise<Response> {
   }
   lines.push("");
 
-  lines.push(row(["Refunds — per currency"]));
-  lines.push(row(["Currency", "Refunded bookings", "Amount refunded"]));
+  lines.push(row([t.refundsSection]));
+  lines.push(row([t.colCurrency, t.colRefundedBookings, t.colAmountRefunded]));
   if (money.refunds.length === 0) {
-    lines.push(row(["No refunds in this period"]));
+    lines.push(row([t.noRefunds]));
   } else {
     for (const r of money.refunds) {
       lines.push(row([r.currency, r.refundedBookings, amount(r.netCents)]));
@@ -94,32 +94,32 @@ export async function GET(req: Request): Promise<Response> {
   }
   lines.push("");
 
-  lines.push(row(["Bookings by status"]));
-  lines.push(row(["Status", "Bookings"]));
+  lines.push(row([t.statusSection]));
+  lines.push(row([t.colStatus, t.colBookings]));
   let total = 0;
   for (const s of money.statusCounts) {
     total += s.count;
-    lines.push(row([STATUS_LABEL[s.status], s.count]));
+    lines.push(row([dict.status[s.status], s.count]));
   }
-  lines.push(row(["Total", total]));
+  lines.push(row([t.totalRow, total]));
   lines.push("");
 
-  lines.push(row(["Top tours (confirmed)"]));
-  lines.push(row(["Tour", "Bookings", "Seats", "Revenue (per currency)"]));
+  lines.push(row([t.topToursSection]));
+  lines.push(row([t.colTour, t.colBookings, t.colSeats, t.colRevenuePerCurrency]));
   if (topTours.length === 0) {
-    lines.push(row(["No confirmed tour bookings in this period"]));
+    lines.push(row([t.noTourBookings]));
   } else {
-    for (const t of topTours) {
-      const rev = t.revenue.map((r) => `${r.currency} ${amount(r.netCents)}`).join(" · ") || "—";
-      lines.push(row([t.tourTitle, t.confirmedBookings, t.seats, rev]));
+    for (const tour of topTours) {
+      const rev = tour.revenue.map((r) => `${r.currency} ${amount(r.netCents)}`).join(" · ") || "—";
+      lines.push(row([tour.tourTitle, tour.confirmedBookings, tour.seats, rev]));
     }
   }
   lines.push("");
 
-  lines.push(row(["Bookings by country"]));
-  lines.push(row(["Country", "Bookings"]));
+  lines.push(row([t.countrySection]));
+  lines.push(row([t.colCountry, t.colBookings]));
   if (byCountry.length === 0) {
-    lines.push(row(["No confirmed bookings in this period"]));
+    lines.push(row([t.noConfirmedBookings]));
   } else {
     for (const c of byCountry) {
       lines.push(row([c.name, c.count]));

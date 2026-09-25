@@ -9,10 +9,10 @@ import type { JSX } from "react";
  *
  * Usage: <AdminHint text="What this number means, in easy words." />
  */
-export default function AdminHint({ text, label }: { text: string; label?: string }): JSX.Element {
+export default function AdminHint({ text, label, helpLabel }: { text: string; label?: string; helpLabel?: string }): JSX.Element {
   return (
     <span className="admin-hint">
-      <span className="admin-hint__trigger" role="note" tabIndex={0} aria-label={label ?? `Help: ${text}`}>
+      <span className="admin-hint__trigger" role="note" tabIndex={0} aria-label={label ?? `${helpLabel ?? "Help"}: ${text}`}>
         ?
       </span>
       <span className="admin-hint__bubble" aria-hidden="true">

@@ -11,16 +11,21 @@ import {
   toDateInput,
   type CouponInput,
 } from "@/content/coupon-admin-schema";
+import type { CouponFormDict } from "@/i18n/admin/dictionary";
 
 export interface CouponEditorProps {
   /** Present → edit mode (update); absent → create mode. */
   coupon?: CouponInput & { id: string };
   /** View-only for staff who can see but not edit coupons (disables the form). */
   readOnly?: boolean;
+  /** Localized field labels/hints (passed from the server page). */
+  labels: CouponFormDict;
+  /** Localized "Saving…" pending-button label (the generic `common.saving`). */
+  savingLabel: string;
 }
 
 /** Shared create/edit form for a discount coupon. */
-export default function CouponEditor({ coupon, readOnly = false }: CouponEditorProps): JSX.Element {
+export default function CouponEditor({ coupon, readOnly = false, labels, savingLabel }: CouponEditorProps): JSX.Element {
   const isEdit = coupon !== undefined;
   const [state, formAction, pending] = useActionState<CouponFormState, FormData>(
     isEdit ? updateCouponAction : createCouponAction,
@@ -42,13 +47,13 @@ export default function CouponEditor({ coupon, readOnly = false }: CouponEditorP
         <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
       ) : null}
       {state.ok ? (
-        <div className="admin-alert admin-alert--ok" role="status">Saved.</div>
+        <div className="admin-alert admin-alert--ok" role="status">{labels.saved}</div>
       ) : null}
 
       <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, minInlineSize: "auto" }}>
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: "2 1 220px" }}>
-          <span>Code</span>
+          <span>{labels.code}</span>
           <input
             className="admin-input"
             type="text"
@@ -59,25 +64,25 @@ export default function CouponEditor({ coupon, readOnly = false }: CouponEditorP
             style={{ textTransform: "uppercase" }}
             required
           />
-          <small className="admin-card__meta">Customers type this at checkout. Letters, digits and hyphens.</small>
+          <small className="admin-card__meta">{labels.codeHint}</small>
         </label>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Discount type</span>
+          <span>{labels.discountType}</span>
           <select
             className="admin-input"
             name="type"
             value={type}
             onChange={(e) => setType(e.target.value as CouponInput["type"])}
           >
-            <option value="PERCENT">Percentage off</option>
-            <option value="FIXED">Fixed amount off</option>
+            <option value="PERCENT">{labels.typePercent}</option>
+            <option value="FIXED">{labels.typeFixed}</option>
           </select>
         </label>
       </div>
 
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: "1 1 180px" }}>
-          <span>{isPercent ? "Percentage off (1–100)" : "Amount off"}</span>
+          <span>{isPercent ? labels.valuePercentLabel : labels.valueFixedLabel}</span>
           <input
             className="admin-input"
             type="text"
@@ -88,11 +93,11 @@ export default function CouponEditor({ coupon, readOnly = false }: CouponEditorP
             required
           />
           <small className="admin-card__meta">
-            {isPercent ? "A whole number, e.g. 10 for 10% off." : "In the currency below, e.g. 25.00."}
+            {isPercent ? labels.valuePercentHint : labels.valueFixedHint}
           </small>
         </label>
         <label className="admin-field" style={{ flex: "1 1 140px" }}>
-          <span>Currency</span>
+          <span>{labels.currency}</span>
           <input
             className="admin-input"
             type="text"
@@ -103,14 +108,14 @@ export default function CouponEditor({ coupon, readOnly = false }: CouponEditorP
             style={{ textTransform: "uppercase" }}
           />
           <small className="admin-card__meta">
-            {isPercent ? "Optional — leave blank to apply in any currency." : "Required for a fixed amount."}
+            {isPercent ? labels.currencyPercentHint : labels.currencyFixedHint}
           </small>
         </label>
       </div>
 
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: "1 1 180px" }}>
-          <span>Minimum spend (optional)</span>
+          <span>{labels.minSpend}</span>
           <input
             className="admin-input"
             type="text"
@@ -119,10 +124,10 @@ export default function CouponEditor({ coupon, readOnly = false }: CouponEditorP
             defaultValue={coupon?.minSpendCents != null ? centsToMoney(coupon.minSpendCents) : ""}
             placeholder="100.00"
           />
-          <small className="admin-card__meta">Order must reach this before the code applies.</small>
+          <small className="admin-card__meta">{labels.minSpendHint}</small>
         </label>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Max uses (optional)</span>
+          <span>{labels.maxUses}</span>
           <input
             className="admin-input"
             type="number"
@@ -130,34 +135,34 @@ export default function CouponEditor({ coupon, readOnly = false }: CouponEditorP
             min={1}
             step={1}
             defaultValue={coupon?.maxRedemptions ?? ""}
-            placeholder="Unlimited"
+            placeholder={labels.maxUsesPlaceholder}
           />
-          <small className="admin-card__meta">Total bookings that may use this code.</small>
+          <small className="admin-card__meta">{labels.maxUsesHint}</small>
         </label>
       </div>
 
       <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Starts (optional)</span>
+          <span>{labels.starts}</span>
           <input className="admin-input" type="date" name="startsAt" defaultValue={toDateInput(coupon?.startsAt ?? null)} />
         </label>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
-          <span>Ends (optional)</span>
+          <span>{labels.ends}</span>
           <input className="admin-input" type="date" name="endsAt" defaultValue={toDateInput(coupon?.endsAt ?? null)} />
-          <small className="admin-card__meta">Valid through the whole of this day.</small>
+          <small className="admin-card__meta">{labels.endsHint}</small>
         </label>
       </div>
 
       <label className="admin-field" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
         <input type="checkbox" name="active" defaultChecked={coupon?.active ?? true} />
-        <span>Active (customers can use this code)</span>
+        <span>{labels.activeLabel}</span>
       </label>
       </fieldset>
 
       {readOnly ? null : (
         <div className="admin-row" style={{ marginTop: "0.75rem" }}>
           <button className="admin-btn" type="submit" disabled={pending}>
-            {pending ? "Saving…" : isEdit ? "Save coupon" : "Create coupon"}
+            {pending ? savingLabel : isEdit ? labels.saveCoupon : labels.createCoupon}
           </button>
         </div>
       )}
