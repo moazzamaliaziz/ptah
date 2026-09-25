@@ -49,6 +49,30 @@
 .admin-sidebar__spacer { flex: 1; }
 .admin-sidebar__user { font-size: 0.78rem; opacity: 0.75; padding: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.12); }
 
+/* Admin-UI language switch (Wave 5): a small segmented control in the sidebar.
+   Two buttons (English / العربية); the active one is filled gold like the
+   current nav item. No client JS — each button is a Server Action submit. */
+.admin-locale { display: flex; gap: 0.35rem; padding: 0.5rem; }
+.admin-locale__btn {
+  flex: 1;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+}
+.admin-locale__btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.admin-locale__btn--active {
+  background: var(--color-gold, #d9822b);
+  border-color: var(--color-gold, #d9822b);
+  color: #1a2340;
+}
+.admin-locale__btn:focus-visible { outline: 2px solid var(--color-gold, #d9822b); outline-offset: 1px; }
+
 .admin-main { padding: 2rem clamp(1rem, 3vw, 2.5rem); min-width: 0; }
 .admin-head { margin-bottom: 1.75rem; }
 .admin-head h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
@@ -151,7 +175,7 @@
 .admin-alert--info { background: #e6effb; color: #1a3a66; border: 1px solid #b8d0ee; }
 
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-.admin-table th, .admin-table td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid rgba(26, 35, 64, 0.1); }
+.admin-table th, .admin-table td { text-align: start; padding: 0.55rem 0.6rem; border-bottom: 1px solid rgba(26, 35, 64, 0.1); }
 .admin-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
 
 .admin-login { min-height: 100vh; display: grid; place-items: center; background: var(--color-nile, #1a2340); padding: 1rem; }
@@ -207,7 +231,7 @@
    A small "?" chip that reveals a plain-language explanation on hover or keyboard
    focus. Pure CSS, no client JS (admin screens are server components). The bubble
    text resets the uppercase/tracking it may inherit inside table headers. */
-.admin-hint { position: relative; display: inline-flex; vertical-align: middle; margin-left: 0.3rem; }
+.admin-hint { position: relative; display: inline-flex; vertical-align: middle; margin-inline-start: 0.3rem; }
 .admin-hint__trigger {
   display: inline-grid;
   place-items: center;
@@ -236,7 +260,7 @@
   line-height: 1.35;
   text-transform: none;
   letter-spacing: 0;
-  text-align: left;
+  text-align: start;
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   box-shadow: 0 6px 20px rgba(26, 35, 64, 0.25);

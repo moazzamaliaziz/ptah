@@ -12,6 +12,8 @@ import {
 import { getMoneyReport, type MoneyReport } from "@/server/admin/reports";
 import { countNewContactMessages } from "@/server/contact";
 import AdminHint from "@/components/admin/AdminHint";
+import { getAdminLocale } from "@/server/admin/locale";
+import { getAdminDict } from "@/i18n/admin/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -34,14 +36,6 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   FAILED: "admin-badge--off",
 };
 
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  PENDING_PAYMENT: "Awaiting payment",
-  CONFIRMED: "Confirmed",
-  CANCELLED: "Cancelled",
-  REFUNDED: "Refunded",
-  FAILED: "Failed",
-};
-
 function fmtWhen(d: Date): string {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
@@ -55,6 +49,10 @@ interface QuickAction {
 export default async function AdminDashboard(): Promise<JSX.Element> {
   const user = await requireStaff();
   const canEnquiries = can(user, "enquiries.view");
+  const locale = await getAdminLocale();
+  const dict = getAdminDict(locale);
+  const t = dict.nav;
+  const dash = dict.dashboard;
 
   // Everything the dashboard needs, in ONE parallel batch — no "load A then B"
   // waterfall (the recent-orders list used to await *after* the counts). Each
@@ -82,12 +80,12 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
 
   const quickActions: QuickAction[] = (
     [
-      { href: "/admin/bookings", label: "Orders", cap: "bookings.view" },
-      { href: "/admin/reports", label: "Reports", cap: "reports.view" },
-      { href: "/admin/tours", label: "Tours", cap: "catalog.view" },
-      { href: "/admin/content", label: "Content", cap: "content.view" },
-      { href: "/admin/coupons", label: "Coupons", cap: "coupons.view" },
-      { href: "/admin/media", label: "Media", cap: "media.view" },
+      { href: "/admin/bookings", label: t.orders, cap: "bookings.view" },
+      { href: "/admin/reports", label: t.reports, cap: "reports.view" },
+      { href: "/admin/tours", label: t.tours, cap: "catalog.view" },
+      { href: "/admin/content", label: t.content, cap: "content.view" },
+      { href: "/admin/coupons", label: t.coupons, cap: "coupons.view" },
+      { href: "/admin/media", label: t.media, cap: "media.view" },
     ] satisfies QuickAction[]
   ).filter((a) => can(user, a.cap));
 
@@ -95,23 +93,20 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
   return (
     <>
       <div className="admin-head">
-        <h1>Welcome, {user.name.split(" ")[0]}</h1>
+        <h1>{dash.welcome(user.name.split(" ")[0])}</h1>
         <p>
-          Signed in as {user.email} · role <strong>{user.role}</strong>
+          {dash.signedInAs} {user.email} · {dash.role} <strong>{user.role}</strong>
         </p>
       </div>
 
       {hasAlerts && (
-        <section aria-label="Needs attention" style={{ marginBottom: "1.5rem" }}>
+        <section aria-label={dash.needsAttention} style={{ marginBottom: "1.5rem" }}>
           {needsAttention > 0 && (
             <div className="admin-alert admin-alert--warn">
               <div className="admin-row admin-row--between">
-                <span>
-                  <strong>{needsAttention}</strong> booking{needsAttention === 1 ? "" : "s"} awaiting
-                  bank-transfer confirmation.
-                </span>
+                <span>{dash.awaitingBankTransfer(needsAttention)}</span>
                 <Link className="admin-btn admin-btn--sm" href="/admin/bookings?status=PENDING_PAYMENT">
-                  Review →
+                  {dash.review}
                 </Link>
               </div>
             </div>
@@ -119,11 +114,9 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
           {canEnquiries && newEnquiries > 0 && (
             <div className="admin-alert admin-alert--info">
               <div className="admin-row admin-row--between">
-                <span>
-                  <strong>{newEnquiries}</strong> new enquir{newEnquiries === 1 ? "y" : "ies"} to read.
-                </span>
+                <span>{dash.newEnquiries(newEnquiries)}</span>
                 <Link className="admin-btn admin-btn--sm" href="/admin/enquiries">
-                  Open enquiries →
+                  {dash.openEnquiries}
                 </Link>
               </div>
             </div>
@@ -132,21 +125,21 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
       )}
       <section className="admin-kpis" aria-label="Booking totals">
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Total bookings</span>
+          <span className="admin-kpi__label">{dash.totalBookings}</span>
           <strong className="admin-kpi__value">{totalBookings.toLocaleString("en-US")}</strong>
         </div>
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Confirmed</span>
+          <span className="admin-kpi__label">{dash.confirmed}</span>
           <strong className="admin-kpi__value">{countOf("CONFIRMED").toLocaleString("en-US")}</strong>
         </div>
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Awaiting payment</span>
+          <span className="admin-kpi__label">{dash.awaitingPayment}</span>
           <strong className="admin-kpi__value" style={awaiting > 0 ? { color: "#8a4b12" } : undefined}>
             {awaiting.toLocaleString("en-US")}
           </strong>
         </div>
         <div className="admin-kpi">
-          <span className="admin-kpi__label">Refunded</span>
+          <span className="admin-kpi__label">{dash.refunded}</span>
           <strong className="admin-kpi__value">{countOf("REFUNDED").toLocaleString("en-US")}</strong>
         </div>
       </section>
@@ -154,14 +147,14 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
       <section style={{ marginBottom: "1.5rem" }}>
         <div className="admin-row admin-row--between" style={{ marginBottom: "0.5rem" }}>
           <h2 style={{ margin: 0 }}>
-            Revenue to date
-            <AdminHint text="Money actually taken from confirmed bookings, after any discounts. Each currency is shown on its own — EGP and USD are never added together." />
+            {dash.revenueToDate}
+            <AdminHint text={dash.revenueHint} />
           </h2>
-          {can(user, "reports.view") && <Link href="/admin/reports">Full reports →</Link>}
+          {can(user, "reports.view") && <Link href="/admin/reports">{dash.fullReports}</Link>}
         </div>
         {report.revenue.length === 0 ? (
           <div className="admin-card">
-            <p className="admin-card__meta">No confirmed revenue yet.</p>
+            <p className="admin-card__meta">{dash.noRevenue}</p>
           </div>
         ) : (
           <div className="admin-grid">
@@ -169,12 +162,12 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
               <div key={r.currency} className="admin-card">
                 <div className="admin-row admin-row--between">
                   <strong>{r.currency}</strong>
-                  <span className="admin-badge admin-badge--on">{r.confirmedBookings} confirmed</span>
+                  <span className="admin-badge admin-badge--on">{dash.confirmedCount(r.confirmedBookings)}</span>
                 </div>
                 <p style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.35rem 0" }}>
                   {formatPriceCents(r.netCents, r.currency)}
                 </p>
-                <p className="admin-card__meta">Net taken (after discounts)</p>
+                <p className="admin-card__meta">{dash.netTaken}</p>
               </div>
             ))}
           </div>
@@ -182,7 +175,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
       </section>
       {quickActions.length > 0 && (
         <div className="admin-card" style={{ marginBottom: "1.5rem" }}>
-          <h2 style={{ marginTop: 0 }}>Quick actions</h2>
+          <h2 style={{ marginTop: 0 }}>{dash.quickActions}</h2>
           <div className="admin-row">
             {quickActions.map((a) => (
               <Link key={a.href} className="admin-btn admin-btn--ghost" href={a.href}>
@@ -195,23 +188,23 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
 
       <div className="admin-card" style={{ marginBottom: "1.5rem" }}>
         <div className="admin-row admin-row--between" style={{ alignItems: "center" }}>
-          <h2 style={{ margin: 0 }}>Recent orders</h2>
-          <Link href="/admin/bookings">View all →</Link>
+          <h2 style={{ margin: 0 }}>{dash.recentOrders}</h2>
+          <Link href="/admin/bookings">{dash.viewAll}</Link>
         </div>
         {latestOrders.length === 0 ? (
           <p className="admin-card__meta" style={{ marginTop: "0.75rem" }}>
-            No orders yet.
+            {dash.noOrders}
           </p>
         ) : (
           <table className="admin-table" style={{ marginTop: "0.75rem" }}>
             <thead>
               <tr>
-                <th>Reference</th>
-                <th>Tour</th>
-                <th>Customer</th>
-                <th>Status</th>
-                <th>Amount</th>
-                <th>When</th>
+                <th>{dash.thReference}</th>
+                <th>{dash.thTour}</th>
+                <th>{dash.thCustomer}</th>
+                <th>{dash.thStatus}</th>
+                <th>{dash.thAmount}</th>
+                <th>{dash.thWhen}</th>
               </tr>
             </thead>
             <tbody>
@@ -225,7 +218,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
                   <td>{o.tourTitle}</td>
                   <td>{o.contactName ?? o.contactEmail ?? "—"}</td>
                   <td>
-                    <span className={`admin-badge ${STATUS_BADGE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
+                    <span className={`admin-badge ${STATUS_BADGE[o.status]}`}>{dict.status[o.status]}</span>
                   </td>
                   <td>{formatPriceCents(o.totalCents, o.currency)}</td>
                   <td>{fmtWhen(o.createdAt)}</td>
@@ -236,14 +229,14 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
         )}
       </div>
       <section aria-label="System overview">
-        <h2>System</h2>
+        <h2>{dash.system}</h2>
         <div className="admin-grid">
           <div className="admin-card">
             <div className="admin-row admin-row--between">
-              <h3 style={{ margin: 0 }}>Tours</h3>
+              <h3 style={{ margin: 0 }}>{dash.toursCard}</h3>
               {can(user, "catalog.view") && (
                 <Link href="/admin/tours" className="admin-card__meta">
-                  Manage →
+                  {dash.manage}
                 </Link>
               )}
             </div>
@@ -251,10 +244,10 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
           </div>
           <div className="admin-card">
             <div className="admin-row admin-row--between">
-              <h3 style={{ margin: 0 }}>Integrations enabled</h3>
+              <h3 style={{ margin: 0 }}>{dash.integrationsEnabled}</h3>
               {can(user, "integrations.view") && (
                 <Link href="/admin/integrations" className="admin-card__meta">
-                  Manage →
+                  {dash.manage}
                 </Link>
               )}
             </div>
@@ -263,12 +256,12 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
           <div className="admin-card">
             <div className="admin-row admin-row--between">
               <h3 style={{ margin: 0 }}>
-                Landing overrides
-                <AdminHint text="How many parts of the public home page you have customized here in the admin (instead of the built-in default text)." />
+                {dash.landingOverrides}
+                <AdminHint text={dash.landingOverridesHint} />
               </h3>
               {can(user, "content.view") && (
                 <Link href="/admin/content" className="admin-card__meta">
-                  Edit →
+                  {dash.edit}
                 </Link>
               )}
             </div>
