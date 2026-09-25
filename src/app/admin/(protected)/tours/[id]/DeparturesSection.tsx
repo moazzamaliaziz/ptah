@@ -8,6 +8,7 @@ import {
   type CatalogFormState,
 } from "../actions";
 import { DEPARTURE_STATUSES, centsToDollars } from "@/content/catalog-admin-schema";
+import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import type { DeparturesSectionDict } from "@/i18n/admin/dictionary";
 
 export interface DepartureRow {
@@ -48,7 +49,7 @@ export default function DeparturesSection({ tourId, currency, departures, labels
 
       <form action={addAction} className="admin-card" style={{ marginTop: "1rem", background: "rgba(26,35,64,0.03)" }}>
         <input type="hidden" name="tourId" value={tourId} />
-        <h3 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem" }}>{labels.addHeading}</h3>
+        <h3 style={{ margin: "0 0 0.5rem" }}>{labels.addHeading}</h3>
         {addState.error ? (
           <div className="admin-alert admin-alert--error" role="alert">{addState.error}</div>
         ) : null}
@@ -98,7 +99,7 @@ function DepartureForm({ tourId, departure, labels }: { tourId: string; departur
             {" "}{departure.bookedSeats}/{departure.maxCapacity} {labels.bookedSuffix}
           </div>
         </div>
-        <button type="button" className="admin-btn admin-btn--ghost" onClick={() => setOpen((v) => !v)}>
+        <button type="button" className="admin-btn admin-btn--ghost" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {open ? labels.close : labels.edit}
         </button>
       </div>
@@ -152,7 +153,9 @@ function DepartureForm({ tourId, departure, labels }: { tourId: string; departur
             <form action={deleteDepartureAction} style={{ marginTop: "0.5rem" }}>
               <input type="hidden" name="tourId" value={tourId} />
               <input type="hidden" name="departureId" value={departure.id} />
-              <button className="admin-btn admin-btn--danger" type="submit">{labels.deleteDeparture}</button>
+              <ConfirmSubmitButton confirm={labels.deleteDepartureConfirm}>
+                {labels.deleteDeparture}
+              </ConfirmSubmitButton>
             </form>
           ) : (
             <p className="admin-card__meta" style={{ marginTop: "0.5rem" }}>

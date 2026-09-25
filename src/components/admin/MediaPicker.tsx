@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type JSX } from "react";
+import { useEffect, useRef, useState, useTransition, type JSX } from "react";
 import { pickerListMediaAction, pickerUploadMediaAction } from "./media-picker-actions";
 import { useMediaPickerLabels } from "./MediaPickerLabels";
 import type { MediaSummary } from "@/lib/media-shared";
@@ -53,6 +53,11 @@ export default function MediaPicker({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, startUploading] = useTransition();
 
+  // A11y refs: restore focus to the trigger when the modal closes, and scope the
+  // focus trap to the dialog while it's open.
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   // The servable src for the preview: url mode uses the value verbatim; id mode
   // resolves the id through the media route.
   const previewSrc = value ? (isUrl ? value : `/api/media/${value}`) : null;
@@ -66,6 +71,50 @@ export default function MediaPicker({
       setAssets(list);
     });
   }, [open, folder]);
+
+  // Focus management for the modal (WCAG 2.4.3 / 2.1.2): move focus into the
+  // dialog on open, keep Tab within it, close on Escape, and restore focus to
+  // the trigger on close. Uses logical DOM order so it works in LTR and RTL.
+  useEffect(() => {
+    if (!open) return;
+    const trigger = triggerRef.current;
+    const focusable = (): HTMLElement[] => {
+      const root = dialogRef.current;
+      if (!root) return [];
+      return Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+    };
+    // Focus the first control (the close button) once the dialog has mounted.
+    focusable()[0]?.focus();
+
+    function onKeyDown(e: KeyboardEvent): void {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      trigger?.focus();
+    };
+  }, [open]);
 
   /**
    * Upload inside the transition and act on the result at the call site — no
@@ -116,7 +165,14 @@ export default function MediaPicker({
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", flex: 1 }}>
           <div className="admin-row" style={{ gap: "0.4rem" }}>
-            <button type="button" className="admin-btn admin-btn--ghost" onClick={() => setOpen(true)}>
+            <button
+              ref={triggerRef}
+              type="button"
+              className="admin-btn admin-btn--ghost"
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              onClick={() => setOpen(true)}
+            >
               {value ? t.change : t.select}
             </button>
             {value ? (
@@ -142,6 +198,7 @@ export default function MediaPicker({
 
       {open ? (
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label={`${t.selectImage} — ${label}`}

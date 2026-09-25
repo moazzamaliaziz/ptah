@@ -41,13 +41,13 @@ export default async function AdminToursPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>{t.colTitle}</th>
-              <th>{t.colStatus}</th>
-              <th>{t.colFrom}</th>
-              <th>{t.colDays}</th>
-              <th>{t.colDepartures}</th>
-              <th>{t.colDestinations}</th>
-              <th style={{ textAlign: "right" }}>{t.colEdit}</th>
+              <th scope="col">{t.colTitle}</th>
+              <th scope="col">{t.colStatus}</th>
+              <th scope="col">{t.colFrom}</th>
+              <th scope="col">{t.colDays}</th>
+              <th scope="col">{t.colDepartures}</th>
+              <th scope="col">{t.colDestinations}</th>
+              <th scope="col" style={{ textAlign: "end" }}>{t.colEdit}</th>
             </tr>
           </thead>
           <tbody>
@@ -77,7 +77,7 @@ export default async function AdminToursPage(): Promise<JSX.Element> {
                       {tour.destinationNames.length > 0 ? tour.destinationNames.join(", ") : "—"}
                     </span>
                   </td>
-                  <td style={{ textAlign: "right" }}>
+                  <td style={{ textAlign: "end" }}>
                     <Link className="admin-btn admin-btn--ghost" href={`/admin/tours/${tour.id}`}>
                       {editable ? t.colEdit : dict.common.view}
                     </Link>

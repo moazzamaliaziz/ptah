@@ -32,6 +32,10 @@ export interface ChromeDict {
   language: string;
   /** aria-label for the sidebar <nav> landmark. */
   navLabel: string;
+  /** Visible label for the mobile nav disclosure toggle. */
+  menu: string;
+  /** Keyboard skip link that jumps past the sidebar to the page content. */
+  skipToContent: string;
 }
 
 export const navEn: NavDict = {
@@ -79,6 +83,8 @@ export const chromeEn: ChromeDict = {
   signingOut: "Signing out…",
   language: "Language",
   navLabel: "Admin sections",
+  menu: "Menu",
+  skipToContent: "Skip to content",
 };
 
 export const chromeAr: ChromeDict = {
@@ -88,4 +94,6 @@ export const chromeAr: ChromeDict = {
   signingOut: "جارٍ تسجيل الخروج…",
   language: "اللغة",
   navLabel: "أقسام الإدارة",
+  menu: "القائمة",
+  skipToContent: "تخطَّ إلى المحتوى",
 };

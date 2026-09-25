@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, type JSX } from "react";
+import { useActionState, useEffect, useRef, type JSX } from "react";
 import MediaPicker from "@/components/admin/MediaPicker";
 import SocialsEditor from "@/components/admin/SocialsEditor";
 import { updateBrandingAction, type BrandingFormState } from "./actions";
@@ -37,15 +37,25 @@ export default function BrandingEditor(props: BrandingEditorProps): JSX.Element 
     updateBrandingAction,
     {},
   );
+  const alertsRef = useRef<HTMLDivElement>(null);
+  // Surface the save result: scroll the success/error notice into view so a save
+  // triggered from the bottom button isn't silent.
+  useEffect(() => {
+    if (state.ok || state.error) {
+      alertsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [state]);
 
   return (
     <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      {state.error ? (
-        <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
-      ) : null}
-      {state.ok ? (
-        <div className="admin-alert admin-alert--ok" role="status">{t.savedNote}</div>
-      ) : null}
+      <div ref={alertsRef}>
+        {state.error ? (
+          <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
+        ) : null}
+        {state.ok ? (
+          <div className="admin-alert admin-alert--ok" role="status">{t.savedNote}</div>
+        ) : null}
+      </div>
 
       {/* Identity */}
       <section className="admin-card">

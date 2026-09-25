@@ -22,7 +22,7 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   CONFIRMED: "admin-badge--on",
   CANCELLED: "admin-badge--off",
   REFUNDED: "admin-badge--off",
-  FAILED: "admin-badge--off",
+  FAILED: "admin-badge--danger",
 };
 
 // The order the status filter tabs appear in; labels come from the shared
@@ -104,7 +104,7 @@ export default async function AdminBookingsPage({
         className="admin-row admin-row--between"
         style={{ marginBottom: "1rem", alignItems: "flex-start" }}
       >
-        <div className="admin-row" role="tablist" aria-label={t.filterByStatus}>
+        <nav className="admin-row" aria-label={t.filterByStatus}>
           {[{ label: t.filterAll, value: "" }, ...FILTER_STATUSES.map((s) => ({ label: dict.status[s], value: s }))].map((f) => {
             const active = (status ?? "") === f.value;
             return (
@@ -112,13 +112,13 @@ export default async function AdminBookingsPage({
                 key={f.value}
                 href={filterHref(f.value)}
                 className={`admin-btn ${active ? "" : "admin-btn--ghost"}`}
-                aria-current={active ? "true" : undefined}
+                aria-current={active ? "page" : undefined}
               >
                 {f.label}
               </Link>
             );
           })}
-        </div>
+        </nav>
         <BookingsSearch
           status={status}
           defaultValue={query ?? ""}
@@ -137,15 +137,15 @@ export default async function AdminBookingsPage({
           <table className="admin-table">
             <thead>
               <tr>
-                <th>{t.colCustomer}</th>
-                <th>{t.colTour}</th>
-                <th>{t.colDeparture}</th>
-                <th>{t.colSeats}</th>
-                <th>{t.colTotal}</th>
-                <th>{t.colMethod}</th>
-                <th>{t.colStatus}</th>
-                <th>{t.colBooked}</th>
-                <th>{t.colActions}</th>
+                <th scope="col">{t.colCustomer}</th>
+                <th scope="col">{t.colTour}</th>
+                <th scope="col">{t.colDeparture}</th>
+                <th scope="col">{t.colSeats}</th>
+                <th scope="col">{t.colTotal}</th>
+                <th scope="col">{t.colMethod}</th>
+                <th scope="col">{t.colStatus}</th>
+                <th scope="col">{t.colBooked}</th>
+                <th scope="col">{t.colActions}</th>
               </tr>
             </thead>
             <tbody>

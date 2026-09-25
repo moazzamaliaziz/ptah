@@ -42,11 +42,11 @@ export default async function AdminCouponsPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>{t.colCode}</th>
-              <th>{t.colDiscount}</th>
-              <th>{t.colUses}</th>
-              <th>{t.colStatus}</th>
-              <th style={{ textAlign: "right" }}>{editable ? dict.common.edit : dict.common.view}</th>
+              <th scope="col">{t.colCode}</th>
+              <th scope="col">{t.colDiscount}</th>
+              <th scope="col">{t.colUses}</th>
+              <th scope="col">{t.colStatus}</th>
+              <th scope="col" style={{ textAlign: "end" }}>{editable ? dict.common.edit : dict.common.view}</th>
             </tr>
           </thead>
           <tbody>
@@ -61,7 +61,7 @@ export default async function AdminCouponsPage(): Promise<JSX.Element> {
                   <td>{describeDiscount(c, t)}</td>
                   <td>{describeUses(c)}</td>
                   <td>{c.active ? dict.common.active : <span className="admin-card__meta">{dict.common.inactive}</span>}</td>
-                  <td style={{ textAlign: "right" }}>
+                  <td style={{ textAlign: "end" }}>
                     <Link className="admin-btn admin-btn--ghost" href={`/admin/coupons/${c.id}`}>
                       {editable ? dict.common.edit : dict.common.view}
                     </Link>

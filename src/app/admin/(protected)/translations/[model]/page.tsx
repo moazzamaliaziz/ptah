@@ -42,8 +42,8 @@ export default async function TranslationRecordsPage({
         <table className="admin-table">
           <thead>
             <tr>
-              <th>{def.singular}</th>
-              <th>{t.colLanguagesDone}</th>
+              <th scope="col">{def.singular}</th>
+              <th scope="col">{t.colLanguagesDone}</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -67,7 +67,7 @@ export default async function TranslationRecordsPage({
                     </span>
                   )}
                 </td>
-                <td style={{ textAlign: "right" }}>
+                <td style={{ textAlign: "end" }}>
                   <Link className="admin-btn admin-btn--ghost" href={`/admin/translations/${model}/${r.id}`}>
                     {t.translate}
                   </Link>

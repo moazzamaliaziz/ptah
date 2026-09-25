@@ -25,7 +25,7 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   CONFIRMED: "admin-badge--on",
   CANCELLED: "admin-badge--off",
   REFUNDED: "admin-badge--off",
-  FAILED: "admin-badge--off",
+  FAILED: "admin-badge--danger",
 };
 
 const STATUS_OPTIONS: readonly BookingStatus[] = [
@@ -142,25 +142,25 @@ export default async function AdminBookingDetailPage({
           <h2>{t.tripHeading}</h2>
           <table className="admin-table">
             <tbody>
-              <tr><th>{t.tripTour}</th><td>{booking.tourTitle}</td></tr>
-              <tr><th>{t.tripDeparture}</th><td>{fmtDate(booking.startDate, locale)}</td></tr>
-              <tr><th>{t.tripReturns}</th><td>{fmtDate(booking.endDate, locale)}</td></tr>
-              <tr><th>{t.tripTravelers}</th><td>{booking.seats}</td></tr>
+              <tr><th scope="row">{t.tripTour}</th><td>{booking.tourTitle}</td></tr>
+              <tr><th scope="row">{t.tripDeparture}</th><td>{fmtDate(booking.startDate, locale)}</td></tr>
+              <tr><th scope="row">{t.tripReturns}</th><td>{fmtDate(booking.endDate, locale)}</td></tr>
+              <tr><th scope="row">{t.tripTravelers}</th><td>{booking.seats}</td></tr>
               {booking.pricing
                 ? booking.pricing.items.map((line) => (
                     <tr key={line.type}>
-                      <th>{PAX_TYPE_LABEL[line.type]}</th>
+                      <th scope="row">{PAX_TYPE_LABEL[line.type]}</th>
                       <td>{`${line.count} × ${formatPriceCents(line.unitCents, booking.currency)}`}</td>
                     </tr>
                   ))
                 : null}
               {booking.discountCents > 0 ? (
                 <tr>
-                  <th>{t.discount}{booking.couponCode ? t.discountWithCode(booking.couponCode) : ""}</th>
+                  <th scope="row">{t.discount}{booking.couponCode ? t.discountWithCode(booking.couponCode) : ""}</th>
                   <td>{`−${formatPriceCents(booking.discountCents, booking.currency)}`}</td>
                 </tr>
               ) : null}
-              <tr><th>{t.tripTotal}</th><td>{formatPriceCents(booking.totalCents, booking.currency)}</td></tr>
+              <tr><th scope="row">{t.tripTotal}</th><td>{formatPriceCents(booking.totalCents, booking.currency)}</td></tr>
             </tbody>
           </table>
         </div>
@@ -169,12 +169,12 @@ export default async function AdminBookingDetailPage({
           <h2>{t.customerHeading}</h2>
           <table className="admin-table">
             <tbody>
-              <tr><th>{t.custName}</th><td>{booking.contactName ?? "—"}</td></tr>
-              <tr><th>{t.custEmail}</th><td>{booking.contactEmail ?? "—"}</td></tr>
-              <tr><th>{t.custPhone}</th><td>{booking.contactPhone ?? "—"}</td></tr>
-              <tr><th>{t.custAccount}</th><td>{booking.isGuest ? t.guestCheckout : t.registeredUser}</td></tr>
-              {originName ? <tr><th>{t.bookedFrom}</th><td>{originName}</td></tr> : null}
-              <tr><th>{t.bookedAt}</th><td>{fmt(booking.createdAt, locale)}</td></tr>
+              <tr><th scope="row">{t.custName}</th><td>{booking.contactName ?? "—"}</td></tr>
+              <tr><th scope="row">{t.custEmail}</th><td>{booking.contactEmail ?? "—"}</td></tr>
+              <tr><th scope="row">{t.custPhone}</th><td>{booking.contactPhone ?? "—"}</td></tr>
+              <tr><th scope="row">{t.custAccount}</th><td>{booking.isGuest ? t.guestCheckout : t.registeredUser}</td></tr>
+              {originName ? <tr><th scope="row">{t.bookedFrom}</th><td>{originName}</td></tr> : null}
+              <tr><th scope="row">{t.bookedAt}</th><td>{fmt(booking.createdAt, locale)}</td></tr>
             </tbody>
           </table>
           {booking.contactNotes ? (
@@ -192,7 +192,7 @@ export default async function AdminBookingDetailPage({
         ) : (
           <table className="admin-table">
             <thead>
-              <tr><th>{t.payColMethod}</th><th>{t.payColStatus}</th><th>{t.payColAmount}</th><th>{t.payColGatewayRef}</th><th>{t.payColWhen}</th></tr>
+              <tr><th scope="col">{t.payColMethod}</th><th scope="col">{t.payColStatus}</th><th scope="col">{t.payColAmount}</th><th scope="col">{t.payColGatewayRef}</th><th scope="col">{t.payColWhen}</th></tr>
             </thead>
             <tbody>
               {booking.payments.map((p) => (
@@ -219,8 +219,8 @@ export default async function AdminBookingDetailPage({
               <li
                 key={e.id}
                 style={{
-                  paddingLeft: "0.9rem",
-                  borderLeft: "2px solid var(--color-border, #d8d2c0)",
+                  paddingInlineStart: "0.9rem",
+                  borderInlineStart: "2px solid var(--color-border, #d8d2c0)",
                   paddingBottom: "0.85rem",
                 }}
               >

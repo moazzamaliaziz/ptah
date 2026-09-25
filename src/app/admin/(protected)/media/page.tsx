@@ -4,6 +4,7 @@ import { listMedia, MEDIA_FOLDERS } from "@/server/media";
 import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import MediaUploadForm from "./MediaUploadForm";
+import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import { updateAltTextAction, deleteMediaAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ export default async function MediaPage({
       {manage ? <MediaUploadForm labels={t.upload} /> : null}
 
       <div className="admin-row" style={{ marginBottom: "1rem", gap: "0.4rem" }}>
-        <a className={`admin-badge ${!activeFolder ? "admin-badge--gold" : "admin-badge--off"}`} href="/admin/media" style={{ textDecoration: "none" }}>
+        <a className={`admin-badge ${!activeFolder ? "admin-badge--gold" : "admin-badge--off"}`} href="/admin/media" aria-current={!activeFolder ? "page" : undefined} style={{ textDecoration: "none" }}>
           {t.folderAll}
         </a>
         {MEDIA_FOLDERS.map((f) => (
@@ -58,6 +59,7 @@ export default async function MediaPage({
             key={f}
             className={`admin-badge ${activeFolder === f ? "admin-badge--gold" : "admin-badge--off"}`}
             href={`/admin/media?folder=${f}`}
+            aria-current={activeFolder === f ? "page" : undefined}
             style={{ textDecoration: "none" }}
           >
             {f}
@@ -111,7 +113,9 @@ export default async function MediaPage({
                   </form>
                   <form action={deleteMediaAction} style={{ marginTop: "0.5rem" }}>
                     <input type="hidden" name="id" value={a.id} />
-                    <button className="admin-btn admin-btn--danger" type="submit">{dict.common.delete}</button>
+                    <ConfirmSubmitButton confirm={t.deleteConfirm} pendingLabel={dict.common.deleting}>
+                      {dict.common.delete}
+                    </ConfirmSubmitButton>
                   </form>
                 </>
               ) : (

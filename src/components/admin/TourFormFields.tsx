@@ -178,8 +178,8 @@ export default function TourFormFields({ initial, saved, pending, labels, faqLab
         </label>
       </div>
 
-      <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <legend className="admin-card__meta">{labels.pricingLegend}</legend>
+      <fieldset className="admin-fieldset">
+        <legend>{labels.pricingLegend}</legend>
         <div className="admin-row" style={{ gap: "1rem" }}>
           <label className="admin-field" style={{ flex: "1 1 140px" }}>
             <span>{labels.childPrice}</span>
@@ -199,8 +199,8 @@ export default function TourFormFields({ initial, saved, pending, labels, faqLab
         </label>
       </fieldset>
 
-      <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <legend className="admin-card__meta">{labels.tagsLegend}</legend>
+      <fieldset className="admin-fieldset">
+        <legend>{labels.tagsLegend}</legend>
         <div className="admin-row" style={{ gap: "0.5rem 1.25rem", flexWrap: "wrap" }}>
           {TOUR_TAGS.map((tag) => (
             <label key={tag} className="admin-row" style={{ gap: "0.4rem", alignItems: "center", flex: "0 1 auto" }}>
@@ -239,8 +239,8 @@ export default function TourFormFields({ initial, saved, pending, labels, faqLab
 
       <FaqEditor name="faqs" initial={v.faqs} labels={faqLabels} />
 
-      <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <legend className="admin-card__meta">{labels.ctaLegend}</legend>
+      <fieldset className="admin-fieldset">
+        <legend>{labels.ctaLegend}</legend>
         <div className="admin-row" style={{ gap: "1rem" }}>
           <label className="admin-field" style={{ flex: "1 1 200px" }}>
             <span>{labels.ctaLabelField}</span>

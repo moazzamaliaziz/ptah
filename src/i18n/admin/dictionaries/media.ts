@@ -53,6 +53,8 @@ export interface MediaDict {
   altText: string;
   saveAlt: string;
   noAltText: string;
+  /** confirm() prompt before permanently deleting an asset. */
+  deleteConfirm: string;
   upload: MediaUploadDict;
 }
 export const mediaEn: MediaDict = {
@@ -66,6 +68,7 @@ export const mediaEn: MediaDict = {
   altText: "Alt text",
   saveAlt: "Save alt",
   noAltText: "— no alt text —",
+  deleteConfirm: "Delete this image permanently? If it is used on any page it will disappear there. This cannot be undone.",
   upload: {
     heading: "Upload image",
     dedupedNote: "That image already existed — reused the existing asset.",
@@ -108,6 +111,7 @@ export const mediaAr: MediaDict = {
   altText: "النص البديل",
   saveAlt: "حفظ النص البديل",
   noAltText: "— لا يوجد نص بديل —",
+  deleteConfirm: "حذف هذه الصورة نهائيًا؟ إذا كانت مستخدمة في أي صفحة فستختفي منها. لا يمكن التراجع عن ذلك.",
   upload: {
     heading: "رفع صورة",
     dedupedNote: "هذه الصورة موجودة بالفعل — أُعيد استخدام الأصل الموجود.",

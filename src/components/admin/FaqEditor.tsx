@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type JSX } from "react";
+import { useRef, useState, type JSX } from "react";
 import type { FaqItem } from "@/content/catalog-admin-schema";
 import type { FaqEditorDict } from "@/i18n/admin/dictionary";
 
@@ -18,21 +18,31 @@ export interface FaqEditorProps {
  * JSON field (`name`) that the server action parses + validates against the
  * catalog schema. Friendlier than raw-JSON editing for a no-code admin.
  */
+type FaqRow = FaqItem & { _id: number };
+
 export default function FaqEditor({ name, initial, labels }: FaqEditorProps): JSX.Element {
-  const [rows, setRows] = useState<FaqItem[]>(initial ?? []);
+  // Stable per-row id (never posted) so add/remove reconcile by identity rather
+  // than array index — index keys would mis-associate focus/state when a middle
+  // row is removed.
+  const idRef = useRef(0);
+  const [rows, setRows] = useState<FaqRow[]>(() =>
+    (initial ?? []).map((r) => ({ ...r, _id: idRef.current++ })),
+  );
 
   function update(i: number, patch: Partial<FaqItem>): void {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
   function add(): void {
-    setRows((prev) => [...prev, { q: "", a: "" }]);
+    setRows((prev) => [...prev, { q: "", a: "", _id: idRef.current++ }]);
   }
   function remove(i: number): void {
     setRows((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   // Only rows with both fields filled are posted (matches schema min(1)).
-  const serialized = JSON.stringify(rows.filter((r) => r.q.trim() && r.a.trim()));
+  const serialized = JSON.stringify(
+    rows.filter((r) => r.q.trim() && r.a.trim()).map((r) => ({ q: r.q, a: r.a })),
+  );
   // A row with exactly one side filled would be silently dropped — warn instead.
   const incomplete = rows.some((r) => (r.q.trim() === "") !== (r.a.trim() === ""));
 
@@ -47,10 +57,21 @@ export default function FaqEditor({ name, initial, labels }: FaqEditorProps): JS
       ) : null}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         {rows.map((row, i) => (
-          <div key={i} className="admin-card" style={{ padding: "0.75rem" }}>
+          <div
+            key={row._id}
+            className="admin-card"
+            role="group"
+            aria-label={`${labels.questionWord} ${i + 1}`}
+            style={{ padding: "0.75rem" }}
+          >
             <div className="admin-row admin-row--between" style={{ marginBottom: "0.4rem" }}>
               <span className="admin-card__meta">{labels.questionWord} {i + 1}</span>
-              <button type="button" className="admin-btn admin-btn--ghost" onClick={() => remove(i)}>
+              <button
+                type="button"
+                className="admin-btn admin-btn--ghost"
+                aria-label={`${labels.remove} — ${labels.questionWord} ${i + 1}`}
+                onClick={() => remove(i)}
+              >
                 {labels.remove}
               </button>
             </div>

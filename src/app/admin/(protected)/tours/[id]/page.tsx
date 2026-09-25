@@ -126,7 +126,7 @@ export default async function TourEditPage({
       <DeparturesSection tourId={tour.id} currency={tour.currency} departures={tour.departures} labels={t.departures} />
 
       {/* Danger zone */}
-      <section className="admin-card" style={{ borderColor: "rgba(154,92,27,0.4)" }}>
+      <section className="admin-card admin-card--danger">
         <h2>{t.deleteHeading}</h2>
         <p className="admin-card__meta">
           {t.deleteHint}

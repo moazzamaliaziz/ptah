@@ -36,6 +36,8 @@ export interface ItinerarySectionDict {
   saveDay: string;
   saving: string;
   deleteDay: string;
+  /** confirm() prompt before deleting an itinerary day. */
+  deleteDayConfirm: string;
   saved: string;
 }
 /** Departures section island. All strings; `hint` carries a `{currency}` token. */
@@ -57,6 +59,8 @@ export interface DeparturesSectionDict {
   saveDeparture: string;
   saving: string;
   deleteDeparture: string;
+  /** confirm() prompt before deleting a departure (only shown when 0 booked). */
+  deleteDepartureConfirm: string;
   hasBookingsNote: string;
   saved: string;
   statusLabels: Record<string, string>;
@@ -196,6 +200,7 @@ export const toursEn: ToursDict = {
     saveDay: "Save day",
     saving: "Saving…",
     deleteDay: "Delete day",
+    deleteDayConfirm: "Delete this itinerary day? This cannot be undone.",
     saved: "Saved.",
   },
   departures: {
@@ -216,6 +221,7 @@ export const toursEn: ToursDict = {
     saveDeparture: "Save departure",
     saving: "Saving…",
     deleteDeparture: "Delete departure",
+    deleteDepartureConfirm: "Delete this departure? This cannot be undone.",
     hasBookingsNote: "Has bookings — set to CANCELED instead of deleting.",
     saved: "Saved.",
     statusLabels: { OPEN: "Open", CLOSED: "Closed", CANCELED: "Canceled" },
@@ -328,6 +334,7 @@ export const toursAr: ToursDict = {
     saveDay: "حفظ اليوم",
     saving: "جارٍ الحفظ…",
     deleteDay: "حذف اليوم",
+    deleteDayConfirm: "حذف هذا اليوم من البرنامج؟ لا يمكن التراجع عن ذلك.",
     saved: "تم الحفظ.",
   },
   departures: {
@@ -348,6 +355,7 @@ export const toursAr: ToursDict = {
     saveDeparture: "حفظ المغادرة",
     saving: "جارٍ الحفظ…",
     deleteDeparture: "حذف المغادرة",
+    deleteDepartureConfirm: "حذف هذه المغادرة؟ لا يمكن التراجع عن ذلك.",
     hasBookingsNote: "عليها حجوزات — اضبطها على CANCELED بدلًا من الحذف.",
     saved: "تم الحفظ.",
     statusLabels: { OPEN: "مفتوحة", CLOSED: "مغلقة", CANCELED: "ملغاة" },

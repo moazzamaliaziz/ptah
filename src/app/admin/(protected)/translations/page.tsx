@@ -29,9 +29,9 @@ export default async function TranslationsIndexPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>{t.colContentType}</th>
-              <th style={{ textAlign: "right" }}>{t.colRecords}</th>
-              <th style={{ textAlign: "right" }}>{t.colTranslatedFields}</th>
+              <th scope="col">{t.colContentType}</th>
+              <th scope="col" style={{ textAlign: "end" }}>{t.colRecords}</th>
+              <th scope="col" style={{ textAlign: "end" }}>{t.colTranslatedFields}</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -41,9 +41,9 @@ export default async function TranslationsIndexPage(): Promise<JSX.Element> {
                 <td>
                   <Link href={`/admin/translations/${m.model}`}>{m.label}</Link>
                 </td>
-                <td style={{ textAlign: "right" }}>{m.recordCount}</td>
-                <td style={{ textAlign: "right" }}>{m.translationRows}</td>
-                <td style={{ textAlign: "right" }}>
+                <td style={{ textAlign: "end" }}>{m.recordCount}</td>
+                <td style={{ textAlign: "end" }}>{m.translationRows}</td>
+                <td style={{ textAlign: "end" }}>
                   <Link className="admin-btn admin-btn--ghost" href={`/admin/translations/${m.model}`}>
                     {t.open}
                   </Link>

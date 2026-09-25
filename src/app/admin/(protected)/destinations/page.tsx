@@ -32,10 +32,10 @@ export default async function AdminDestinationsPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>{t.colName}</th>
-              <th>{t.colRegion}</th>
-              <th>{t.colTours}</th>
-              <th style={{ textAlign: "right" }}>{dict.common.edit}</th>
+              <th scope="col">{t.colName}</th>
+              <th scope="col">{t.colRegion}</th>
+              <th scope="col">{t.colTours}</th>
+              <th scope="col" style={{ textAlign: "end" }}>{dict.common.edit}</th>
             </tr>
           </thead>
           <tbody>
@@ -52,7 +52,7 @@ export default async function AdminDestinationsPage(): Promise<JSX.Element> {
                   </td>
                   <td>{d.region ?? "—"}</td>
                   <td>{d.tourCount}</td>
-                  <td style={{ textAlign: "right" }}>
+                  <td style={{ textAlign: "end" }}>
                     <Link className="admin-btn admin-btn--ghost" href={`/admin/destinations/${d.id}`}>
                       {editable ? dict.common.edit : dict.common.view}
                     </Link>

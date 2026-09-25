@@ -43,35 +43,44 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
 
   return (
     <div className="admin-shell">
+      <a className="admin-skip-link" href="#admin-main">{dict.chrome.skipToContent}</a>
       <aside className="admin-sidebar">
         <div className="admin-sidebar__brand">
           Ptah Tours
           <small>{dict.chrome.adminPanel}</small>
         </div>
-        <AdminNav items={items} navLabel={dict.chrome.navLabel} />
-        <Link
-          href="/"
-          target="_blank"
-          rel="noopener"
-          className="admin-nav-link"
-          style={{ marginTop: "0.5rem", opacity: 0.85 }}
-        >
-          {dict.chrome.viewLiveSite} ↗
-        </Link>
-        <div className="admin-sidebar__spacer" />
-        <AdminLocaleSwitcher current={locale} label={dict.chrome.language} />
-        <div className="admin-sidebar__user">
-          <div>{user.name}</div>
-          <div style={{ opacity: 0.7 }}>{user.email}</div>
-          <div style={{ marginTop: "0.15rem" }}>{user.role}</div>
+        {/* Mobile-only "Menu" disclosure: a hidden checkbox + its <label> toggle
+            the .admin-nav-collapse wrapper below (≤768px). On desktop the toggle
+            is hidden and the wrapper is just the flex column that fills the rail,
+            so the sidebar layout + bottom-pinned sign-out are unchanged. */}
+        <input type="checkbox" id="admin-nav-toggle" className="admin-nav-toggle" />
+        <label htmlFor="admin-nav-toggle" className="admin-nav-toggle__label">{dict.chrome.menu}</label>
+        <div className="admin-nav-collapse">
+          <AdminNav items={items} navLabel={dict.chrome.navLabel} />
+          <Link
+            href="/"
+            target="_blank"
+            rel="noopener"
+            className="admin-nav-link"
+            style={{ marginTop: "0.5rem", opacity: 0.85 }}
+          >
+            {dict.chrome.viewLiveSite} ↗
+          </Link>
+          <div className="admin-sidebar__spacer" />
+          <AdminLocaleSwitcher current={locale} label={dict.chrome.language} />
+          <div className="admin-sidebar__user">
+            <div>{user.name}</div>
+            <div style={{ opacity: 0.7 }}>{user.email}</div>
+            <div style={{ marginTop: "0.15rem" }}>{user.role}</div>
+          </div>
+          <form action={logoutAction} style={{ marginTop: "0.5rem" }}>
+            <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.chrome.signingOut} style={{ width: "100%", color: "#fff", borderColor: "rgba(255,255,255,0.3)" }}>
+              {dict.chrome.signOut}
+            </SubmitButton>
+          </form>
         </div>
-        <form action={logoutAction} style={{ marginTop: "0.5rem" }}>
-          <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.chrome.signingOut} style={{ width: "100%", color: "#fff", borderColor: "rgba(255,255,255,0.3)" }}>
-            {dict.chrome.signOut}
-          </SubmitButton>
-        </form>
       </aside>
-      <main className="admin-main">
+      <main className="admin-main" id="admin-main" tabIndex={-1}>
         <MediaPickerLabelsProvider labels={dict.mediaPicker}>{children}</MediaPickerLabelsProvider>
       </main>
     </div>

@@ -41,10 +41,10 @@ export default async function EnquiriesPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>{t.colFrom}</th>
-              <th>{t.colSubject}</th>
-              <th>{t.colReceived}</th>
-              <th>{t.colStatus}</th>
+              <th scope="col">{t.colFrom}</th>
+              <th scope="col">{t.colSubject}</th>
+              <th scope="col">{t.colReceived}</th>
+              <th scope="col">{t.colStatus}</th>
             </tr>
           </thead>
           <tbody>

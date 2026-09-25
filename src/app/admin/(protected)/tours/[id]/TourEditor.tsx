@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, type JSX } from "react";
+import { useActionState, useEffect, useRef, type JSX } from "react";
 import TourFormFields, { toFieldValues } from "@/components/admin/TourFormFields";
 import { updateTourAction, type CatalogFormState } from "../actions";
 import type { TourInput } from "@/content/catalog-admin-schema";
@@ -33,16 +33,26 @@ export default function TourEditor({ tour, fields, faqLabels, savedLabel, saving
     updateTourAction,
     {},
   );
+  const alertsRef = useRef<HTMLDivElement>(null);
+  // After a save resolves, bring the success/error notice into view — the submit
+  // button sits below the fields, so a blind save could otherwise look silent.
+  useEffect(() => {
+    if (state.ok || state.error) {
+      alertsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [state]);
 
   return (
     <form action={formAction} className="admin-card">
       <input type="hidden" name="id" value={tour.id} />
-      {state.error ? (
-        <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
-      ) : null}
-      {state.ok ? (
-        <div className="admin-alert admin-alert--ok" role="status">{savedLabel}</div>
-      ) : null}
+      <div ref={alertsRef}>
+        {state.error ? (
+          <div className="admin-alert admin-alert--error" role="alert">{state.error}</div>
+        ) : null}
+        {state.ok ? (
+          <div className="admin-alert admin-alert--ok" role="status">{savedLabel}</div>
+        ) : null}
+      </div>
 
       <TourFormFields initial={toFieldValues(tour)} saved={state.ok} pending={pending} labels={fields} faqLabels={faqLabels} />
 

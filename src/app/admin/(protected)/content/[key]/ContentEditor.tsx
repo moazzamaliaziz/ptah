@@ -35,7 +35,7 @@ export default function ContentEditor({ sectionKey, initialJson, labels }: Conte
         </div>
       ) : null}
       <textarea
-        className="admin-textarea"
+        className="admin-textarea admin-textarea--code"
         name="json"
         value={value}
         onChange={(e) => setValue(e.target.value)}

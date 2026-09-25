@@ -33,7 +33,7 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   CONFIRMED: "admin-badge--on",
   CANCELLED: "admin-badge--off",
   REFUNDED: "admin-badge--off",
-  FAILED: "admin-badge--off",
+  FAILED: "admin-badge--danger",
 };
 
 function fmtWhen(d: Date): string {
@@ -134,7 +134,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
         </div>
         <div className="admin-kpi">
           <span className="admin-kpi__label">{dash.awaitingPayment}</span>
-          <strong className="admin-kpi__value" style={awaiting > 0 ? { color: "#8a4b12" } : undefined}>
+          <strong className="admin-kpi__value" style={awaiting > 0 ? { color: "var(--admin-warn-fg)" } : undefined}>
             {awaiting.toLocaleString("en-US")}
           </strong>
         </div>
@@ -199,12 +199,12 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
           <table className="admin-table" style={{ marginTop: "0.75rem" }}>
             <thead>
               <tr>
-                <th>{dash.thReference}</th>
-                <th>{dash.thTour}</th>
-                <th>{dash.thCustomer}</th>
-                <th>{dash.thStatus}</th>
-                <th>{dash.thAmount}</th>
-                <th>{dash.thWhen}</th>
+                <th scope="col">{dash.thReference}</th>
+                <th scope="col">{dash.thTour}</th>
+                <th scope="col">{dash.thCustomer}</th>
+                <th scope="col">{dash.thStatus}</th>
+                <th scope="col">{dash.thAmount}</th>
+                <th scope="col">{dash.thWhen}</th>
               </tr>
             </thead>
             <tbody>
@@ -240,7 +240,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
                 </Link>
               )}
             </div>
-            <p style={{ fontSize: "1.6rem", fontWeight: 700, margin: "0.25rem 0 0" }}>{fmt(tours)}</p>
+            <p className="admin-stat">{fmt(tours)}</p>
           </div>
           <div className="admin-card">
             <div className="admin-row admin-row--between">
@@ -251,7 +251,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
                 </Link>
               )}
             </div>
-            <p style={{ fontSize: "1.6rem", fontWeight: 700, margin: "0.25rem 0 0" }}>{fmt(integrationsOn)} / 20</p>
+            <p className="admin-stat">{fmt(integrationsOn)} / 20</p>
           </div>
           <div className="admin-card">
             <div className="admin-row admin-row--between">
@@ -265,7 +265,7 @@ export default async function AdminDashboard(): Promise<JSX.Element> {
                 </Link>
               )}
             </div>
-            <p style={{ fontSize: "1.6rem", fontWeight: 700, margin: "0.25rem 0 0" }}>{fmt(overrides)}</p>
+            <p className="admin-stat">{fmt(overrides)}</p>
           </div>
         </div>
       </section>

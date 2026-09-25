@@ -75,9 +75,9 @@ async function Ga4Panel({ since, t }: { since: Date | null; t: ReportsDict }): P
     <table className="admin-table">
       <thead>
         <tr>
-          <th>{t.colCountry}</th>
-          <th>{t.colSessions}</th>
-          <th>{t.colActiveUsers}</th>
+          <th scope="col">{t.colCountry}</th>
+          <th scope="col">{t.colSessions}</th>
+          <th scope="col">{t.colActiveUsers}</th>
         </tr>
       </thead>
       <tbody>
@@ -225,9 +225,9 @@ export default async function AdminReportsPage({
           <table className="admin-table">
             <thead>
               <tr>
-                <th>{t.refundColCurrency}</th>
-                <th>{t.refundColBookings}</th>
-                <th>{t.refundColAmount}</th>
+                <th scope="col">{t.refundColCurrency}</th>
+                <th scope="col">{t.refundColBookings}</th>
+                <th scope="col">{t.refundColAmount}</th>
               </tr>
             </thead>
             <tbody>
@@ -256,8 +256,8 @@ export default async function AdminReportsPage({
           <table className="admin-table">
             <thead>
               <tr>
-                <th>{t.colStatus}</th>
-                <th>{t.colBookings}</th>
+                <th scope="col">{t.colStatus}</th>
+                <th scope="col">{t.colBookings}</th>
               </tr>
             </thead>
             <tbody>
@@ -293,10 +293,10 @@ export default async function AdminReportsPage({
           <table className="admin-table">
             <thead>
               <tr>
-                <th>{t.colTour}</th>
-                <th>{t.colBookings}</th>
-                <th>{t.colSeats}</th>
-                <th>{t.colRevenue}</th>
+                <th scope="col">{t.colTour}</th>
+                <th scope="col">{t.colBookings}</th>
+                <th scope="col">{t.colSeats}</th>
+                <th scope="col">{t.colRevenue}</th>
               </tr>
             </thead>
             <tbody>
@@ -329,8 +329,8 @@ export default async function AdminReportsPage({
           <table className="admin-table">
             <thead>
               <tr>
-                <th>{t.colCountry}</th>
-                <th>{t.colBookings}</th>
+                <th scope="col">{t.colCountry}</th>
+                <th scope="col">{t.colBookings}</th>
               </tr>
             </thead>
             <tbody>

@@ -22,9 +22,9 @@ export default async function ContentIndexPage(): Promise<JSX.Element> {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>{t.colSection}</th>
-              <th>{t.colSource}</th>
-              <th style={{ textAlign: "right" }}>{dict.common.edit}</th>
+              <th scope="col">{t.colSection}</th>
+              <th scope="col">{t.colSource}</th>
+              <th scope="col" style={{ textAlign: "end" }}>{dict.common.edit}</th>
             </tr>
           </thead>
           <tbody>
@@ -36,7 +36,7 @@ export default async function ContentIndexPage(): Promise<JSX.Element> {
                     {s.overridden ? t.badgeOverride : t.badgeDefault}
                   </span>
                 </td>
-                <td style={{ textAlign: "right" }}>
+                <td style={{ textAlign: "end" }}>
                   <Link className="admin-btn admin-btn--ghost" href={`/admin/content/${s.key}`}>
                     {dict.common.edit}
                   </Link>

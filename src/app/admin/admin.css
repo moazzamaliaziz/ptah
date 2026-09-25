@@ -5,7 +5,18 @@
  */
 
 .admin-shell {
+  /* Admin surface tokens — one source of truth for the card/kpi/chart/table
+     chrome. Values are unchanged from the originals; centralizing them keeps the
+     whole panel consistent and makes a future re-theme a one-line change. */
+  --admin-surface: #fff;
+  --admin-border: rgba(26, 35, 64, 0.1);
+  --admin-border-strong: rgba(26, 35, 64, 0.25);
+  --admin-shadow: 0 1px 2px rgba(26, 35, 64, 0.05);
+  --admin-warn-fg: #8a4b12;
+  --admin-danger: #8a1c1c;
+  --admin-ok-fg: #12613a;
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 248px 1fr;
   background: var(--color-papyrus, #f7f2e3);
@@ -49,6 +60,14 @@
 .admin-sidebar__spacer { flex: 1; }
 .admin-sidebar__user { font-size: 0.78rem; opacity: 0.75; padding: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.12); }
 
+/* Mobile nav disclosure (behaviour defined in the ≤768px block below). On
+   desktop the toggle + its label are hidden and the collapse wrapper is simply
+   the flex column that fills the rail, so the internal spacer still pins the
+   sign-out button to the bottom exactly as before. */
+.admin-nav-toggle { display: none; }
+.admin-nav-toggle__label { display: none; }
+.admin-nav-collapse { display: flex; flex-direction: column; gap: 0.15rem; flex: 1 1 auto; min-height: 0; }
+
 /* Admin-UI language switch (Wave 5): a small segmented control in the sidebar.
    Two buttons (English / العربية); the active one is filled gold like the
    current nav item. No client JS — each button is a Server Action submit. */
@@ -78,17 +97,35 @@
 .admin-head h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
 .admin-head p { margin: 0; opacity: 0.7; font-size: 0.9rem; }
 
+/* Section headings inside the content column. Declared before the .admin-card
+   heading rule below (equal specificity) so cards keep their own tighter scale
+   while bare page sections get a consistent, calmer hierarchy. */
+.admin-main h2 { font-size: 1.15rem; font-weight: 700; line-height: 1.25; margin: 0 0 0.6rem; }
+
 .admin-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 
 .admin-card {
-  background: #fff;
-  border: 1px solid rgba(26, 35, 64, 0.1);
+  background: var(--admin-surface, #fff);
+  border: 1px solid var(--admin-border, rgba(26, 35, 64, 0.1));
   border-radius: 12px;
   padding: 1.1rem 1.25rem;
-  box-shadow: 0 1px 2px rgba(26, 35, 64, 0.05);
+  box-shadow: var(--admin-shadow, 0 1px 2px rgba(26, 35, 64, 0.05));
 }
-.admin-card h2, .admin-card h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+/* Stacked cards in the same column get a little breathing room between them. */
+.admin-card + .admin-card { margin-top: 1rem; }
+/* Destructive "danger zone" card — a warmer red border to signal caution. */
+.admin-card--danger { border-color: rgba(138, 28, 28, 0.4); }
+.admin-card h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+.admin-card h3 { margin: 0 0 0.5rem; font-size: 0.95rem; font-weight: 600; }
 .admin-card__meta { font-size: 0.78rem; opacity: 0.65; }
+
+/* One large figure (revenue, totals) shared by the dashboard + reports so the
+   numbers line up at the same size instead of ad-hoc inline font sizes. */
+.admin-stat { font-size: 1.6rem; line-height: 1.1; font-weight: 700; margin: 0.25rem 0 0; color: var(--color-nile, #1a2340); }
+
+/* Page section + its header row (heading on one edge, actions on the other). */
+.admin-section { margin-bottom: 1.5rem; }
+.admin-section__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.6rem; }
 
 .admin-badge {
   display: inline-block;
@@ -102,6 +139,7 @@
 .admin-badge--on { background: #12613a; color: #fff; }
 .admin-badge--off { background: rgba(26, 35, 64, 0.12); color: #1a2340; }
 .admin-badge--gold { background: var(--color-gold, #d9822b); color: #1a2340; }
+.admin-badge--danger { background: var(--admin-danger, #8a1c1c); color: #fff; }
 
 .admin-btn {
   font: inherit;
@@ -117,9 +155,13 @@
 .admin-btn:hover { background: #0f1730; }
 .admin-btn--ghost { background: transparent; color: var(--color-nile, #1a2340); }
 .admin-btn--ghost:hover { background: rgba(26, 35, 64, 0.06); }
-.admin-btn--danger { background: #8a1c1c; border-color: #8a1c1c; }
+.admin-btn--danger { background: var(--admin-danger, #8a1c1c); border-color: var(--admin-danger, #8a1c1c); }
 .admin-btn--danger:hover { background: #6f1616; }
 .admin-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Keyboard focus ring on every action button (matches the inputs + locale
+   switch). The global fallback ring is currentColor, which is invisible on the
+   filled navy/red buttons — a gold ring is always visible on any variant. */
+.admin-btn:focus-visible { outline: 2px solid var(--color-gold, #d9822b); outline-offset: 2px; }
 /* Compact button — per-row table actions (Edit / View), pagination controls. */
 .admin-btn--sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 6px; }
 .admin-btn[aria-disabled="true"], .admin-btn[data-disabled] { opacity: 0.4; pointer-events: none; }
@@ -140,6 +182,23 @@
   border: 0;
 }
 
+/* Keyboard skip link: offscreen until focused, then pinned to the top-start
+   corner so keyboard/screen-reader users can jump past the sidebar straight to
+   the page content. Logical inset so it lands on the correct edge in RTL. */
+.admin-skip-link {
+  position: absolute;
+  inset-inline-start: -9999px;
+  top: 0.5rem;
+  z-index: 1100;
+  background: var(--color-gold, #d9822b);
+  color: #1a2340;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.admin-skip-link:focus, .admin-skip-link:focus-visible { inset-inline-start: 0.5rem; }
+
 /* List pagination footer. */
 .admin-pagination {
   display: flex;
@@ -156,13 +215,29 @@
   font: inherit;
   width: 100%;
   padding: 0.5rem 0.65rem;
-  border: 1px solid rgba(26, 35, 64, 0.25);
+  border: 1px solid var(--admin-border-strong, rgba(26, 35, 64, 0.25));
   border-radius: 8px;
   background: #fff;
   color: inherit;
 }
-.admin-textarea { min-height: 60vh; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.82rem; line-height: 1.5; }
+/* Default textareas hold prose (FAQs, notes, translations): the normal admin
+   font at a modest height. Raw-JSON / code editors opt into the tall monospace
+   box with .admin-textarea--code. (Previously every textarea inherited the tall
+   monospace style, turning short prose fields into a huge monospace slab.) */
+.admin-textarea { min-height: 6rem; line-height: 1.5; }
+.admin-textarea--code { min-height: 60vh; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.82rem; }
 .admin-input:focus-visible, .admin-textarea:focus-visible { outline: 2px solid var(--color-gold, #d9822b); outline-offset: 1px; }
+
+/* Grouped form controls (pricing, tags, CTA, coupon rules). Centralizes the
+   fieldset styling several editors were repeating inline. */
+.admin-fieldset {
+  border: 1px solid rgba(26, 35, 64, 0.15);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  min-inline-size: auto;
+}
+.admin-fieldset > legend { padding: 0 0.35rem; font-size: 0.78rem; opacity: 0.65; }
 
 .admin-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .admin-row--between { justify-content: space-between; }
@@ -171,15 +246,15 @@
 .admin-alert { padding: 0.7rem 0.95rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; }
 .admin-alert--error { background: #fbe4e4; color: #7a1616; border: 1px solid #e7b6b6; }
 .admin-alert--ok { background: #e3f4ea; color: #12613a; border: 1px solid #b6ddc6; }
-.admin-alert--warn { background: #fdf1e3; color: #8a4b12; border: 1px solid #f0d2ab; }
+.admin-alert--warn { background: #fdf1e3; color: var(--admin-warn-fg, #8a4b12); border: 1px solid #f0d2ab; }
 .admin-alert--info { background: #e6effb; color: #1a3a66; border: 1px solid #b8d0ee; }
 
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-.admin-table th, .admin-table td { text-align: start; padding: 0.55rem 0.6rem; border-bottom: 1px solid rgba(26, 35, 64, 0.1); }
-.admin-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+.admin-table th, .admin-table td { text-align: start; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--admin-border, rgba(26, 35, 64, 0.1)); }
+.admin-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.72; }
 
-.admin-login { min-height: 100vh; display: grid; place-items: center; background: var(--color-nile, #1a2340); padding: 1rem; }
-.admin-login__card { background: #fff; border-radius: 14px; padding: 2rem; width: 100%; max-width: 380px; color: var(--color-ink, #262626); }
+.admin-login { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; background: var(--color-nile, #1a2340); padding: 1rem; }
+.admin-login__card { background: #fff; border-radius: 12px; padding: 2rem; width: 100%; max-width: 380px; color: var(--color-ink, #262626); }
 .admin-login__card h1 { font-size: 1.4rem; margin: 0 0 0.35rem; }
 .admin-login__card p { margin: 0 0 1.25rem; opacity: 0.7; font-size: 0.9rem; }
 
@@ -196,11 +271,11 @@
   margin-bottom: 1.5rem;
 }
 .admin-kpi {
-  background: #fff;
-  border: 1px solid rgba(26, 35, 64, 0.1);
+  background: var(--admin-surface, #fff);
+  border: 1px solid var(--admin-border, rgba(26, 35, 64, 0.1));
   border-radius: 12px;
   padding: 0.9rem 1.1rem;
-  box-shadow: 0 1px 2px rgba(26, 35, 64, 0.05);
+  box-shadow: var(--admin-shadow, 0 1px 2px rgba(26, 35, 64, 0.05));
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
@@ -215,11 +290,11 @@
   margin-bottom: 1.5rem;
 }
 .admin-chart {
-  background: #fff;
-  border: 1px solid rgba(26, 35, 64, 0.1);
+  background: var(--admin-surface, #fff);
+  border: 1px solid var(--admin-border, rgba(26, 35, 64, 0.1));
   border-radius: 12px;
   padding: 1.1rem 1.25rem;
-  box-shadow: 0 1px 2px rgba(26, 35, 64, 0.05);
+  box-shadow: var(--admin-shadow, 0 1px 2px rgba(26, 35, 64, 0.05));
   margin: 0;
   min-width: 0;
 }
@@ -283,6 +358,9 @@
 @media (min-width: 769px) and (max-width: 1024px) {
   .admin-shell { grid-template-columns: 208px 1fr; }
   .admin-main { padding: 1.5rem clamp(1rem, 2.5vw, 2rem); }
+  /* Even with the narrower rail, wide tables can exceed the content column on
+     tablet-landscape — let them scroll within it rather than overflow. */
+  .admin-table { display: block; overflow-x: auto; }
 }
 
 /* ── Mobile / tablet-portrait (≤768px) ────────────────────────────────────────
@@ -300,6 +378,39 @@
   .admin-sidebar__brand { padding-bottom: 0.5rem; }
   .admin-sidebar__spacer { display: none; }
   .admin-main { padding: 1.25rem 1rem; }
+  /* Single-column stacks so cards + charts are never squeezed on a phone. */
+  .admin-grid, .admin-charts { grid-template-columns: 1fr; }
   /* Make data tables scroll within the viewport rather than overflow it. */
   .admin-table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+
+  /* Collapse the long nav behind a "Menu" toggle so page content isn't pushed
+     far down on every view. The checkbox is a screen-reader-operable toggle and
+     its <label> is the visible tap target; navigating to a link fully reloads
+     the page, so the menu naturally returns to its collapsed state. */
+  .admin-nav-toggle {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    margin: 0;
+  }
+  .admin-nav-toggle__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.25rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .admin-nav-toggle__label::before { content: "\2630"; font-size: 1rem; line-height: 1; }
+  .admin-nav-collapse { display: none; }
+  .admin-nav-toggle:checked ~ .admin-nav-collapse { display: flex; flex: 0 1 auto; }
+  .admin-nav-toggle:focus-visible + .admin-nav-toggle__label { outline: 2px solid var(--color-gold, #d9822b); outline-offset: 2px; }
 }
