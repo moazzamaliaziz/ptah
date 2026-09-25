@@ -13,7 +13,7 @@
  * calls the same status-guarded `refundBooking`, which is then a no-op.
  */
 import "server-only";
-import type { BookingStatus } from "@prisma/client";
+import type { BookingStatus, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe";
@@ -112,22 +112,31 @@ export interface ListBookingsFilter {
   /** Free-text match against booking id (reference) or guest email. */
   q?: string;
   take?: number;
+  /** Rows to skip — server-side pagination (page N → skip = (N-1) × pageSize). */
+  skip?: number;
+}
+
+/**
+ * Shared WHERE for the list and its count, so the two always agree. Search is a
+ * substring match on booking id (reference) or guest email.
+ */
+function bookingWhere(filter: { status?: BookingStatus; q?: string }): Prisma.BookingWhereInput {
+  const q = filter.q?.trim();
+  return {
+    ...(filter.status ? { status: filter.status } : {}),
+    ...(q ? { OR: [{ id: { contains: q } }, { guestEmail: { contains: q } }] } : {}),
+  };
 }
 
 /** Every booking, newest first, with tour + primary-payment summary. Staff-only. */
 export async function listBookingsForAdmin(
   filter: ListBookingsFilter = {},
 ): Promise<AdminBookingListItem[]> {
-  const q = filter.q?.trim();
   const rows = await db.booking.findMany({
-    where: {
-      ...(filter.status ? { status: filter.status } : {}),
-      ...(q
-        ? { OR: [{ id: { contains: q } }, { guestEmail: { contains: q } }] }
-        : {}),
-    },
+    where: bookingWhere(filter),
     orderBy: { createdAt: "desc" },
     take: filter.take ?? 200,
+    skip: filter.skip ?? 0,
     select: {
       id: true,
       status: true,
@@ -163,6 +172,13 @@ export async function listBookingsForAdmin(
       paymentStatus: primary?.status ?? null,
     };
   });
+}
+
+/** Total bookings matching the same filter — powers list pagination. Staff-only. */
+export async function countBookingsForAdmin(
+  filter: { status?: BookingStatus; q?: string } = {},
+): Promise<number> {
+  return db.booking.count({ where: bookingWhere(filter) });
 }
 
 export interface AdminPaymentRow {

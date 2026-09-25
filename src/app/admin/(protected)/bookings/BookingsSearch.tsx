@@ -1,0 +1,59 @@
+"use client";
+
+import type { JSX } from "react";
+import { useEffect, useRef, useState } from "react";
+
+/**
+ * Orders search box. Progressive enhancement: it is a plain GET form (works on
+ * Enter / button with no JS), enhanced to auto-submit ~400ms after the admin
+ * stops typing so the list filters as-you-type without hammering the DB on
+ * every keystroke. Submitting drops the `page` param, so results reset to
+ * page 1 — the current status filter is preserved via a hidden field.
+ */
+export default function BookingsSearch({
+  status,
+  defaultValue,
+}: {
+  status?: string;
+  defaultValue: string;
+}): JSX.Element {
+  const [value, setValue] = useState(defaultValue);
+  const formRef = useRef<HTMLFormElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirty = useRef(false);
+
+  useEffect(() => {
+    // Don't auto-submit on first render or when the value matches the URL.
+    if (!dirty.current || value.trim() === defaultValue.trim()) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => formRef.current?.requestSubmit(), 400);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [value, defaultValue]);
+
+  return (
+    <form ref={formRef} method="get" className="admin-row" role="search">
+      {status ? <input type="hidden" name="status" value={status} /> : null}
+      <label className="admin-field" style={{ margin: 0, flex: "1 1 260px" }}>
+        <span className="admin-visually-hidden">Search orders</span>
+        <input
+          type="search"
+          name="q"
+          value={value}
+          onChange={(e) => {
+            dirty.current = true;
+            setValue(e.target.value);
+          }}
+          className="admin-input"
+          placeholder="Search by reference or email…"
+          autoComplete="off"
+          aria-label="Search orders by reference or email"
+        />
+      </label>
+      <button type="submit" className="admin-btn admin-btn--ghost">
+        Search
+      </button>
+    </form>
+  );
+}
