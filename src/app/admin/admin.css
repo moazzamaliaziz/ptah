@@ -160,6 +160,48 @@
 
 .admin-cat { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.55; margin: 1.5rem 0 0.5rem; }
 
+/* ── Reports: KPI tiles + charts (Wave 3) ─────────────────────────────────────
+   KPI tiles are a compact auto-fit grid above the charts; the charts grid holds
+   the Recharts client island (ReportsCharts). Chart cards reuse the card look
+   (white, rounded, subtle shadow) so they sit on-brand next to the tables. */
+.admin-kpis {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  margin-bottom: 1.5rem;
+}
+.admin-kpi {
+  background: #fff;
+  border: 1px solid rgba(26, 35, 64, 0.1);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 1px 2px rgba(26, 35, 64, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.admin-kpi__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+.admin-kpi__value { font-size: 1.7rem; line-height: 1.1; font-weight: 700; color: var(--color-nile, #1a2340); }
+
+.admin-charts {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  margin-bottom: 1.5rem;
+}
+.admin-chart {
+  background: #fff;
+  border: 1px solid rgba(26, 35, 64, 0.1);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 1px 2px rgba(26, 35, 64, 0.05);
+  margin: 0;
+  min-width: 0;
+}
+.admin-chart__cap { margin-bottom: 0.5rem; }
+.admin-chart__cap strong { display: block; font-size: 1.05rem; }
+.admin-chart__cap span { font-size: 0.78rem; opacity: 0.65; }
+
 /* ── Help hints (P8) ──────────────────────────────────────────────────────────
    A small "?" chip that reveals a plain-language explanation on hover or keyboard
    focus. Pure CSS, no client JS (admin screens are server components). The bubble
@@ -200,7 +242,9 @@
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.12s ease;
-  z-index: 20;
+  /* Above KPI tiles, chart cards and table headers so the tooltip is never
+     clipped behind an adjacent <h2> or card when hovered (Wave 3 overlap fix). */
+  z-index: 60;
   pointer-events: none;
 }
 .admin-hint:hover .admin-hint__bubble,

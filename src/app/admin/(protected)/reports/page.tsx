@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { Suspense, type JSX } from "react";
 import Link from "next/link";
 import type { BookingStatus } from "@prisma/client";
 import { requireCapability } from "@/server/auth/rbac";
@@ -16,13 +16,16 @@ import {
 } from "@/server/admin/reports";
 import { getGa4CountryTraffic, type Ga4TrafficResult } from "@/server/admin/analytics-ga4";
 import AdminHint from "@/components/admin/AdminHint";
+import { ReportsCharts } from "@/components/admin/ReportsCharts";
 
 export const dynamic = "force-dynamic";
 
 const RANGE_TAB_LABEL: Record<ReportRangeKey, string> = {
+  "7d": "7 days",
   "30d": "30 days",
   "90d": "90 days",
   "12m": "12 months",
+  ytd: "Year to date",
   all: "All time",
 };
 
@@ -49,6 +52,59 @@ function currencyLine(revenue: { currency: string; netCents: number }[]): string
   return revenue.map((r) => formatPriceCents(r.netCents, r.currency)).join(" · ");
 }
 
+/**
+ * Website-traffic panel (Google Analytics). Split into its own async component
+ * so its slow fetch (token exchange + runReport, ~16s worst case) streams in
+ * under <Suspense> instead of blocking the whole report. Never throws — the
+ * GA4 service returns a typed ok/err result, wrapped in safe() as a last resort.
+ */
+async function Ga4Panel({ since }: { since: Date | null }): Promise<JSX.Element> {
+  const ga4 = await safe<Ga4TrafficResult>(() => getGa4CountryTraffic(since), {
+    ok: false,
+    reason: "error",
+    message: "Analytics unavailable right now.",
+  });
+  if (!ga4.ok) {
+    return (
+      <div className="admin-card">
+        <p className="admin-card__meta">{ga4.message}</p>
+        {ga4.reason === "not_configured" && (
+          <Link href="/admin/integrations" className="admin-btn admin-btn--ghost" style={{ marginTop: "0.5rem" }}>
+            Set up Google Analytics →
+          </Link>
+        )}
+      </div>
+    );
+  }
+  if (ga4.rows.length === 0) {
+    return (
+      <div className="admin-card">
+        <p className="admin-card__meta">No visitor data reported for this period yet.</p>
+      </div>
+    );
+  }
+  return (
+    <table className="admin-table">
+      <thead>
+        <tr>
+          <th>Country</th>
+          <th>Sessions</th>
+          <th>Active users</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ga4.rows.map((r) => (
+          <tr key={r.country}>
+            <td>{r.country}</td>
+            <td>{r.sessions.toLocaleString("en-US")}</td>
+            <td>{r.activeUsers.toLocaleString("en-US")}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default async function AdminReportsPage({
   searchParams,
 }: {
@@ -59,19 +115,26 @@ export default async function AdminReportsPage({
   const range = parseReportRange(rawRange);
 
   const emptyMoney: MoneyReport = { revenue: [], refunds: [], statusCounts: [] };
-  const [money, topTours, byCountry, ga4] = await Promise.all([
+  // GA4 is deliberately NOT awaited here — it can take ~16s. It streams in
+  // separately via <Suspense> + <Ga4Panel> below, so the rest of the report
+  // (money, tours, countries — all fast DB reads) renders immediately.
+  const [money, topTours, byCountry] = await Promise.all([
     safe<MoneyReport>(() => getMoneyReport(range.since), emptyMoney),
     safe<TourRevenue[]>(() => getTopTours(range.since), []),
     safe<CountryCount[]>(() => getBookingsByCountry(range.since), []),
-    safe<Ga4TrafficResult>(() => getGa4CountryTraffic(range.since), {
-      ok: false,
-      reason: "error",
-      message: "Analytics unavailable right now.",
-    }),
   ]);
 
   const rangeHref = (k: ReportRangeKey) => (k === "30d" ? "/admin/reports" : `/admin/reports?range=${k}`);
+  const csvHref = `/admin/reports/export?range=${range.key}`;
+  const countOf = (s: BookingStatus) => money.statusCounts.find((x) => x.status === s)?.count ?? 0;
   const totalBookings = money.statusCounts.reduce((sum, s) => sum + s.count, 0);
+
+  // Chart inputs — COUNTS only (currency-agnostic); money is never charted.
+  const statusChart = money.statusCounts
+    .filter((s) => s.count > 0)
+    .map((s) => ({ key: s.status, name: STATUS_LABEL[s.status], value: s.count }));
+  const toursChart = topTours.slice(0, 8).map((t) => ({ name: t.tourTitle, bookings: t.confirmedBookings }));
+  const countriesChart = byCountry.slice(0, 8).map((c) => ({ name: c.name, bookings: c.count }));
 
   return (
     <>
@@ -80,21 +143,49 @@ export default async function AdminReportsPage({
         <p>Revenue and bookings for the selected period. Money is shown per currency and never mixed.</p>
       </div>
 
-      <nav className="admin-row" aria-label="Report period" style={{ marginBottom: "1rem" }}>
-        {REPORT_RANGES.map((k) => {
-          const active = k === range.key;
-          return (
-            <Link
-              key={k}
-              href={rangeHref(k)}
-              className={`admin-btn ${active ? "" : "admin-btn--ghost"}`}
-              aria-current={active ? "page" : undefined}
-            >
-              {RANGE_TAB_LABEL[k]}
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="admin-row admin-row--between" style={{ marginBottom: "1rem", gap: "1rem" }}>
+        <nav className="admin-row" aria-label="Report period">
+          {REPORT_RANGES.map((k) => {
+            const active = k === range.key;
+            return (
+              <Link
+                key={k}
+                href={rangeHref(k)}
+                className={`admin-btn ${active ? "" : "admin-btn--ghost"}`}
+                aria-current={active ? "page" : undefined}
+              >
+                {RANGE_TAB_LABEL[k]}
+              </Link>
+            );
+          })}
+        </nav>
+        <a href={csvHref} className="admin-btn admin-btn--ghost admin-btn--sm" download>
+          ↓ Download CSV
+        </a>
+      </div>
+
+      <section className="admin-kpis" aria-label="Key totals">
+        <div className="admin-kpi">
+          <span className="admin-kpi__label">Total bookings</span>
+          <strong className="admin-kpi__value">{totalBookings.toLocaleString("en-US")}</strong>
+        </div>
+        <div className="admin-kpi">
+          <span className="admin-kpi__label">Confirmed</span>
+          <strong className="admin-kpi__value">{countOf("CONFIRMED").toLocaleString("en-US")}</strong>
+        </div>
+        <div className="admin-kpi">
+          <span className="admin-kpi__label">Awaiting payment</span>
+          <strong className="admin-kpi__value">{countOf("PENDING_PAYMENT").toLocaleString("en-US")}</strong>
+        </div>
+        <div className="admin-kpi">
+          <span className="admin-kpi__label">Refunded</span>
+          <strong className="admin-kpi__value">{countOf("REFUNDED").toLocaleString("en-US")}</strong>
+        </div>
+      </section>
+
+      {totalBookings > 0 && (
+        <ReportsCharts status={statusChart} topTours={toursChart} countries={countriesChart} />
+      )}
 
       <section style={{ marginBottom: "1.5rem" }}>
         <div className="admin-row admin-row--between" style={{ marginBottom: "0.5rem" }}>
@@ -269,41 +360,15 @@ export default async function AdminReportsPage({
         <p className="admin-card__meta" style={{ marginTop: "-0.35rem" }}>
           Visitor sessions from Google Analytics (all site traffic, not only buyers).
         </p>
-        {ga4.ok ? (
-          ga4.rows.length === 0 ? (
+        <Suspense
+          fallback={
             <div className="admin-card">
-              <p className="admin-card__meta">No visitor data reported for this period yet.</p>
+              <p className="admin-card__meta">Loading visitor analytics…</p>
             </div>
-          ) : (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Country</th>
-                  <th>Sessions</th>
-                  <th>Active users</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ga4.rows.map((r) => (
-                  <tr key={r.country}>
-                    <td>{r.country}</td>
-                    <td>{r.sessions.toLocaleString("en-US")}</td>
-                    <td>{r.activeUsers.toLocaleString("en-US")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        ) : (
-          <div className="admin-card">
-            <p className="admin-card__meta">{ga4.message}</p>
-            {ga4.reason === "not_configured" && (
-              <Link href="/admin/integrations" className="admin-btn admin-btn--ghost" style={{ marginTop: "0.5rem" }}>
-                Set up Google Analytics →
-              </Link>
-            )}
-          </div>
-        )}
+          }
+        >
+          <Ga4Panel since={range.since} />
+        </Suspense>
       </section>
     </>
   );

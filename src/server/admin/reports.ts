@@ -16,7 +16,7 @@ import "server-only";
 import type { Prisma, BookingStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 
-export type ReportRangeKey = "30d" | "90d" | "12m" | "all";
+export type ReportRangeKey = "7d" | "30d" | "90d" | "12m" | "ytd" | "all";
 
 export interface ReportRange {
   key: ReportRangeKey;
@@ -25,27 +25,36 @@ export interface ReportRange {
   label: string;
 }
 
-const RANGE_DAYS: Record<Exclude<ReportRangeKey, "all">, number> = {
+/** Fixed-length day windows. `ytd` (year-to-date) and `all` are special-cased. */
+const RANGE_DAYS: Record<"7d" | "30d" | "90d" | "12m", number> = {
+  "7d": 7,
   "30d": 30,
   "90d": 90,
   "12m": 365,
 };
 
 const RANGE_LABEL: Record<ReportRangeKey, string> = {
+  "7d": "Last 7 days",
   "30d": "Last 30 days",
   "90d": "Last 90 days",
   "12m": "Last 12 months",
+  ytd: "Year to date",
   all: "All time",
 };
 
-export const REPORT_RANGES: readonly ReportRangeKey[] = ["30d", "90d", "12m", "all"];
+export const REPORT_RANGES: readonly ReportRangeKey[] = ["7d", "30d", "90d", "12m", "ytd", "all"];
 
 /** Narrow an untrusted `?range=` param to a ReportRange (defaults to 30 days). */
 export function parseReportRange(value: string | undefined): ReportRange {
   const key: ReportRangeKey =
-    value === "90d" || value === "12m" || value === "all" ? value : "30d";
+    value === "7d" || value === "90d" || value === "12m" || value === "ytd" || value === "all"
+      ? value
+      : "30d";
   let since: Date | null = null;
-  if (key !== "all") {
+  if (key === "ytd") {
+    // Since Jan 1 of the current year (UTC), so the window follows the calendar.
+    since = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+  } else if (key !== "all") {
     since = new Date();
     since.setUTCDate(since.getUTCDate() - RANGE_DAYS[key]);
   }
@@ -152,9 +161,12 @@ export interface TourRevenue {
 }
 
 /**
- * Top tours by confirmed-booking count in range. Aggregated in memory (a tour
- * has many departures, so a DB groupBy by departureId would still need a second
- * join to reach the tour) — reporting volumes are modest and each row is tiny.
+ * Top tours by confirmed-booking count in range. Bounded: aggregated with a DB
+ * `groupBy` on (departureId, currency), so the rows returned are capped by the
+ * finite departure catalog rather than the (unbounded) booking volume. The
+ * handful of referenced departures are then resolved to their tour title/slug
+ * and folded together per tour. `revenue` stays an array keyed by currency
+ * (money is never summed across currencies).
  */
 export async function getTopTours(since: Date | null, limit = 10): Promise<TourRevenue[]> {
   const where = {
@@ -162,30 +174,37 @@ export async function getTopTours(since: Date | null, limit = 10): Promise<TourR
     ...(since ? { createdAt: { gte: since } } : {}),
   } satisfies Prisma.BookingWhereInput;
 
-  const rows = await db.booking.findMany({
+  const grouped = await db.booking.groupBy({
+    by: ["departureId", "currency"],
     where,
-    select: {
-      seats: true,
-      totalCents: true,
-      currency: true,
-      departure: { select: { tour: { select: { title: true, slug: true } } } },
-    },
+    _count: { _all: true },
+    _sum: { seats: true, totalCents: true },
   });
+  if (grouped.length === 0) return [];
+
+  // Resolve only the departures that actually had confirmed bookings → tour.
+  const departureIds = [...new Set(grouped.map((g) => g.departureId))];
+  const departures = await db.tourDeparture.findMany({
+    where: { id: { in: departureIds } },
+    select: { id: true, tour: { select: { title: true, slug: true } } },
+  });
+  const tourOf = new Map(departures.map((d) => [d.id, d.tour]));
 
   const byTour = new Map<
     string,
     { title: string; slug: string; bookings: number; seats: number; revenue: Map<string, number> }
   >();
-  for (const b of rows) {
-    const { title, slug } = b.departure.tour;
-    let agg = byTour.get(slug);
+  for (const g of grouped) {
+    const tour = tourOf.get(g.departureId);
+    if (!tour) continue; // departure gone (Restrict makes this unreachable) — skip defensively
+    let agg = byTour.get(tour.slug);
     if (!agg) {
-      agg = { title, slug, bookings: 0, seats: 0, revenue: new Map() };
-      byTour.set(slug, agg);
+      agg = { title: tour.title, slug: tour.slug, bookings: 0, seats: 0, revenue: new Map() };
+      byTour.set(tour.slug, agg);
     }
-    agg.bookings += 1;
-    agg.seats += b.seats;
-    agg.revenue.set(b.currency, (agg.revenue.get(b.currency) ?? 0) + b.totalCents);
+    agg.bookings += g._count._all;
+    agg.seats += g._sum.seats ?? 0;
+    agg.revenue.set(g.currency, (agg.revenue.get(g.currency) ?? 0) + (g._sum.totalCents ?? 0));
   }
 
   return [...byTour.values()]
