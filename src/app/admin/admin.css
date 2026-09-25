@@ -148,6 +148,7 @@
 .admin-alert--error { background: #fbe4e4; color: #7a1616; border: 1px solid #e7b6b6; }
 .admin-alert--ok { background: #e3f4ea; color: #12613a; border: 1px solid #b6ddc6; }
 .admin-alert--warn { background: #fdf1e3; color: #8a4b12; border: 1px solid #f0d2ab; }
+.admin-alert--info { background: #e6effb; color: #1a3a66; border: 1px solid #b8d0ee; }
 
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .admin-table th, .admin-table td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid rgba(26, 35, 64, 0.1); }
