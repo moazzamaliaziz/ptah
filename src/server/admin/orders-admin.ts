@@ -18,7 +18,7 @@ import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe";
 import { refundCapture } from "@/server/payments/paypal";
-import { refundBooking, cancelAndReleaseBooking } from "@/server/booking";
+import { cancelAndReleaseBooking } from "@/server/booking";
 import { parsePriceBreakdown, type PriceBreakdown } from "@/server/booking-core";
 import { writeAudit } from "@/server/audit";
 
@@ -289,8 +289,13 @@ export async function getBookingForAdmin(id: string): Promise<AdminBookingDetail
       reference: paymentReference(p.raw),
       createdAt: p.createdAt,
     })),
-    canRefund: b.status === "CONFIRMED",
-    canCancel: b.status === "PENDING_PAYMENT",
+    // A refund is offered whenever money was actually captured and not yet
+    // returned — regardless of the current status label, so staff have full
+    // authority to refund any paid order.
+    canRefund: b.status !== "REFUNDED" && b.payments.some((p) => p.status === "SUCCEEDED"),
+    // Cancel is offered on any live booking (i.e. not one already cancelled or
+    // refunded), releasing its seats.
+    canCancel: b.status !== "CANCELLED" && b.status !== "REFUNDED",
     canMarkPaid: b.status === "PENDING_PAYMENT" && pendingBankTransfer,
   };
 }
@@ -311,11 +316,13 @@ export type AdminActionResult =
     };
 
 /**
- * Admin-initiated full refund. Dispatches the gateway refund by the succeeded
- * payment's method, then runs the idempotent DB transition. Offline methods
- * (bank transfer) have no gateway call — the admin has refunded manually and
- * this records it. Safe against the refund webhook (both call `refundBooking`,
- * which is status-guarded).
+ * Admin-initiated full refund — offered on any booking that has a captured
+ * (SUCCEEDED) payment and is not already refunded, whatever its status label
+ * (full staff authority). Dispatches the gateway refund by the succeeded
+ * payment's method (offline methods such as bank transfer have no gateway call —
+ * the admin has refunded manually and this just records it), then runs the
+ * seat-safe, idempotent DB transition. Safe against the refund webhook: both end
+ * at a status-guarded REFUNDED flip, so the later one is a no-op.
  */
 export async function adminRefundBooking(params: {
   bookingId: string;
@@ -334,12 +341,12 @@ export async function adminRefundBooking(params: {
     },
   });
   if (!booking) return { ok: false, reason: "NOT_FOUND", message: "Booking not found." };
-  if (booking.status !== "CONFIRMED") {
-    return { ok: false, reason: "NOT_REFUNDABLE", message: "Only a confirmed booking can be refunded." };
+  if (booking.status === "REFUNDED") {
+    return { ok: false, reason: "NOT_REFUNDABLE", message: "This booking has already been refunded." };
   }
   const payment = booking.payments[0];
   if (!payment) {
-    return { ok: false, reason: "NO_PAYMENT", message: "No succeeded payment found to refund." };
+    return { ok: false, reason: "NO_PAYMENT", message: "No captured payment was found to refund." };
   }
 
   switch (payment.method) {
@@ -357,8 +364,7 @@ export async function adminRefundBooking(params: {
         logger.error("admin stripe refund failed", { bookingId, error });
         return { ok: false, reason: "GATEWAY_ERROR", message: "Stripe refused the refund. Check the dashboard." };
       }
-      await refundBooking({ bookingId, intentId: payment.intentId, actorId });
-      return { ok: true };
+      break;
     }
     case "paypal": {
       // For PayPal the capture id lives in `intentId`.
@@ -369,32 +375,102 @@ export async function adminRefundBooking(params: {
       if (!refunded) {
         return { ok: false, reason: "GATEWAY_ERROR", message: "PayPal refused the refund. Check the dashboard." };
       }
-      await refundBooking({ bookingId, intentId: payment.intentId, actorId });
-      return { ok: true };
+      break;
     }
-    default: {
+    default:
       // Offline method (bank transfer): no gateway refund — the admin refunds
-      // manually and this records the status transition + seat release.
-      await refundBooking({ bookingId, intentId: payment.intentId, actorId });
-      return { ok: true };
-    }
+      // manually and the DB transition below records it.
+      break;
   }
+
+  await markRefundedFromAnyStatus({ bookingId, intentId: payment.intentId, actorId });
+  return { ok: true };
 }
 
-/** Admin cancel of a stuck PENDING_PAYMENT booking (delegates to booking.ts). */
+/**
+ * Admin cancel — releases the booking's seats and marks it CANCELLED. Works on
+ * any live booking (full authority): a stuck PENDING_PAYMENT one goes through
+ * the dedicated primitive (which also voids its pending payment), while a
+ * CONFIRMED (or other) booking is moved through the seat-safe status transition.
+ * Cancelling does NOT move money — use adminRefundBooking to return a payment.
+ */
 export async function adminCancelBooking(params: {
   bookingId: string;
   actorId: string;
 }): Promise<AdminActionResult> {
-  const res = await cancelAndReleaseBooking(params);
-  return res.ok
-    ? { ok: true }
-    : { ok: false, reason: "NOT_REFUNDABLE", message: "Only a pending booking can be cancelled." };
+  const { bookingId, actorId } = params;
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { status: true },
+  });
+  if (!booking) return { ok: false, reason: "NOT_FOUND", message: "Booking not found." };
+  if (booking.status === "CANCELLED") return { ok: true }; // already cancelled — idempotent
+
+  if (booking.status === "PENDING_PAYMENT") {
+    const res = await cancelAndReleaseBooking({ bookingId, actorId });
+    return res.ok
+      ? { ok: true }
+      : { ok: false, reason: "STALE", message: "The booking changed just now — reload and try again." };
+  }
+
+  // CONFIRMED / REFUNDED / FAILED → seat-safe flip to CANCELLED (releases the
+  // seat only when the booking currently holds one, so seats never double-release).
+  return setBookingStatus({ bookingId, target: "CANCELLED", actorId });
 }
 
 /** Statuses that hold a departure seat (claimed at reserve time, freed on exit). */
 const SEAT_HOLDING: readonly BookingStatus[] = ["PENDING_PAYMENT", "CONFIRMED"];
 const holdsSeats = (s: BookingStatus): boolean => SEAT_HOLDING.includes(s);
+
+/**
+ * Seat-safe, idempotent transition of a booking to REFUNDED from ANY current
+ * status — the DB half of adminRefundBooking (the gateway refund runs first).
+ * Releases the seat only when the booking currently holds one (so refunding an
+ * already-cancelled booking never double-releases), marks its succeeded
+ * payment(s) refunded, and records a `booking.refund` audit entry. Status-guarded
+ * so a race with the provider refund webhook resolves to a single winner.
+ */
+async function markRefundedFromAnyStatus(params: {
+  bookingId: string;
+  intentId: string | null;
+  actorId: string;
+}): Promise<void> {
+  const { bookingId, intentId, actorId } = params;
+  await db.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true, seats: true, departureId: true },
+    });
+    if (!booking || booking.status === "REFUNDED") return; // gone or already refunded
+
+    const wasHeld = holdsSeats(booking.status);
+    const flip = await tx.booking.updateMany({
+      where: { id: bookingId, status: booking.status },
+      data: { status: "REFUNDED" },
+    });
+    if (flip.count !== 1) return; // raced with another transition — let the winner stand
+
+    if (wasHeld) {
+      await tx.tourDeparture.update({
+        where: { id: booking.departureId },
+        data: { remainingCapacity: { increment: booking.seats } },
+      });
+    }
+
+    await tx.payment.updateMany({
+      where: { bookingId, status: "SUCCEEDED", ...(intentId ? { intentId } : {}) },
+      data: { status: "REFUNDED" },
+    });
+
+    await writeAudit({
+      actorId,
+      action: "booking.refund",
+      entity: "Booking",
+      entityId: bookingId,
+      meta: { intentId, seatsReleased: wasHeld ? booking.seats : 0 },
+    });
+  });
+}
 
 /**
  * Manual status correction (item #6). Moves a booking to any of the five

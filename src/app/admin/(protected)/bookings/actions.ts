@@ -18,7 +18,7 @@ function revalidateBooking(id: string): void {
   revalidatePath(`/admin/bookings/${id}`);
 }
 
-/** Full-refund a confirmed booking. Admin-only (bookings.edit). */
+/** Full-refund any booking that has a captured payment. Admin-only (bookings.edit). */
 export async function refundBookingAction(fd: FormData): Promise<void> {
   const user = await requireCapability("bookings.edit");
   const id = str(fd, "id");
@@ -27,7 +27,7 @@ export async function refundBookingAction(fd: FormData): Promise<void> {
   redirect(`/admin/bookings/${id}?${result.ok ? "msg=refunded" : `err=${result.reason}`}`);
 }
 
-/** Cancel + release a stuck PENDING_PAYMENT booking. Admin-only (bookings.edit). */
+/** Cancel + release any live booking (frees its seats). Admin-only (bookings.edit). */
 export async function cancelBookingAction(fd: FormData): Promise<void> {
   const user = await requireCapability("bookings.edit");
   const id = str(fd, "id");

@@ -293,7 +293,7 @@ export default async function AdminBookingDetailPage({
                 <input type="hidden" name="id" value={booking.id} />
                 <ConfirmSubmitButton
                   className="admin-btn admin-btn--danger"
-                  confirm="Cancel this pending booking and release its seats? This cannot be undone."
+                  confirm="Cancel this booking and release its seats? This does NOT refund any money — use “Refund in full” for that. This cannot be undone."
                   pendingLabel="Cancelling…"
                 >
                   Cancel &amp; release
