@@ -1,6 +1,8 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { requireCapability } from "@/server/auth/rbac";
 import { getBookingForAdmin } from "@/server/admin/orders-admin";
+import { getSettings } from "@/server/settings";
+import { getMediaAsPngOrJpeg } from "@/server/media";
 import { InvoiceDocument, type InvoiceData } from "@/components/pdf/InvoiceDocument";
 
 /**
@@ -26,7 +28,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const booking = await getBookingForAdmin(id);
   if (!booking) return new Response("Not found", { status: 404 });
 
+  // Real branding + contact from SiteSetting (never hardcoded). The logo is
+  // best-effort: null when unset or undecodable → header shows the wordmark.
+  const settings = await getSettings();
+  const logoId = settings["branding.logoMediaId"];
+  const logo = logoId ? await getMediaAsPngOrJpeg(logoId) : null;
+
   const data: InvoiceData = {
+    brand: {
+      siteName: settings["branding.siteName"],
+      legalName: settings["branding.legalName"],
+      logo,
+      contactEmail: settings["contact.email"] || null,
+      contactPhone: settings["contact.phone"] || null,
+      contactWhatsapp: settings["contact.whatsapp"] || null,
+    },
     reference: booking.id,
     status: booking.status,
     issuedAt: booking.createdAt,

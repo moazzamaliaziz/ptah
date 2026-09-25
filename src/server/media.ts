@@ -214,6 +214,44 @@ export async function getMediaBlob(id: string): Promise<MediaBlobResult | null> 
   return { mimeType: row.mimeType, checksum: row.checksum, bytes: row.blob.bytes };
 }
 
+/** A logo prepared for embedding in a server-rendered PDF (react-pdf `<Image>`). */
+export interface PdfImageBytes {
+  data: Buffer;
+  /** react-pdf's <Image> only decodes these two — everything else is rasterized to PNG. */
+  format: "png" | "jpg";
+  width: number;
+  height: number;
+}
+
+/**
+ * Load a media asset as PNG/JPEG bytes for embedding in a server-generated PDF.
+ * react-pdf's `<Image>` supports ONLY PNG and JPEG, so PNG/JPEG originals pass
+ * through untouched while every other stored format (WebP/AVIF/GIF/SVG) is
+ * rasterized to PNG via sharp. Best-effort: returns null when the asset is
+ * missing or cannot be decoded, so the caller falls back to a text-only header
+ * instead of failing the whole render.
+ */
+export async function getMediaAsPngOrJpeg(id: string): Promise<PdfImageBytes | null> {
+  const blob = await getMediaBlob(id);
+  if (!blob) return null;
+  const src = Buffer.from(blob.bytes);
+  try {
+    if (blob.mimeType === "image/png" || blob.mimeType === "image/jpeg") {
+      const meta = await sharp(src).metadata();
+      return {
+        data: src,
+        format: blob.mimeType === "image/png" ? "png" : "jpg",
+        width: meta.width ?? 0,
+        height: meta.height ?? 0,
+      };
+    }
+    const png = await sharp(src).png().toBuffer({ resolveWithObject: true });
+    return { data: png.data, format: "png", width: png.info.width, height: png.info.height };
+  } catch {
+    return null; // unreadable/corrupt — caller renders the text wordmark instead
+  }
+}
+
 /** Update an asset's alt text (accessibility metadata). Returns the fresh summary. */
 export async function updateMediaAltText(id: string, altText: string): Promise<MediaSummary> {
   const trimmed = altText.trim().slice(0, 512);

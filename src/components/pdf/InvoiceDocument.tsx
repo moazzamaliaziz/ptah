@@ -1,5 +1,5 @@
 import "server-only";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import { formatPriceCents } from "@/lib/utils";
 import { PAX_TYPE_LABEL, type PriceBreakdown } from "@/server/booking-core";
 
@@ -31,7 +31,31 @@ export interface InvoiceBilling {
   country: string;
 }
 
+/** A PNG/JPEG logo ready for react-pdf `<Image>` (see getMediaAsPngOrJpeg). */
+export interface InvoiceLogo {
+  data: Buffer;
+  format: "png" | "jpg";
+  width: number;
+  height: number;
+}
+
+/**
+ * Real brand identity + contact, read from SiteSetting at render time (never
+ * hardcoded). `logo` is null when none is configured or the stored image can't
+ * be decoded — the header then shows the site name wordmark alone.
+ */
+export interface InvoiceBrand {
+  siteName: string;
+  legalName: string;
+  logo: InvoiceLogo | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  contactWhatsapp: string | null;
+}
+
 export interface InvoiceData {
+  /** Real branding + contact from SiteSetting (logo, names, contact channels). */
+  brand: InvoiceBrand;
   /** Booking id — doubles as the invoice number. */
   reference: string;
   status: string;
@@ -77,9 +101,26 @@ const STATUS_LABEL: Record<string, string> = {
   FAILED: "Payment failed",
 };
 
+/** Human labels for the payment gateway/method column. */
+const METHOD_LABEL: Record<string, string> = {
+  bank_transfer: "Bank transfer",
+  card: "Credit card",
+  paypal: "PayPal",
+  stripe: "Stripe",
+};
+
 function methodLabel(method: string): string {
-  if (method === "bank_transfer") return "Bank transfer";
-  return method.charAt(0).toUpperCase() + method.slice(1);
+  return METHOD_LABEL[method] ?? method.charAt(0).toUpperCase() + method.slice(1);
+}
+
+/** Logo display box (points), scaled to fit within the header while keeping the
+ *  image's own aspect ratio. Falls back to a square when dimensions are unknown. */
+const LOGO_MAX_H = 30;
+const LOGO_MAX_W = 150;
+function logoBox(width: number, height: number): { width: number; height: number } {
+  if (!width || !height) return { width: LOGO_MAX_H, height: LOGO_MAX_H };
+  const scale = Math.min(LOGO_MAX_H / height, LOGO_MAX_W / width);
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
 function fmtDate(d: Date): string {
@@ -127,6 +168,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 22,
   },
+  headerLeft: { flexDirection: "row", alignItems: "center" },
+  /* White backing so a logo of any color stays legible on the dark header bar. */
+  logoChip: { backgroundColor: BRAND.white, borderRadius: 6, padding: 5, marginRight: 12 },
   brand: { fontSize: 15, fontFamily: "Helvetica-Bold", letterSpacing: 2, color: BRAND.white },
   brandSub: { fontSize: 9, color: "#c7cbe0", marginTop: 4, letterSpacing: 1 },
   pill: {
@@ -196,14 +240,33 @@ export function InvoiceDocument(data: InvoiceData) {
   const label = STATUS_LABEL[data.status] ?? data.status;
   const b = data.billing;
   const originName = regionName(data.originCountry);
+  const brand = data.brand;
+  // Price-breakdown lines sum to the GROSS; totalCents is already NET (gross −
+  // discount). Subtotal reconstructs the gross so the math reads top-to-bottom.
+  const subtotalCents = data.totalCents + data.discountCents;
+  const contactBits = [
+    brand.contactEmail,
+    brand.contactPhone ? `Tel ${brand.contactPhone}` : null,
+    brand.contactWhatsapp ? `WhatsApp ${brand.contactWhatsapp}` : null,
+  ].filter((v): v is string => Boolean(v));
 
   return (
     <Document title={`Ptah Tours invoice ${data.reference}`} author="Ptah Tours">
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>PTAH TOURS</Text>
-            <Text style={styles.brandSub}>INVOICE</Text>
+          <View style={styles.headerLeft}>
+            {brand.logo ? (
+              <View style={styles.logoChip}>
+                <Image
+                  src={{ data: brand.logo.data, format: brand.logo.format }}
+                  style={logoBox(brand.logo.width, brand.logo.height)}
+                />
+              </View>
+            ) : null}
+            <View>
+              <Text style={styles.brand}>{brand.siteName.toUpperCase()}</Text>
+              <Text style={styles.brandSub}>INVOICE</Text>
+            </View>
           </View>
           <Text style={styles.pill}>{label}</Text>
         </View>
@@ -286,6 +349,10 @@ export function InvoiceDocument(data: InvoiceData) {
                 </View>
               ))
             : null}
+          <View style={styles.row}>
+            <Text style={styles.dt}>Subtotal</Text>
+            <Text style={styles.dd}>{formatPriceCents(subtotalCents, data.currency)}</Text>
+          </View>
           {data.discountCents > 0 ? (
             <View style={styles.row}>
               <Text style={styles.dt}>
@@ -314,7 +381,7 @@ export function InvoiceDocument(data: InvoiceData) {
                 <View key={i} style={last ? styles.rowLast : styles.row}>
                   <View>
                     <Text>{`${methodLabel(p.method)} · ${p.status}`}</Text>
-                    {p.reference ? <Text style={styles.code}>{p.reference}</Text> : null}
+                    {p.reference ? <Text style={styles.code}>{`Ref ${p.reference}`}</Text> : null}
                     <Text style={{ color: BRAND.muted, fontSize: 9 }}>{fmtDateTime(p.createdAt)}</Text>
                   </View>
                   <Text style={styles.dd}>{formatPriceCents(p.amountCents, p.currency)}</Text>
@@ -324,10 +391,13 @@ export function InvoiceDocument(data: InvoiceData) {
           )}
         </View>
 
-        <Text style={styles.footer}>
-          Ptah Tours · Egypt tours &amp; travel. This invoice was generated for the booking above;
-          always quote the invoice number when you contact us about this order.
-        </Text>
+        <View style={styles.footer}>
+          <Text>{[brand.legalName, ...contactBits].join("  ·  ")}</Text>
+          <Text style={{ marginTop: 3 }}>
+            This invoice was generated for the booking above; always quote the invoice number when
+            you contact us about this order.
+          </Text>
+        </View>
       </Page>
     </Document>
   );
