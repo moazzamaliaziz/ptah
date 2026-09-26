@@ -57,6 +57,20 @@ const nextConfig = {
       // app server, e.g. { protocol: "https", hostname: "media.example.com" }.
     ],
   },
+  // PWA (spec §3): the service worker script must never be served stale. The
+  // browser already bypasses the HTTP cache for the SW with updateViaCache:"none"
+  // at registration; this makes the server side explicit too, so a freshly
+  // deployed build's worker is picked up on the next update check. Security
+  // headers + CSP for /sw.js are applied by the request proxy (src/proxy.ts),
+  // which also matches this path — kept there to avoid a duplicate CSP header.
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

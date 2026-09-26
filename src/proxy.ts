@@ -78,6 +78,7 @@ function isLocaleExempt(pathname: string): boolean {
     pathname.startsWith("/_next") ||
     pathname === "/maintenance" ||
     pathname.startsWith("/maintenance/") ||
+    pathname === "/offline" || // PWA offline fallback: its own root layout, never localized
     /\.[^/]+$/.test(pathname) // anything file-like (has an extension)
   );
 }
@@ -225,6 +226,8 @@ function buildCsp(nonce: string | null, cspIntegrations: string[]): string {
     // Stripe.js frames (payments phase). Harmless until enabled.
     join(`frame-src 'self' https://js.stripe.com https://hooks.stripe.com`, ext.frame),
     `worker-src 'self'`,
+    // PWA: the web app manifest is served same-origin (/manifest.webmanifest).
+    `manifest-src 'self'`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

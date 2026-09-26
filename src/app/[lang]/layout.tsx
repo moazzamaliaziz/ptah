@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { getSettings } from "@/server/settings";
 import { cabin, notoArabic } from "@/lib/fonts";
 import { dir, isLocale, localeHtmlLang, localeOgLocale, locales } from "@/i18n/config";
+import { getPwaStrings } from "@/i18n/pwa";
+import ServiceWorkerManager from "@/components/pwa/ServiceWorkerManager";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
 import "../globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ptahtours.com";
@@ -60,7 +63,14 @@ export async function generateMetadata({
       template: "%s",
     },
     description,
-    ...(faviconId ? { icons: { icon: `/api/media/${faviconId}`, shortcut: `/api/media/${faviconId}` } } : {}),
+    icons: {
+      ...(faviconId ? { icon: `/api/media/${faviconId}`, shortcut: `/api/media/${faviconId}` } : {}),
+      // Always-on apple-touch icon (opaque 180×180) for iOS "Add to Home Screen".
+      apple: "/icons/apple-touch-180.png",
+    },
+    // PWA (spec §3): the <link rel="manifest"> is auto-injected by app/manifest.ts.
+    // appleWebApp gives installed iOS users the standalone display + branded title bar.
+    appleWebApp: { capable: true, title: name, statusBarStyle: "default" },
     openGraph: {
       siteName: name,
       type: "website",
@@ -109,9 +119,16 @@ export default async function LocaleRootLayout({
   // ar locale; every other locale ships Cabin alone. globals.css prefers
   // --font-arabic under dir="rtl".
   const fontClass = lang === "ar" ? `${cabin.variable} ${notoArabic.variable}` : cabin.variable;
+  const pwa = getPwaStrings(lang);
   return (
     <html lang={localeHtmlLang[lang]} dir={dir(lang)} className={fontClass}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* PWA (spec §3, D3): update toast + custom install prompt. Client-only,
+            production-only registration; each renders null until relevant. */}
+        <ServiceWorkerManager strings={pwa.update} />
+        <InstallPrompt strings={pwa.install} />
+      </body>
     </html>
   );
 }

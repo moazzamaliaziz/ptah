@@ -4,7 +4,9 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
-        "build": "prisma generate && node scripts/db-deploy.mjs && next build",
+        "build": "prisma generate && node scripts/db-deploy.mjs && next build && node scripts/build-sw.mjs",
+        "build:sw": "node scripts/build-sw.mjs",
+        "gen:pwa-icons": "node scripts/gen-pwa-icons.mjs",
         "start": "next start",
         "lint": "eslint",
         "db:generate": "prisma generate",
@@ -38,15 +40,18 @@
         "zod": "^4.6.5"
     },
     "devDependencies": {
+        "@serwist/build": "9.5.12",
         "@tailwindcss/postcss": "^4",
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "dotenv": "^18.0.0",
+        "esbuild": "0.28.2",
         "eslint": "^9",
         "eslint-config-next": "16.3.5",
         "playwright": "^1.63.0",
         "prisma": "^7.10.0",
+        "serwist": "9.5.12",
         "tailwindcss": "^4",
         "tsx": "^4.23.13",
         "typescript": "^5"
