@@ -1,4 +1,4 @@
-import { Cabin, Noto_Sans_Arabic } from "next/font/google";
+import { Cabin, Noto_Sans_Arabic, Playfair_Display } from "next/font/google";
 
 /**
  * Shared Cabin variable font (design.md §1.2.1), weights 400–700 incl. italics.
@@ -42,4 +42,22 @@ export const notoArabic = Noto_Sans_Arabic({
   variable: "--font-arabic",
   display: "swap",
   fallback: ["Segoe UI", "Tahoma", "sans-serif"],
+});
+
+/**
+ * Editorial serif display face (Playfair Display) — high-contrast, elegant, used
+ * ONLY for the admin sign-in screen's large headlines (the split-screen hero copy
+ * and "Welcome back."). It gives the login an on-brand, magazine-like feel that
+ * the functional Cabin body face can't. Loaded lazily via `.variable` on the
+ * login container only, so no other admin page pays for it. Italics are included
+ * for the two-line hero headline (roman line + italic line). Latin subset only;
+ * Arabic headings fall back to `notoArabic` under `dir="rtl"`.
+ */
+export const playfair = Playfair_Display({
+  weight: "variable",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
+  fallback: ["Georgia", "Cambria", "Times New Roman", "serif"],
 });

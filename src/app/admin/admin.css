@@ -178,10 +178,194 @@
 .admin-table th, .admin-table td { text-align: start; padding: 0.55rem 0.6rem; border-bottom: 1px solid rgba(26, 35, 64, 0.1); }
 .admin-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
 
-.admin-login { min-height: 100vh; display: grid; place-items: center; background: var(--color-nile, #1a2340); padding: 1rem; }
-.admin-login__card { background: #fff; border-radius: 14px; padding: 2rem; width: 100%; max-width: 380px; color: var(--color-ink, #262626); }
-.admin-login__card h1 { font-size: 1.4rem; margin: 0 0 0.35rem; }
-.admin-login__card p { margin: 0 0 1.25rem; opacity: 0.7; font-size: 0.9rem; }
+/* ── Sign-in screen (redesign) ────────────────────────────────────────────────
+   Split-screen: full-bleed brand hero + sign-in panel. Two columns on desktop,
+   stacks to a slim hero band over the panel on small screens. Uses the brand
+   tokens so it re-themes with the platform; the serif headlines pull the
+   Playfair `--font-serif` variable that the page scopes onto `.admin-login`. */
+.admin-login {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 52% 48%;
+  background: var(--color-nile, #1a2340);
+  color: var(--color-ink, #262626);
+}
+
+.admin-login__hero {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--color-nile, #1a2340);
+}
+.admin-login__hero-img { object-fit: cover; }
+.admin-login__hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(26, 35, 64, 0.15) 0%, rgba(26, 35, 64, 0.35) 45%, rgba(26, 35, 64, 0.88) 100%);
+}
+.admin-login__hero-copy {
+  position: absolute;
+  inset-inline: clamp(1.5rem, 4vw, 3.5rem);
+  bottom: clamp(1.75rem, 5vw, 3.5rem);
+  color: #fff;
+  max-width: 30rem;
+}
+.admin-login__hero-title {
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  font-size: clamp(2rem, 3.4vw, 3.1rem);
+  line-height: 1.05;
+  margin: 0 0 0.75rem;
+  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.25);
+}
+.admin-login__hero-title em { font-style: italic; color: var(--color-gold, #d9822b); }
+.admin-login__hero-sub {
+  display: inline;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+}
+.admin-login__panel {
+  display: grid;
+  place-items: center;
+  background: var(--color-papyrus, #f7f2e3);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  overflow-y: auto;
+}
+.admin-login__panel-inner { width: 100%; max-width: 24rem; }
+
+.admin-login__brand { display: flex; align-items: baseline; gap: 0.55rem; margin-bottom: 2rem; }
+.admin-login__brand-name {
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--color-nile, #1a2340);
+}
+.admin-login__brand-kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--color-gold, #d9822b);
+  padding-bottom: 0.15rem;
+}
+
+.admin-login__welcome {
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  font-size: clamp(1.9rem, 3vw, 2.4rem);
+  line-height: 1.1;
+  margin: 0 0 0.4rem;
+  color: var(--color-nile, #1a2340);
+}
+.admin-login__lede { margin: 0 0 1.5rem; font-size: 0.92rem; opacity: 0.7; }
+.admin-login__form { margin: 0; }
+.admin-login__submit {
+  width: 100%;
+  margin-top: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.98rem;
+  border-radius: 10px;
+}
+.admin-login__submit svg { flex-shrink: 0; }
+[dir="rtl"] .admin-login__submit svg { transform: scaleX(-1); }
+/* Password field with show/hide toggle. The input reserves inline-end room for
+   the eye button, which is absolutely placed at the trailing edge (RTL-safe via
+   logical properties). */
+.admin-pw { position: relative; display: block; }
+.admin-pw__input { padding-inline-end: 2.75rem; }
+.admin-pw__toggle {
+  position: absolute;
+  inset-inline-end: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-nile, #1a2340);
+  opacity: 0.6;
+  cursor: pointer;
+}
+.admin-pw__toggle:hover { opacity: 1; background: rgba(26, 35, 64, 0.06); }
+.admin-pw__toggle:focus-visible { outline: 2px solid var(--color-gold, #d9822b); outline-offset: 1px; opacity: 1; }
+
+/* Footer: language switcher + install-the-app button. */
+.admin-login__footer {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(26, 35, 64, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.admin-login__lang { display: flex; align-items: center; gap: 0.4rem; }
+.admin-login__globe { display: inline-flex; color: var(--color-nile, #1a2340); opacity: 0.65; }
+/* Recolour the shared switcher pills for the light panel (their default styling
+   targets the dark sidebar). Active language stays gold. */
+.admin-login__lang .admin-locale { padding: 0; gap: 0.4rem; }
+.admin-login__lang .admin-locale__btn {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.7rem;
+  border-color: rgba(26, 35, 64, 0.25);
+  color: var(--color-nile, #1a2340);
+}
+.admin-login__lang .admin-locale__btn:hover { background: rgba(26, 35, 64, 0.06); color: var(--color-nile, #1a2340); }
+.admin-login__lang .admin-locale__btn--active {
+  background: var(--color-gold, #d9822b);
+  border-color: var(--color-gold, #d9822b);
+  color: #fff;
+}
+.admin-install { display: flex; flex-direction: column; gap: 0.5rem; }
+.admin-install__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid rgba(26, 35, 64, 0.3);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-nile, #1a2340);
+  cursor: pointer;
+}
+.admin-install__btn:hover { background: var(--color-nile, #1a2340); color: #fff; border-color: var(--color-nile, #1a2340); }
+.admin-install__btn:focus-visible { outline: 2px solid var(--color-gold, #d9822b); outline-offset: 2px; }
+.admin-install__icon { display: inline-flex; }
+.admin-install__hint { margin: 0; font-size: 0.82rem; opacity: 0.7; }
+
+/* Arabic headings: Playfair is Latin-only, so fall back to the admin body stack
+   (matches the rest of the RTL panel) and drop the italic slant. */
+[dir="rtl"] .admin-login__hero-title,
+[dir="rtl"] .admin-login__welcome,
+[dir="rtl"] .admin-login__brand-name {
+  font-family: var(--font-cabin), "Segoe UI", Tahoma, sans-serif;
+}
+[dir="rtl"] .admin-login__hero-title em { font-style: normal; }
+
+/* Stack to one column on small screens: a slim hero band above the panel. */
+@media (max-width: 900px) {
+  .admin-login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .admin-login__hero { min-height: 190px; }
+  .admin-login__panel { min-height: auto; }
+}
+@media (max-width: 480px) {
+  .admin-login__hero { min-height: 150px; }
+  .admin-login__hero-sub { display: none; }
+}
 
 .admin-cat { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.55; margin: 1.5rem 0 0.5rem; }
 
