@@ -6,7 +6,7 @@ import { cabin, notoArabic } from "@/lib/fonts";
 import { dir, isLocale, localeHtmlLang, localeOgLocale, locales } from "@/i18n/config";
 import { getPwaStrings } from "@/i18n/pwa";
 import ServiceWorkerManager from "@/components/pwa/ServiceWorkerManager";
-import InstallPrompt from "@/components/pwa/InstallPrompt";
+import InstallProvider from "@/components/pwa/InstallProvider";
 import "../globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ptahtours.com";
@@ -123,11 +123,13 @@ export default async function LocaleRootLayout({
   return (
     <html lang={localeHtmlLang[lang]} dir={dir(lang)} className={fontClass}>
       <body>
-        {children}
-        {/* PWA (spec §3, D3): update toast + custom install prompt. Client-only,
-            production-only registration; each renders null until relevant. */}
+        {/* PWA install (spec §3, D3): a shared controller captures the install
+            event once so the header and footer InstallButtons can drive the same
+            native prompt. This replaces the old auto-popup card, which overlapped
+            the floating contact widgets on mobile. */}
+        <InstallProvider strings={pwa.install}>{children}</InstallProvider>
+        {/* PWA update toast. Client-only, production-only registration. */}
         <ServiceWorkerManager strings={pwa.update} />
-        <InstallPrompt strings={pwa.install} />
       </body>
     </html>
   );

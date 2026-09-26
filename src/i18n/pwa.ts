@@ -11,6 +11,8 @@ export interface PwaStrings {
     title: string;
     body: string;
     action: string;
+    /** Compact label for the header/footer install controls (icon buttons). */
+    short: string;
     dismiss: string;
     /** iOS/iPadOS Safari has no beforeinstallprompt — show manual steps. */
     iosHint: string;
@@ -28,6 +30,7 @@ const STRINGS: Record<Locale, PwaStrings> = {
       title: "Install Ptah Tours",
       body: "Add our app to your home screen for a faster, full-screen experience.",
       action: "Install",
+      short: "Install app",
       dismiss: "Not now",
       iosHint: "To install: tap the Share button, then “Add to Home Screen”.",
     },
@@ -38,6 +41,7 @@ const STRINGS: Record<Locale, PwaStrings> = {
       title: "ثبّت تطبيق بتاح تورز",
       body: "أضف تطبيقنا إلى شاشتك الرئيسية لتجربة أسرع وبملء الشاشة.",
       action: "تثبيت",
+      short: "ثبّت التطبيق",
       dismiss: "ليس الآن",
       iosHint: "للتثبيت: اضغط زر المشاركة، ثم «أضف إلى الشاشة الرئيسية».",
     },
@@ -52,6 +56,7 @@ const STRINGS: Record<Locale, PwaStrings> = {
       title: "Installer Ptah Tours",
       body: "Ajoutez notre application à votre écran d’accueil pour une expérience plus rapide et en plein écran.",
       action: "Installer",
+      short: "Installer l’app",
       dismiss: "Plus tard",
       iosHint: "Pour installer : appuyez sur le bouton Partager, puis « Sur l’écran d’accueil ».",
     },
@@ -62,6 +67,7 @@ const STRINGS: Record<Locale, PwaStrings> = {
       title: "Ptah Tours installieren",
       body: "Fügen Sie unsere App zu Ihrem Startbildschirm hinzu – für ein schnelleres Vollbild-Erlebnis.",
       action: "Installieren",
+      short: "App installieren",
       dismiss: "Später",
       iosHint: "Zum Installieren: auf „Teilen“ tippen, dann „Zum Home-Bildschirm“.",
     },
@@ -72,6 +78,7 @@ const STRINGS: Record<Locale, PwaStrings> = {
       title: "Instalar Ptah Tours",
       body: "Añade nuestra app a tu pantalla de inicio para una experiencia más rápida y a pantalla completa.",
       action: "Instalar",
+      short: "Instalar app",
       dismiss: "Ahora no",
       iosHint: "Para instalar: toca el botón Compartir y luego «Añadir a pantalla de inicio».",
     },
@@ -82,6 +89,7 @@ const STRINGS: Record<Locale, PwaStrings> = {
       title: "Installa Ptah Tours",
       body: "Aggiungi la nostra app alla schermata Home per un’esperienza più veloce e a schermo intero.",
       action: "Installa",
+      short: "Installa app",
       dismiss: "Non ora",
       iosHint: "Per installare: tocca il pulsante Condividi, poi «Aggiungi a Home».",
     },
