@@ -60,6 +60,14 @@ function isStrictSurface(pathname: string): boolean {
   );
 }
 
+/* Admin surface (never localized). Used to stamp `Cache-Control: no-store` on
+ * admin responses so authenticated staff HTML is never written to a browser or
+ * intermediary disk cache. Deliberately excludes `/admin.webmanifest` (a public,
+ * non-sensitive file that sets its own caching via its route handler). */
+function isAdminPath(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 /* ── Locale routing (Phase 3 i18n) ───────────────────────────────────────────
  * The public site is served under /{locale}/… . A request to a non-localized
  * PUBLIC path is redirected to the visitor's negotiated locale; admin, API, the
@@ -226,7 +234,8 @@ function buildCsp(nonce: string | null, cspIntegrations: string[]): string {
     // Stripe.js frames (payments phase). Harmless until enabled.
     join(`frame-src 'self' https://js.stripe.com https://hooks.stripe.com`, ext.frame),
     `worker-src 'self'`,
-    // PWA: the web app manifest is served same-origin (/manifest.webmanifest).
+    // PWA: the web app manifests are served same-origin
+    // (/manifest.webmanifest for the site, /admin.webmanifest for the admin app).
     `manifest-src 'self'`,
     `object-src 'none'`,
     `base-uri 'self'`,
@@ -313,6 +322,12 @@ export function proxy(request: NextRequest) {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   setSecurityHeaders(response, csp);
+  // Sensitive-surface hardening: never let authenticated admin HTML persist in a
+  // browser or intermediary cache. Header-only — auth enforcement is unchanged
+  // (it lives in Server Actions / route handlers, not here).
+  if (isAdminPath(pathname)) {
+    response.headers.set("Cache-Control", "no-store, must-revalidate");
+  }
   return response;
 }
 

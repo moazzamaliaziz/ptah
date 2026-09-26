@@ -27,6 +27,7 @@ export interface AuthDict {
   langSwitchLabel: string;
   installApp: string;
   installIosHint: string;
+  installMenuHint: string;
   errInvalid: string;
   errRate: string;
   errGeneric: string;
@@ -55,6 +56,7 @@ export const authEn: AuthDict = {
   langSwitchLabel: "Language",
   installApp: "Install the admin app",
   installIosHint: "Tap Share, then “Add to Home Screen”.",
+  installMenuHint: "Open your browser menu and choose “Install app” (or “Add to Home Screen”).",
   errInvalid: "Incorrect email or password.",
   errRate: "Too many attempts. Please wait a minute and try again.",
   errGeneric: "Sign-in failed.",
@@ -82,6 +84,7 @@ export const authAr: AuthDict = {
   langSwitchLabel: "اللغة",
   installApp: "تثبيت تطبيق الإدارة",
   installIosHint: "اضغط مشاركة، ثم «إضافة إلى الشاشة الرئيسية».",
+  installMenuHint: "افتح قائمة المتصفح واختر «تثبيت التطبيق» (أو «إضافة إلى الشاشة الرئيسية»).",
   errInvalid: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
   errRate: "محاولات كثيرة جدًا. يُرجى الانتظار دقيقة ثم المحاولة مرة أخرى.",
   errGeneric: "تعذّر تسجيل الدخول.",

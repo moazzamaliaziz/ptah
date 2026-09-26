@@ -3,15 +3,22 @@
 /**
  * "Install the admin app" button for the sign-in screen.
  *
- * Reuses the site's PWA install mechanism (see components/pwa/InstallProvider):
- * on Chromium we capture the `beforeinstallprompt` event and trigger it on
- * click; on iOS/iPadOS Safari (which has no such event) we reveal the manual
- * "Add to Home Screen" steps. The button renders nothing until it knows an
- * install is actually offer-able, so operators never see a dead control, and it
- * hides itself once the app is already running standalone.
+ * This drives the SEPARATE admin PWA (manifest: /admin.webmanifest, id/scope
+ * "/admin", distinct "Ptah … Admin" name + gold-plate lock icon) — a different
+ * installed app from the public site PWA that is installed off the landing page.
  *
- * Installing here installs the whole PWA (manifest scope is "/"), the admin
- * panel included — this is just the entry point staff see first.
+ * Consistency (the bug this fixes): the button now ALWAYS renders on the login
+ * screen; the one exception is when the admin app is already running standalone
+ * or was just installed. It adapts to what the browser can do:
+ *   • Chromium fired `beforeinstallprompt` → one tap triggers the native install.
+ *   • iOS/iPadOS Safari (no such event) → tapping reveals the manual
+ *     "Add to Home Screen" steps.
+ *   • Anything else (event not captured yet, or a browser that can't install)
+ *     → tapping reveals a short "use your browser menu" hint.
+ * Previously the control removed itself whenever no prompt was captured, so it
+ * appeared on iPhones but silently vanished on desktop/Android Chrome — the
+ * "shows on some devices, not on others" complaint. It never self-hides for
+ * that reason anymore.
  */
 import { useEffect, useState, type JSX } from "react";
 
@@ -23,13 +30,15 @@ interface BeforeInstallPromptEvent extends Event {
 export default function AdminInstallButton({
   label,
   iosHint,
+  menuHint,
 }: {
   label: string;
   iosHint: string;
+  menuHint: string;
 }): JSX.Element | null {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIos, setIsIos] = useState(false);
-  const [showIosHint, setShowIosHint] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
@@ -37,7 +46,8 @@ export default function AdminInstallButton({
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true;
     if (standalone) {
-      // Browser-only signal, unavailable during SSR — must be read after mount.
+      // Already running as the installed app — nothing to offer. Browser-only
+      // signal, unavailable during SSR, so it must be read after mount.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above
       setHidden(true);
       return;
@@ -46,6 +56,7 @@ export default function AdminInstallButton({
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault(); // keep the native mini-infobar suppressed; our button drives it
       setDeferred(e as BeforeInstallPromptEvent);
+      setShowHint(false); // a real prompt is available now — drop any fallback hint
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
 
@@ -53,8 +64,8 @@ export default function AdminInstallButton({
     window.addEventListener("appinstalled", onInstalled);
 
     // iOS/iPadOS Safari never fires beforeinstallprompt — detect it so we can
-    // offer manual steps instead. This is browser-only state, unknown during
-    // SSR, so it can only be decided after mount.
+    // offer the manual steps instead. Browser-only state, unknown during SSR,
+    // so it can only be decided after mount.
     const ua = navigator.userAgent;
     const iOS = /iphone|ipad|ipod/i.test(ua) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
     const safari = /^((?!chrome|android|crios|fxios|edgios|edg).)*safari/i.test(ua);
@@ -68,24 +79,29 @@ export default function AdminInstallButton({
     };
   }, []);
 
-  // Nothing to offer: already installed, or a browser that can't install and
-  // isn't iOS Safari (so no manual path either).
-  if (hidden || (!deferred && !isIos)) return null;
+  // Only truly disappears once the app is installed / running standalone.
+  if (hidden) return null;
 
   async function install() {
-    if (isIos) {
-      setShowIosHint((v) => !v);
+    // Native path: fire the captured prompt.
+    if (deferred) {
+      try {
+        await deferred.prompt();
+        await deferred.userChoice;
+      } finally {
+        setDeferred(null);
+        setHidden(true);
+      }
       return;
     }
-    if (!deferred) return;
-    try {
-      await deferred.prompt();
-      await deferred.userChoice;
-    } finally {
-      setDeferred(null);
-      setHidden(true);
-    }
+    // No native prompt (iOS Safari, or a browser that hasn't offered one yet) —
+    // toggle the appropriate manual hint instead.
+    setShowHint((v) => !v);
   }
+
+  // Which hint the fallback shows: iOS gets the Share → Add-to-Home-Screen
+  // steps, everything else gets the generic browser-menu hint.
+  const hintText = isIos ? iosHint : menuHint;
 
   return (
     <div className="admin-install">
@@ -93,7 +109,7 @@ export default function AdminInstallButton({
         type="button"
         className="admin-install__btn"
         onClick={install}
-        aria-expanded={isIos ? showIosHint : undefined}
+        aria-expanded={deferred ? undefined : showHint}
       >
         <span aria-hidden="true" className="admin-install__icon">
           {/* phone / download glyph */}
@@ -104,7 +120,7 @@ export default function AdminInstallButton({
         </span>
         {label}
       </button>
-      {isIos && showIosHint ? <p className="admin-install__hint">{iosHint}</p> : null}
+      {!deferred && showHint ? <p className="admin-install__hint">{hintText}</p> : null}
     </div>
   );
 }

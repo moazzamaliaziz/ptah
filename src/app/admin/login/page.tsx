@@ -134,7 +134,7 @@ export default async function AdminLoginPage({
               </span>
               <AdminLocaleSwitcher current={locale} label={t.langSwitchLabel} />
             </div>
-            <AdminInstallButton label={t.installApp} iosHint={t.installIosHint} />
+            <AdminInstallButton label={t.installApp} iosHint={t.installIosHint} menuHint={t.installMenuHint} />
           </div>
         </div>
       </section>

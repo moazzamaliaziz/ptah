@@ -13,6 +13,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Admin",
   robots: { index: false, follow: false },
+  // Point the admin area at its OWN web app manifest — a separate installable
+  // PWA (see app/admin.webmanifest/route.ts). Set on the admin root layout, it
+  // overrides the site manifest link that app/manifest.ts injects, so admin
+  // pages advertise only the "Ptah … Admin" app.
+  manifest: "/admin.webmanifest",
 };
 
 /* Root layout for the admin area (Phase 3): it renders its own <html>/<body>
