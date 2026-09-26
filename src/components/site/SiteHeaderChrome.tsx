@@ -33,6 +33,7 @@ import MultiCropImage from "@/components/site/MultiCropImage";
 import SiteLogo from "@/components/site/SiteLogo";
 import BookmarkPill from "@/components/site/BookmarkPill";
 import SearchDialog from "@/components/site/SearchDialog";
+import InstallButton from "@/components/pwa/InstallButton";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import type { HeaderChromeStrings } from "@/i18n/chrome";
 import { MQ_DESKTOP, useMediaQuery } from "@/hooks/use-media-query";
@@ -328,6 +329,7 @@ export function SiteHeaderChrome({ nav, t, logoSrc = null, siteName = "Ptah Tour
               >
                 <Icon name="search" size={20} />
               </button>
+              <InstallButton variant="header" className="icon-button icon-button--dip" />
               <Link
                 href="/track-booking"
                 className="icon-button icon-button--dip"
@@ -414,6 +416,7 @@ export function SiteHeaderChrome({ nav, t, logoSrc = null, siteName = "Ptah Tour
             >
               <Icon name="bookmark" size={20} />
             </Link>
+            <InstallButton variant="header" />
             <button
               type="button"
               ref={hamburgerRef}

@@ -1008,18 +1008,27 @@ html[data-reduced-motion="true"] .cookie-banner[data-open="true"] { opacity: 1; 
   .fw-cluster { bottom: 1rem; }
   .fw-cluster--bottom-right { right: 1rem; }
   .fw-cluster--bottom-left { left: 1rem; }
+  /* On phones the widgets are icon-only circles: the sliding text label is a
+     desktop hover affordance that, when forced open on touch, made the pills
+     wide enough to overlap each other and the page. The aria-label on each
+     button keeps it fully legible to assistive tech. */
+  .fw-btn {
+    width: 3.25rem;
+    min-width: 3.25rem;
+    padding: 0;
+    justify-content: center;
+  }
+  .fw-btn__label { display: none; }
 }
 @media (min-width: 46.5em) {
   .fw-btn--mobile-only { display: none; }
 }
 .fw-btn--hidden { display: none; }
 
-/* On coarse pointers (touch) there is no hover — always show the label so the
-   affordance is legible, but keep it compact. */
-@media (hover: none) {
-  .fw-btn__label { max-width: 12rem; opacity: 1; margin-left: 0.55rem; }
-  .fw-cluster--bottom-left .fw-btn__label { margin-left: 0; margin-right: 0.55rem; }
-}
+/* Note: touch devices intentionally show icon-only widgets (see the max-width
+   mobile block above). The old `@media (hover: none)` rule that force-opened the
+   labels was removed — on phones it widened the pills into each other and the
+   page content. Pointer devices still slide the label open on hover/focus. */
 
 @media (prefers-reduced-motion: reduce) {
   .fw-btn, .fw-btn__label { transition: none; }
@@ -1029,3 +1038,61 @@ html[data-reduced-motion="true"] .cookie-banner[data-open="true"] { opacity: 1; 
 :root[data-reduced-motion="true"] .fw-btn__label { transition: none; }
 :root[data-reduced-motion="true"] .fw-btn:hover,
 :root[data-reduced-motion="true"] .fw-btn:focus-visible { transform: none; }
+
+/* ==========================================================================
+   PWA install controls (spec §3, D3). The header button reuses the shared
+   .icon-button; the footer button matches the legal-bar link treatment. Both
+   sit in a position:relative wrapper so the iOS "Add to Home Screen" hint can
+   anchor to them. Buttons render only when an install is actually offer-able
+   (InstallProvider status), so there are never dead controls.
+   ========================================================================== */
+.install-trigger { position: relative; display: inline-flex; align-items: center; }
+
+/* Footer button: icon + label, styled like the legal-bar links / cookie button. */
+.install-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  transition: var(--transition-hover);
+}
+.install-cta svg { flex: none; }
+@media (hover: hover) {
+  .install-cta:hover { color: var(--base-hover-color); }
+}
+/* iOS/iPadOS Safari has no install event, so tapping either button reveals the
+   manual "Add to Home Screen" steps. Footer: inline card below the button.
+   Header: a small popover anchored under the icon (inset-inline-end flips in RTL). */
+.install-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.7rem;
+  max-width: 16rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: var(--color-ink);
+  background: color-mix(in srgb, var(--color-nile) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-radius: var(--radius-step, 12px);
+}
+.install-hint svg { flex: none; }
+.install-hint--pop {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  inset-inline-end: 0;
+  z-index: var(--z-header-expanded, 60);
+  margin: 0;
+  white-space: normal;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.18);
+}

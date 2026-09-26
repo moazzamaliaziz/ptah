@@ -14,6 +14,7 @@ import type { JSX } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { SiteLogo } from "@/components/site/SiteLogo";
 import CookieManageButton from "@/components/site/CookieManageButton";
+import InstallButton from "@/components/pwa/InstallButton";
 import { getSettings } from "@/server/settings";
 import { getDictionary } from "@/i18n/dictionaries";
 import { localizeFooter } from "@/i18n/chrome";
@@ -135,6 +136,9 @@ export async function SiteFooter(): Promise<JSX.Element> {
                   <Link href={l.href}>{l.label}</Link>
                 </li>
               ))}
+              <li>
+                <InstallButton variant="footer" />
+              </li>
               <li>
                 <CookieManageButton
                   labels={{ long: dict.cookie.manageButtonLong, short: dict.cookie.manageButtonShort }}

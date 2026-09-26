@@ -3,7 +3,7 @@
 /**
  * "Install the admin app" button for the sign-in screen.
  *
- * Reuses the site's PWA install mechanism (see components/pwa/InstallPrompt):
+ * Reuses the site's PWA install mechanism (see components/pwa/InstallProvider):
  * on Chromium we capture the `beforeinstallprompt` event and trigger it on
  * click; on iOS/iPadOS Safari (which has no such event) we reveal the manual
  * "Add to Home Screen" steps. The button renders nothing until it knows an
