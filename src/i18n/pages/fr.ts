@@ -583,6 +583,13 @@ export const frPages = {
     ctaBody: "Parcourez nos circuits ou dites-nous ce que vous avez en tête — nous vous aiderons à façonner le voyage.",
     ctaPrimary: "Parcourir les circuits",
     ctaSecondary: "Commencer à planifier",
+    photoBand: {
+      eyebrow: "Sur le terrain",
+      heading: "De vrais voyages, de vrais visages",
+      blurb:
+        "Quelques photographies de voyages Ptah récents — nos voyageurs, leurs guides et l'Égypte qu'ils sont venus voir.",
+      cta: "Voir toutes les photos",
+    },
     breadcrumb: "À propos",
   },
 
@@ -1305,6 +1312,43 @@ export const frPages = {
     ctaPrimary: "Parcourir les circuits",
     ctaSecondary: "Commencer à planifier",
     backToJournal: "← Retour au journal",
+  },
+
+  // ── Gallery (/gallery) + landing "Real travelers" showcase ──
+  gallery: {
+    eyebrow: "De vrais voyageurs, de vrais moments",
+    title: "La galerie Ptah Tours",
+    intro:
+      "De vraies photographies de voyages récents — nos voyageurs et leurs guides devant les temples, les déserts et les villages nubiens du Nil. Aucune image d'archive, seulement les voyages tels qu'ils se sont déroulés.",
+    breadcrumb: "Galerie",
+    grid: {
+      galleryAria: "Galerie de photos",
+      filterGroupAria: "Filtrer les photos par catégorie",
+      filters: {
+        all: "Toutes les photos",
+        guests: "Nos voyageurs",
+        temples: "Temples et monuments",
+        sinaiDesert: "Sinaï et nuits bédouines",
+        nileNubia: "Nil et Nubie",
+      },
+      lightbox: {
+        close: "Fermer",
+        prev: "Photo précédente",
+        next: "Photo suivante",
+        zoomIn: "Zoom avant",
+        zoomOut: "Zoom arrière",
+        counter: "{current} sur {total}",
+      },
+    },
+    showcase: {
+      eyebrow: "De vrais voyageurs, de vrais moments",
+      title: "Des moments de vrais voyages Ptah",
+      blurb:
+        "Pas des photos d'archive — de vrais voyageurs et l'Égypte qu'ils sont venus voir. Faites défiler quelques-unes, puis parcourez toute la galerie.",
+      cta: "Voir toutes les photos",
+      prev: "Diapositive précédente",
+      next: "Diapositive suivante",
+    },
   },
 
 } satisfies PageContent;

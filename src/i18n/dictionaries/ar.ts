@@ -42,7 +42,7 @@ export const ar = {
     /** Quick-links bar, in order: Events, When to Visit, eVisa, My Account. */
     quickLinks: ["الفعاليات والمهرجانات", "أفضل وقت للزيارة", "احجز تأشيرتك الإلكترونية", "حسابي"],
     /** Direct nav links, in order: Destinations, Trip Ideas. */
-    directLinks: ["الوجهات", "أفكار للرحلات"],
+    directLinks: ["الوجهات", "أفكار للرحلات", "معرض الصور"],
     buildTrip: "خطّط لرحلتي",
     popularSearches: [
       "أهرامات الجيزة",
@@ -108,7 +108,7 @@ export const ar = {
     /** Footer link columns, in order: (brand), Travel With Us, Help & Info. */
     columns: [
       { heading: "Ptah Tours", links: ["من نحن", "خبراء علم المصريات لدينا", "الوظائف", "الصحافة والإعلام", "اتصل بنا"] },
-      { heading: "سافِر معنا", links: ["كل الجولات", "أفكار للرحلات", "رحلات النيل", "رحلات خاصة", "السياحة المسؤولة"] },
+      { heading: "سافِر معنا", links: ["كل الجولات", "أفكار للرحلات", "رحلات النيل", "رحلات خاصة", "السياحة المسؤولة", "معرض الصور"] },
       { heading: "المساعدة والمعلومات", links: ["أفضل وقت للزيارة", "التأشيرات والدخول", "تتبّع حجزي", "الصحة والسلامة", "الأسئلة الشائعة"] },
     ],
     badgeHeading: "معتمَد من",

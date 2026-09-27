@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Container from "@/components/layout/Container";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Button from "@/components/ui/Button";
+import { featuredPhotos } from "@/content/gallery";
 import { getPageContent } from "@/i18n/pages";
 
 export const metadata: Metadata = {
@@ -60,6 +62,31 @@ export default async function AboutPage() {
             <div key={v.title}>
               <h3 className="text-trip-h3 font-semibold text-ink">{v.title}</h3>
               <p className="mt-2 text-meta leading-relaxed text-ink/65">{v.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Real-trip photo band (after Values) — featured guest shots → /gallery */}
+      <section className="mt-16">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="max-w-2xl">
+            <p className="text-eyebrow uppercase tracking-[0.14em] text-rust">{t.photoBand.eyebrow}</p>
+            <h2 className="mt-2 text-section-h2 font-bold text-ink">{t.photoBand.heading}</h2>
+            <p className="mt-3 text-body leading-relaxed text-ink/70">{t.photoBand.blurb}</p>
+          </div>
+          <Button href="/gallery" variant="secondary">{t.photoBand.cta}</Button>
+        </div>
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {featuredPhotos.slice(0, 8).map((photo) => (
+            <div key={photo.src} className="relative aspect-[4/5] overflow-hidden rounded-xl bg-nile/5">
+              <Image
+                src={photo.src}
+                alt={photo.alt}
+                fill
+                sizes="(min-width: 1024px) 22vw, (min-width: 640px) 30vw, 45vw"
+                className="object-cover"
+              />
             </div>
           ))}
         </div>

@@ -56,8 +56,8 @@ export const en = {
   nav: {
     /** Quick-links bar, in order: Events, When to Visit, eVisa, My Account. */
     quickLinks: ["Events & Festivals", "When to Visit", "Book Your eVisa", "My Account"],
-    /** Direct nav links, in order: Destinations, Trip Ideas. */
-    directLinks: ["Destinations", "Trip Ideas"],
+    /** Direct nav links, in order: Destinations, Trip Ideas, Gallery. */
+    directLinks: ["Destinations", "Trip Ideas", "Gallery"],
     buildTrip: "Plan My Trip",
     popularSearches: [
       "Pyramids of Giza",
@@ -123,7 +123,7 @@ export const en = {
     /** Footer link columns, in order: (brand), Travel With Us, Help & Info. */
     columns: [
       { heading: "Ptah Tours", links: ["About Us", "Our Egyptologists", "Careers", "Press & Media", "Contact Us"] },
-      { heading: "Travel With Us", links: ["All Tours", "Trip Ideas", "Nile Cruises", "Private Journeys", "Responsible Travel"] },
+      { heading: "Travel With Us", links: ["All Tours", "Trip Ideas", "Nile Cruises", "Private Journeys", "Responsible Travel", "Photo Gallery"] },
       { heading: "Help & Info", links: ["When to Visit", "Visas & Entry", "Track My Booking", "Health & Safety", "FAQs"] },
     ],
     badgeHeading: "Endorsed By",

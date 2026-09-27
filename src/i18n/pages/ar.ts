@@ -583,6 +583,13 @@ export const arPages = {
     ctaBody: "تصفّح جولاتنا أو أخبرنا بما يدور في ذهنك — وسنساعدك على تشكيل الرحلة.",
     ctaPrimary: "تصفّح الجولات",
     ctaSecondary: "ابدأ التخطيط",
+    photoBand: {
+      eyebrow: "من الميدان",
+      heading: "رحلات حقيقية ووجوه حقيقية",
+      blurb:
+        "صور قليلة من رحلات Ptah الأخيرة — مسافرونا ومرشدوهم ومصر التي جاؤوا لرؤيتها.",
+      cta: "شاهد جميع الصور",
+    },
     breadcrumb: "من نحن",
   },
 
@@ -1305,6 +1312,43 @@ export const arPages = {
     ctaPrimary: "تصفّح الجولات",
     ctaSecondary: "ابدأ التخطيط",
     backToJournal: "← العودة إلى المدوّنة",
+  },
+
+  // ── Gallery (/gallery) + landing "Real travelers" showcase ──
+  gallery: {
+    eyebrow: "مسافرون حقيقيون، لحظات حقيقية",
+    title: "معرض صور Ptah Tours",
+    intro:
+      "صور حقيقية من رحلات أخيرة — مسافرونا ومرشدوهم في معابد مصر وصحاريها وقرى النوبة على ضفاف النيل. لا صور من الأرشيف، بل الرحلات كما جرت.",
+    breadcrumb: "معرض الصور",
+    grid: {
+      galleryAria: "معرض الصور",
+      filterGroupAria: "تصفية الصور حسب الفئة",
+      filters: {
+        all: "كل الصور",
+        guests: "مسافرونا",
+        temples: "المعابد والآثار",
+        sinaiDesert: "سيناء وليالي البدو",
+        nileNubia: "النيل والنوبة",
+      },
+      lightbox: {
+        close: "إغلاق",
+        prev: "الصورة السابقة",
+        next: "الصورة التالية",
+        zoomIn: "تكبير",
+        zoomOut: "تصغير",
+        counter: "{current} من {total}",
+      },
+    },
+    showcase: {
+      eyebrow: "مسافرون حقيقيون، لحظات حقيقية",
+      title: "لحظات من رحلات Ptah حقيقية",
+      blurb:
+        "ليست صورًا من الأرشيف — بل ضيوف حقيقيون ومصر التي جاؤوا لرؤيتها. تصفّح بعضها، ثم استعرض المعرض كاملًا.",
+      cta: "شاهد جميع الصور",
+      prev: "الشريحة السابقة",
+      next: "الشريحة التالية",
+    },
   },
 
 } satisfies PageContent;

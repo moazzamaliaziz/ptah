@@ -7,8 +7,11 @@ import FiftyCtas from "@/components/landing/FiftyCtas";
 import Kbyg from "@/components/landing/Kbyg";
 import TourTypes from "@/components/landing/TourTypes";
 import Stories from "@/components/landing/Stories";
+import TravelersShowcase from "@/components/landing/TravelersShowcase";
 import { siteMeta } from "@/content/landing";
+import { featuredPhotos } from "@/content/gallery";
 import { getLandingContent } from "@/server/content";
+import { getPageContent } from "@/i18n/pages";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ptahtours.com";
 
@@ -80,6 +83,7 @@ const jsonLd = {
 export default async function Home(): Promise<JSX.Element> {
   const { heroSlides, inspiredTabs, planCta, fiftyCtas, kbygItems, tourTypes, stories } =
     await getLandingContent();
+  const pc = await getPageContent();
 
   return (
     <>
@@ -108,6 +112,9 @@ export default async function Home(): Promise<JSX.Element> {
 
       {/* 3.6 Tour Types (the reference "Find Accommodation" slot) */}
       <TourTypes items={tourTypes} />
+
+      {/* 3.6b Real travelers, real moments — featured guest photos → /gallery */}
+      <TravelersShowcase photos={featuredPhotos} strings={pc.gallery.showcase} />
 
       {/* 3.7 Featured Stories */}
       <Stories items={stories} />

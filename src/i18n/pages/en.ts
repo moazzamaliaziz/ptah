@@ -587,6 +587,14 @@ export const enPages = {
     ctaBody: "Browse our tours or tell us what you have in mind — we'll help you shape the trip.",
     ctaPrimary: "Browse tours",
     ctaSecondary: "Start planning",
+    /** Photo band inserted after the Values section (real-trip photography). */
+    photoBand: {
+      eyebrow: "In the field",
+      heading: "Real journeys, real faces",
+      blurb:
+        "A few photographs from recent Ptah trips — our travelers, their guides, and the Egypt they came to see.",
+      cta: "See all photos",
+    },
     breadcrumb: "About",
   },
 
@@ -1309,6 +1317,46 @@ export const enPages = {
     ctaPrimary: "Browse tours",
     ctaSecondary: "Start planning",
     backToJournal: "← Back to the journal",
+  },
+
+  // ── Gallery (/gallery) + landing "Real travelers" showcase ──
+  gallery: {
+    eyebrow: "Real travelers, real moments",
+    title: "The Ptah Tours gallery",
+    intro:
+      "Real photographs from recent journeys — our travelers and their guides at the temples, deserts and Nile villages of Egypt. No stock imagery, just the trips as they happened.",
+    breadcrumb: "Gallery",
+    /** Masonry grid + filter + lightbox control labels (GalleryGrid island). */
+    grid: {
+      galleryAria: "Photo gallery",
+      filterGroupAria: "Filter photos by category",
+      filters: {
+        all: "All photos",
+        guests: "Our travelers",
+        temples: "Temples & monuments",
+        sinaiDesert: "Sinai & Bedouin nights",
+        nileNubia: "Nile & Nubia",
+      },
+      /** counter is a "{current} of {total}" template. */
+      lightbox: {
+        close: "Close",
+        prev: "Previous photo",
+        next: "Next photo",
+        zoomIn: "Zoom in",
+        zoomOut: "Zoom out",
+        counter: "{current} of {total}",
+      },
+    },
+    /** Landing-page filmstrip carousel over the featured photos. */
+    showcase: {
+      eyebrow: "Real travelers, real moments",
+      title: "Moments from real Ptah journeys",
+      blurb:
+        "Not stock photos — actual guests and the Egypt they came to see. Swipe through a few, then browse the full gallery.",
+      cta: "See all photos",
+      prev: "Previous slide",
+      next: "Next slide",
+    },
   },
 
   // APPEND_MARKER

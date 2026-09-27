@@ -37,7 +37,7 @@ export const es = {
   },
   nav: {
     quickLinks: ["Eventos y festivales", "Cuándo visitar", "Reserva tu eVisa", "Mi cuenta"],
-    directLinks: ["Destinos", "Ideas de viaje"],
+    directLinks: ["Destinos", "Ideas de viaje", "Galería"],
     buildTrip: "Planifica mi viaje",
     popularSearches: [
       "Pirámides de Guiza",
@@ -100,7 +100,7 @@ export const es = {
     },
     columns: [
       { heading: "Ptah Tours", links: ["Sobre nosotros", "Nuestros egiptólogos", "Empleo", "Prensa y medios", "Contáctanos"] },
-      { heading: "Viaja con nosotros", links: ["Todos los tours", "Ideas de viaje", "Cruceros por el Nilo", "Viajes privados", "Viajes responsables"] },
+      { heading: "Viaja con nosotros", links: ["Todos los tours", "Ideas de viaje", "Cruceros por el Nilo", "Viajes privados", "Viajes responsables", "Galería de fotos"] },
       { heading: "Ayuda e información", links: ["Cuándo visitar", "Visados y entrada", "Sigue mi reserva", "Salud y seguridad", "Preguntas frecuentes"] },
     ],
     badgeHeading: "Avalado por",

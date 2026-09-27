@@ -37,7 +37,7 @@ export const fr = {
   },
   nav: {
     quickLinks: ["Événements et festivals", "Quand partir", "Réserver votre eVisa", "Mon compte"],
-    directLinks: ["Destinations", "Idées de voyage"],
+    directLinks: ["Destinations", "Idées de voyage", "Galerie"],
     buildTrip: "Planifier mon voyage",
     popularSearches: [
       "Pyramides de Gizeh",
@@ -100,7 +100,7 @@ export const fr = {
     },
     columns: [
       { heading: "Ptah Tours", links: ["À propos de nous", "Nos égyptologues", "Carrières", "Presse et médias", "Nous contacter"] },
-      { heading: "Voyagez avec nous", links: ["Tous les circuits", "Idées de voyage", "Croisières sur le Nil", "Voyages privés", "Voyage responsable"] },
+      { heading: "Voyagez avec nous", links: ["Tous les circuits", "Idées de voyage", "Croisières sur le Nil", "Voyages privés", "Voyage responsable", "Galerie photo"] },
       { heading: "Aide et infos", links: ["Quand partir", "Visas et entrée", "Suivre ma réservation", "Santé et sécurité", "FAQ"] },
     ],
     badgeHeading: "Approuvé par",

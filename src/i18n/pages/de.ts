@@ -583,6 +583,13 @@ export const dePages = {
     ctaBody: "Stöbern Sie in unseren Touren oder sagen Sie uns, was Ihnen vorschwebt – wir helfen Ihnen, die Reise zu gestalten.",
     ctaPrimary: "Touren durchstöbern",
     ctaSecondary: "Planung starten",
+    photoBand: {
+      eyebrow: "Vor Ort",
+      heading: "Echte Reisen, echte Gesichter",
+      blurb:
+        "Einige Fotografien von jüngsten Ptah-Reisen — unsere Reisenden, ihre Guides und das Ägypten, das sie sehen wollten.",
+      cta: "Alle Fotos ansehen",
+    },
     breadcrumb: "Über uns",
   },
 
@@ -1305,6 +1312,43 @@ export const dePages = {
     ctaPrimary: "Touren durchstöbern",
     ctaSecondary: "Planung starten",
     backToJournal: "← Zurück zum Journal",
+  },
+
+  // ── Gallery (/gallery) + landing "Real travelers" showcase ──
+  gallery: {
+    eyebrow: "Echte Reisende, echte Momente",
+    title: "Die Ptah-Tours-Galerie",
+    intro:
+      "Echte Fotografien von jüngsten Reisen — unsere Reisenden und ihre Guides an den Tempeln, Wüsten und nubischen Dörfern am Nil. Keine Archivbilder, nur die Reisen, wie sie geschahen.",
+    breadcrumb: "Galerie",
+    grid: {
+      galleryAria: "Fotogalerie",
+      filterGroupAria: "Fotos nach Kategorie filtern",
+      filters: {
+        all: "Alle Fotos",
+        guests: "Unsere Reisenden",
+        temples: "Tempel & Monumente",
+        sinaiDesert: "Sinai & Beduinennächte",
+        nileNubia: "Nil & Nubien",
+      },
+      lightbox: {
+        close: "Schließen",
+        prev: "Vorheriges Foto",
+        next: "Nächstes Foto",
+        zoomIn: "Vergrößern",
+        zoomOut: "Verkleinern",
+        counter: "{current} von {total}",
+      },
+    },
+    showcase: {
+      eyebrow: "Echte Reisende, echte Momente",
+      title: "Momente von echten Ptah-Reisen",
+      blurb:
+        "Keine Archivfotos — echte Gäste und das Ägypten, das sie sehen wollten. Blättern Sie durch einige, dann durchstöbern Sie die ganze Galerie.",
+      cta: "Alle Fotos ansehen",
+      prev: "Vorherige Folie",
+      next: "Nächste Folie",
+    },
   },
 
 } satisfies PageContent;

@@ -622,6 +622,7 @@ export const siteNav: SiteNav = {
   directLinks: [
     { label: "Destinations", href: "/cities" },
     { label: "Trip Ideas", href: "/trip-ideas" },
+    { label: "Gallery", href: "/gallery" },
   ],
   buildTripCta: { label: "Plan My Trip", href: "/manage/trip-builder" },
   bookmarksHref: "/manage/trip-builder?tab=bookmarks",
@@ -851,6 +852,7 @@ export const footerContent: FooterContent = {
         { label: "Nile Cruises", href: "/tours?type=nile-cruise" },
         { label: "Private Journeys", href: "/tours?type=private" },
         { label: "Responsible Travel", href: "/responsible-travel" },
+        { label: "Photo Gallery", href: "/gallery" },
       ],
     },
     {

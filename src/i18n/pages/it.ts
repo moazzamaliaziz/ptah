@@ -583,6 +583,13 @@ export const itPages = {
     ctaBody: "Sfogli i nostri tour o ci dica cosa ha in mente — L'aiuteremo a dare forma al viaggio.",
     ctaPrimary: "Sfogli i tour",
     ctaSecondary: "Inizi a pianificare",
+    photoBand: {
+      eyebrow: "Sul campo",
+      heading: "Viaggi veri, volti veri",
+      blurb:
+        "Alcune fotografie dei recenti viaggi Ptah — i nostri viaggiatori, le loro guide e l'Egitto che sono venuti a vedere.",
+      cta: "Guardi tutte le foto",
+    },
     breadcrumb: "Chi siamo",
   },
 
@@ -1305,6 +1312,43 @@ export const itPages = {
     ctaPrimary: "Sfogli i tour",
     ctaSecondary: "Inizi a pianificare",
     backToJournal: "← Torni al diario",
+  },
+
+  // ── Gallery (/gallery) + landing "Real travelers" showcase ──
+  gallery: {
+    eyebrow: "Viaggiatori veri, momenti veri",
+    title: "La galleria di Ptah Tours",
+    intro:
+      "Fotografie autentiche di viaggi recenti — i nostri viaggiatori e le loro guide tra i templi, i deserti e i villaggi nubiani del Nilo. Nessuna immagine d'archivio, solo i viaggi come sono avvenuti.",
+    breadcrumb: "Galleria",
+    grid: {
+      galleryAria: "Galleria fotografica",
+      filterGroupAria: "Filtra le foto per categoria",
+      filters: {
+        all: "Tutte le foto",
+        guests: "I nostri viaggiatori",
+        temples: "Templi e monumenti",
+        sinaiDesert: "Sinai e notti beduine",
+        nileNubia: "Nilo e Nubia",
+      },
+      lightbox: {
+        close: "Chiudi",
+        prev: "Foto precedente",
+        next: "Foto successiva",
+        zoomIn: "Ingrandisci",
+        zoomOut: "Riduci",
+        counter: "{current} di {total}",
+      },
+    },
+    showcase: {
+      eyebrow: "Viaggiatori veri, momenti veri",
+      title: "Momenti di viaggi Ptah autentici",
+      blurb:
+        "Non foto d'archivio — ospiti veri e l'Egitto che sono venuti a vedere. Scorra alcune immagini, poi sfogli l'intera galleria.",
+      cta: "Guardi tutte le foto",
+      prev: "Diapositiva precedente",
+      next: "Diapositiva successiva",
+    },
   },
 
 } satisfies PageContent;

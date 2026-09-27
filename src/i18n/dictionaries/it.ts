@@ -42,7 +42,7 @@ export const it = {
     /** Quick-links bar, in order: Events, When to Visit, eVisa, My Account. */
     quickLinks: ["Eventi e festival", "Quando andare", "Prenoti il suo eVisa", "Il mio account"],
     /** Direct nav links, in order: Destinations, Trip Ideas. */
-    directLinks: ["Destinazioni", "Idee di viaggio"],
+    directLinks: ["Destinazioni", "Idee di viaggio", "Galleria"],
     buildTrip: "Pianifica il mio viaggio",
     popularSearches: [
       "Piramidi di Giza",
@@ -108,7 +108,7 @@ export const it = {
     /** Footer link columns, in order: (brand), Travel With Us, Help & Info. */
     columns: [
       { heading: "Ptah Tours", links: ["Chi siamo", "I nostri egittologi", "Lavora con noi", "Stampa e media", "Contattaci"] },
-      { heading: "Viaggia con noi", links: ["Tutti i tour", "Idee di viaggio", "Crociere sul Nilo", "Viaggi privati", "Viaggio responsabile"] },
+      { heading: "Viaggia con noi", links: ["Tutti i tour", "Idee di viaggio", "Crociere sul Nilo", "Viaggi privati", "Viaggio responsabile", "Galleria fotografica"] },
       { heading: "Aiuto e informazioni", links: ["Quando andare", "Visti e ingresso", "Traccia la mia prenotazione", "Salute e sicurezza", "Domande frequenti"] },
     ],
     badgeHeading: "Riconosciuto da",

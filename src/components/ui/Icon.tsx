@@ -42,7 +42,10 @@ export type IconName =
   /* PWA install (spec §3, D3): a device with a download arrow, and the iOS
      Share glyph for the "Add to Home Screen" hint. */
   | "install"
-  | "share-ios";
+  | "share-ios"
+  /* gallery lightbox zoom controls */
+  | "zoom-in"
+  | "zoom-out";
 
 type Glyph = { fill: string } | { stroke: string };
 
@@ -77,6 +80,8 @@ const GLYPHS: Record<IconName, Glyph> = {
   chat: { fill: "M12 3C6.9 3 2.8 6.36 2.8 10.5c0 2.03.98 3.87 2.58 5.22l-.9 3.28a.5.5 0 0 0 .72.57l3.63-1.9c1 .27 2.07.42 3.17.42 5.1 0 9.2-3.36 9.2-7.6C21.2 6.37 17.1 3 12 3Z" },
   install: { stroke: "M8.5 2.5h7A2.5 2.5 0 0 1 18 5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5ZM12 8v6m0 0 2.4-2.4M12 14l-2.4-2.4" },
   "share-ios": { stroke: "M12 3v10M12 3 9 6M12 3l3 3M8.5 8H6.5A1.5 1.5 0 0 0 5 9.5v9A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 17.5 8H15.5" },
+  "zoom-in": { stroke: "M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Zm5.3-2.2 5.2 5.2M10.5 7.5v6M7.5 10.5h6" },
+  "zoom-out": { stroke: "M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Zm5.3-2.2 5.2 5.2M7.5 10.5h6" },
 };
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "name"> {

@@ -583,6 +583,13 @@ export const esPages = {
     ctaBody: "Explora nuestros tours o cuéntanos qué tienes en mente: te ayudaremos a dar forma al viaje.",
     ctaPrimary: "Explorar tours",
     ctaSecondary: "Empezar a planificar",
+    photoBand: {
+      eyebrow: "Sobre el terreno",
+      heading: "Viajes reales, rostros reales",
+      blurb:
+        "Algunas fotografías de viajes recientes de Ptah: nuestros viajeros, sus guías y el Egipto que vinieron a ver.",
+      cta: "Ver todas las fotos",
+    },
     breadcrumb: "Quiénes somos",
   },
 
@@ -1305,6 +1312,43 @@ export const esPages = {
     ctaPrimary: "Explorar tours",
     ctaSecondary: "Empezar a planificar",
     backToJournal: "← Volver al diario",
+  },
+
+  // ── Gallery (/gallery) + landing "Real travelers" showcase ──
+  gallery: {
+    eyebrow: "Viajeros reales, momentos reales",
+    title: "La galería de Ptah Tours",
+    intro:
+      "Fotografías reales de viajes recientes: nuestros viajeros y sus guías en los templos, los desiertos y los pueblos nubios del Nilo. Sin imágenes de archivo, solo los viajes tal como ocurrieron.",
+    breadcrumb: "Galería",
+    grid: {
+      galleryAria: "Galería de fotos",
+      filterGroupAria: "Filtrar fotos por categoría",
+      filters: {
+        all: "Todas las fotos",
+        guests: "Nuestros viajeros",
+        temples: "Templos y monumentos",
+        sinaiDesert: "Sinaí y noches beduinas",
+        nileNubia: "Nilo y Nubia",
+      },
+      lightbox: {
+        close: "Cerrar",
+        prev: "Foto anterior",
+        next: "Foto siguiente",
+        zoomIn: "Acercar",
+        zoomOut: "Alejar",
+        counter: "{current} de {total}",
+      },
+    },
+    showcase: {
+      eyebrow: "Viajeros reales, momentos reales",
+      title: "Momentos de viajes reales de Ptah",
+      blurb:
+        "No son fotos de archivo: viajeros reales y el Egipto que vinieron a ver. Desliza para ver algunas y luego explora la galería completa.",
+      cta: "Ver todas las fotos",
+      prev: "Diapositiva anterior",
+      next: "Diapositiva siguiente",
+    },
   },
 
 } satisfies PageContent;
