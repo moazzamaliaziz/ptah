@@ -25,6 +25,15 @@ export function useMediaQuery(query: string): boolean | null {
 /** 744px primary switch (design.md: 46.5em — the "BIG" breakpoint). */
 export const MQ_DESKTOP = "(min-width: 46.5em)";
 
+/**
+ * 1128px header desktop switch. The primary bar carries a full logo + 7 nav
+ * items + 6 action controls in one row; that content cannot fit below ~1128px,
+ * so the header shows the hamburger curtain (which holds the identical nav) up
+ * to 1127px and the desktop mega-menu bar at 1128px+. Kept separate from
+ * MQ_DESKTOP so the landing hero keeps its own 744px behavior. Mirrors 70.5em
+ * (MQ_WIDE) intentionally — the bar's tidy spacing is tuned for that floor. */
+export const MQ_HEADER_DESKTOP = "(min-width: 70.5em)";
+
 /** 950px "laptop-small": rail -> grid switch, GI 4-up math, docked arrows. */
 export const MQ_LAPTOP = "(min-width: 59.375em)";
 

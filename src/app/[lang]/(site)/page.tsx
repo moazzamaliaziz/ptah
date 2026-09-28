@@ -6,8 +6,9 @@ import PlanCta from "@/components/landing/PlanCta";
 import FiftyCtas from "@/components/landing/FiftyCtas";
 import Kbyg from "@/components/landing/Kbyg";
 import TourTypes from "@/components/landing/TourTypes";
-import Stories from "@/components/landing/Stories";
 import TravelersShowcase from "@/components/landing/TravelersShowcase";
+import LandingJournal from "@/components/landing/LandingJournal";
+import LandingFaqs from "@/components/landing/LandingFaqs";
 import { siteMeta } from "@/content/landing";
 import { featuredPhotos } from "@/content/gallery";
 import { getLandingContent } from "@/server/content";
@@ -81,7 +82,7 @@ const jsonLd = {
  * transparent header's on-dark state reads over the imagery.
  */
 export default async function Home(): Promise<JSX.Element> {
-  const { heroSlides, inspiredTabs, planCta, fiftyCtas, kbygItems, tourTypes, stories } =
+  const { heroSlides, inspiredTabs, planCta, fiftyCtas, kbygItems, tourTypes } =
     await getLandingContent();
   const pc = await getPageContent();
 
@@ -116,8 +117,11 @@ export default async function Home(): Promise<JSX.Element> {
       {/* 3.6b Real travelers, real moments — featured guest photos → /gallery */}
       <TravelersShowcase photos={featuredPhotos} strings={pc.gallery.showcase} />
 
-      {/* 3.7 Featured Stories */}
-      <Stories items={stories} />
+      {/* 3.7 The Journal — static blog card grid (replaces DB Stories carousel) */}
+      <LandingJournal />
+
+      {/* 3.8 FAQ accordion — nearest the footer, emits FAQPage JSON-LD */}
+      <LandingFaqs />
     </>
   );
 }

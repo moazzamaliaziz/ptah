@@ -93,6 +93,19 @@ export const de = {
           { label: "Unter Wasser", heading: "Tauch- & Schnorchelreisen" },
         ],
       },
+      {
+        title: "Journal",
+        columns: [
+          { heading: "Erste Schritte", links: ["Beste Reisezeit", "Erste Nilkreuzfahrt", "7-Tage-Route", "Packliste"] },
+          { heading: "Orte & Geschichten", links: ["Kairo abseits des Reiseführers", "Alexandrias Seele", "Jenseits von Giza", "Ein Abend in Karnak"] },
+          { heading: "Clever reisen", links: ["Ägypten mit Kindern", "Knigge fürs Riff", "Ruhige Feluken-Tage", "Alle Journal-Beiträge"] },
+        ],
+        imageCtas: [
+          { label: "Reiseplanung", heading: "Wann nach Ägypten" },
+          { label: "Auf dem Fluss", heading: "Erste Nilkreuzfahrt" },
+          { label: "Mit der Familie", heading: "Ägypten mit Kindern" },
+        ],
+      },
     ],
   },
   footer: {

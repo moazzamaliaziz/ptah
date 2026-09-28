@@ -1351,4 +1351,9 @@ export const dePages = {
     },
   },
 
+  landing: {
+    journalCta: "Zum Journal",
+    faqsCta: "Alle FAQ ansehen",
+  },
+
 } satisfies PageContent;

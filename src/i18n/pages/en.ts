@@ -1359,6 +1359,11 @@ export const enPages = {
     },
   },
 
+  landing: {
+    journalCta: "Read the journal",
+    faqsCta: "See all FAQs",
+  },
+
   // APPEND_MARKER
 } ;
 

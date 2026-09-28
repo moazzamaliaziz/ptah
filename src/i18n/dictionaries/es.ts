@@ -87,6 +87,19 @@ export const es = {
           { label: "Bajo el agua", heading: "Viajes de buceo y esnórquel" },
         ],
       },
+      {
+        title: "Diario",
+        columns: [
+          { heading: "Para empezar", links: ["Cuándo viajar", "Primer crucero por el Nilo", "Itinerario de 7 días", "Qué llevar"] },
+          { heading: "Lugares e historias", links: ["El Cairo más allá de la guía", "El alma de Alejandría", "Más allá de Guiza", "Una noche en Karnak"] },
+          { heading: "Viaja con cabeza", links: ["Egipto con niños", "Respeto por los arrecifes", "Días de faluca en el Nilo", "Todos los artículos"] },
+        ],
+        imageCtas: [
+          { label: "Planificar el viaje", heading: "Cuándo visitar Egipto" },
+          { label: "En el río", heading: "Primer crucero por el Nilo" },
+          { label: "En familia", heading: "Egipto con niños" },
+        ],
+      },
     ],
   },
   footer: {
