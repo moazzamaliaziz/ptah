@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
 import ThemeHub from "@/components/site/ThemeHub";
+import FactStrip from "@/components/site/theme/FactStrip";
+import Timeline from "@/components/site/theme/Timeline";
+import FeatureRows from "@/components/site/theme/FeatureRows";
+import PlaceCards from "@/components/site/theme/PlaceCards";
+import { ThemeGallery } from "@/components/site/theme/ThemeGallery";
+import ImageCredits from "@/components/site/theme/ImageCredits";
+import { themeContent, galleryLabels } from "@/content/theme-content";
+import { themeMedia, themeImage } from "@/content/theme-media";
 import { listPublishedToursForDestinations } from "@/server/catalog";
 import { getSessionUser } from "@/server/auth/session";
 import { toLocale } from "@/i18n/config";
@@ -13,6 +21,8 @@ export const metadata: Metadata = {
     "The river that made Egypt — the temples of Luxor and Karnak, the islands of Aswan, and slow felucca afternoons under sail. Our tours along the Nile, guided by people who grew up beside it.",
   alternates: { canonical: "/the-nile" },
 };
+
+const THEME = "the-nile" as const;
 
 export default async function TheNilePage({
   params,
@@ -29,6 +39,8 @@ export default async function TheNilePage({
     getPageContent(locale),
   ]);
   const t = pc.theNile;
+  const c = themeContent[THEME];
+  const hero = themeImage(THEME, "aswan-feluccas");
 
   return (
     <ThemeHub
@@ -36,11 +48,18 @@ export default async function TheNilePage({
       eyebrow={t.eyebrow}
       lede={t.lede}
       intro={t.intro}
-      heroImage="/assets/stories/nile-sailing-aswan.webp"
-      heroAlt={t.heroAlt}
+      heroImage={hero.src}
+      heroAlt={hero.alt}
       tours={tours}
       isAuthenticated={user !== null}
       toursHref="/tours"
-    />
+      footer={<ImageCredits images={themeMedia[THEME]} summary={c.creditsSummary} />}
+    >
+      <FactStrip facts={c.facts} />
+      {c.timeline ? <Timeline head={c.timeline.head} entries={c.timeline.entries} /> : null}
+      <FeatureRows theme={THEME} head={c.features.head} rows={c.features.rows} />
+      {c.places ? <PlaceCards theme={THEME} head={c.places.head} cards={c.places.cards} /> : null}
+      <ThemeGallery head={c.gallery} images={themeMedia[THEME]} labels={galleryLabels} />
+    </ThemeHub>
   );
 }

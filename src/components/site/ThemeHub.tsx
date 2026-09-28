@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { type ReactNode } from "react";
 import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import Container from "@/components/layout/Container";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
@@ -26,6 +27,10 @@ export interface ThemeHubProps {
   isAuthenticated: boolean;
   /** Label for the empty-state / "see all" link target. */
   toursHref: string;
+  /** Rich editorial sections (fact strip, timeline, feature rows, gallery, …) rendered between the intro and the curated tours. */
+  children?: ReactNode;
+  /** Trailing content after the CTA, e.g. image credits. */
+  footer?: ReactNode;
 }
 
 /**
@@ -44,6 +49,8 @@ export default async function ThemeHub({
   tours,
   isAuthenticated,
   toursHref,
+  children,
+  footer,
 }: ThemeHubProps) {
   const pc = await getPageContent();
   const t = pc.themeHub;
@@ -70,6 +77,9 @@ export default async function ThemeHub({
           ))}
         </div>
       </div>
+
+      {/* Rich editorial sections (facts, timeline, feature rows, places, gallery) */}
+      {children ? <div className="mt-16 space-y-16">{children}</div> : null}
 
       {/* Curated tours */}
       <section className="mt-14">
@@ -102,6 +112,8 @@ export default async function ThemeHub({
           <Button href={toursHref} variant="secondary">{t.ctaSecondary}</Button>
         </div>
       </section>
+
+      {footer ? <div className="mt-10">{footer}</div> : null}
     </Container>
   );
 }

@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
 import ThemeHub from "@/components/site/ThemeHub";
+import FactStrip from "@/components/site/theme/FactStrip";
+import Timeline from "@/components/site/theme/Timeline";
+import FeatureRows from "@/components/site/theme/FeatureRows";
+import PlaceCards from "@/components/site/theme/PlaceCards";
+import { ThemeGallery } from "@/components/site/theme/ThemeGallery";
+import ImageCredits from "@/components/site/theme/ImageCredits";
+import { themeContent, galleryLabels } from "@/content/theme-content";
+import { themeMedia, themeImage } from "@/content/theme-media";
 import { listPublishedTours } from "@/server/catalog";
 import { getSessionUser } from "@/server/auth/session";
 import { toLocale } from "@/i18n/config";
@@ -14,6 +22,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/deserts" },
 };
 
+const THEME = "deserts" as const;
+
 export default async function DesertsPage({
   params,
 }: {
@@ -27,6 +37,8 @@ export default async function DesertsPage({
     getPageContent(locale),
   ]);
   const t = pc.deserts;
+  const c = themeContent[THEME];
+  const hero = themeImage(THEME, "white-desert-alien-landscape");
 
   return (
     <ThemeHub
@@ -34,11 +46,18 @@ export default async function DesertsPage({
       eyebrow={t.eyebrow}
       lede={t.lede}
       intro={t.intro}
-      heroImage="/assets/activities/desert-safari.webp"
-      heroAlt={t.heroAlt}
+      heroImage={hero.src}
+      heroAlt={hero.alt}
       tours={tours}
       isAuthenticated={user !== null}
       toursHref="/tours?type=desert"
-    />
+      footer={<ImageCredits images={themeMedia[THEME]} summary={c.creditsSummary} />}
+    >
+      <FactStrip facts={c.facts} />
+      {c.timeline ? <Timeline head={c.timeline.head} entries={c.timeline.entries} /> : null}
+      <FeatureRows theme={THEME} head={c.features.head} rows={c.features.rows} />
+      {c.places ? <PlaceCards theme={THEME} head={c.places.head} cards={c.places.cards} /> : null}
+      <ThemeGallery head={c.gallery} images={themeMedia[THEME]} labels={galleryLabels} />
+    </ThemeHub>
   );
 }
