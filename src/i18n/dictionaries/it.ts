@@ -93,6 +93,19 @@ export const it = {
           { label: "Sott'acqua", heading: "Viaggi di immersione e snorkeling" },
         ],
       },
+      {
+        title: "Diario",
+        columns: [
+          { heading: "Per iniziare", links: ["Quando andare", "Prima crociera sul Nilo", "Itinerario di 7 giorni", "Cosa mettere in valigia"] },
+          { heading: "Luoghi e racconti", links: ["Il Cairo oltre la guida", "L'anima di Alessandria", "Oltre Giza", "Una sera a Karnak"] },
+          { heading: "Viaggia bene", links: ["L'Egitto con i bambini", "Rispetto per la barriera", "Giorni di feluca sul Nilo", "Tutti gli articoli"] },
+        ],
+        imageCtas: [
+          { label: "Pianifica il viaggio", heading: "Quando visitare l'Egitto" },
+          { label: "Sul fiume", heading: "Prima crociera sul Nilo" },
+          { label: "In famiglia", heading: "L'Egitto con i bambini" },
+        ],
+      },
     ],
   },
   footer: {

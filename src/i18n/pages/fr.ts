@@ -1351,4 +1351,9 @@ export const frPages = {
     },
   },
 
+  landing: {
+    journalCta: "Lire le journal",
+    faqsCta: "Voir toutes les FAQ",
+  },
+
 } satisfies PageContent;

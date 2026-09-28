@@ -608,6 +608,84 @@ export const stories: Story[] = [
     },
     credit: "Ptah Tours field archive",
   },
+  {
+    title: "The Best Time to Visit Egypt, Month by Month",
+    summary: "Egypt has a season for everyone — clear cool winters for the temples, quiet shoulder months for value, and a smart way to enjoy even the summer heat. Here is how each month actually feels, and when to go for what.",
+    href: "/blog/best-time-to-visit-egypt",
+    image: {
+      src: `${A}/hero/hero-giza.webp`,
+      mid: `${A}/hero/hero-giza.webp`,
+      wide: `${A}/hero/hero-giza.webp`,
+      wideAt: 1440,
+      alt: "The pyramids of Giza under a clear blue winter sky.",
+    },
+    credit: "Ptah Tours field archive",
+  },
+  {
+    title: "A First-Timer's Guide to a Nile Cruise",
+    summary: "What a Nile cruise is really like — the cabins, the dining, the daily rhythm of temples and sailing, which direction to go, and how to choose between a big river ship and an intimate dahabiya.",
+    href: "/blog/first-time-nile-cruise",
+    image: {
+      src: `${A}/cta/fifty-nile-cruise.webp`,
+      mid: `${A}/cta/fifty-nile-cruise.webp`,
+      wide: `${A}/cta/fifty-nile-cruise.webp`,
+      wideAt: 1440,
+      alt: "A Nile cruise ship on calm water beside a green riverbank.",
+    },
+    credit: "Ptah Tours field archive",
+  },
+  {
+    title: "Seven Days in Egypt: Our Classic Itinerary, Unpacked",
+    summary: "Cairo, Luxor and Aswan in a week without feeling rushed — our classic seven-day route, day by day, with the trade-offs we make so the highlights land and the pace stays human.",
+    href: "/blog/seven-days-in-egypt",
+    image: {
+      src: `${A}/itineraries/cairo-heritage.webp`,
+      mid: `${A}/itineraries/cairo-heritage.webp`,
+      wide: `${A}/itineraries/cairo-heritage.webp`,
+      wideAt: 1440,
+      alt: "Domes and minarets of historic Islamic Cairo at golden hour.",
+    },
+    credit: "Ptah Tours field archive",
+  },
+  {
+    title: "What to Pack for Egypt (and What to Leave Behind)",
+    summary: "The short list that actually matters — layers for cold desert nights, sun cover that respects the sites, the right shoes for tombs, and the things first-timers always over-pack. Season notes included.",
+    href: "/blog/what-to-pack-for-egypt",
+    image: {
+      src: `${A}/activities/desert-safari.webp`,
+      mid: `${A}/activities/desert-safari.webp`,
+      wide: `${A}/activities/desert-safari.webp`,
+      wideAt: 1440,
+      alt: "A desert track running toward dunes under a wide Egyptian sky.",
+    },
+    credit: "Ptah Tours field archive",
+  },
+  {
+    title: "Beyond Giza: Egypt's Underrated Ancient Sites",
+    summary: "Once you have seen the Pyramids, Egypt keeps going — Saqqara's step pyramid, Dendera's painted ceiling, Abydos, Kom Ombo and the quiet temples where you may be the only visitors.",
+    href: "/blog/beyond-giza-underrated-sites",
+    image: {
+      src: `${A}/activities/philae-temple.webp`,
+      mid: `${A}/activities/philae-temple.webp`,
+      wide: `${A}/activities/philae-temple.webp`,
+      wideAt: 1440,
+      alt: "The columns of Philae Temple rising above the Nile near Aswan.",
+    },
+    credit: "Ptah Tours field archive",
+  },
+  {
+    title: "Egypt with Kids: A Family Travel Guide",
+    summary: "Egypt is a brilliant trip with children — mummies and camels and boats to keep them hooked. Our guide to pacing, ages, food, heat and the tours that work best for families.",
+    href: "/blog/egypt-with-kids-family-guide",
+    image: {
+      src: `${A}/activities/nubian-culture.webp`,
+      mid: `${A}/activities/nubian-culture.webp`,
+      wide: `${A}/activities/nubian-culture.webp`,
+      wideAt: 1440,
+      alt: "A brightly painted Nubian village lane above the Nile at Aswan.",
+    },
+    credit: "Ptah Tours field archive",
+  },
 ];
 
 /* ---- Navigation & site chrome --------------------------------------------- */
@@ -798,6 +876,59 @@ export const siteNav: SiteNav = {
           heading: "Dive & Snorkel Trips",
           href: "/tours?type=red-sea",
           image: { src: `${A}/activities/blue-hole-dive.webp`, alt: "A snorkeler over the coral shelf at Dahab's Blue Hole." },
+        },
+      ],
+    },
+    {
+      key: "journal",
+      title: "Journal",
+      columns: [
+        {
+          heading: "Start Here",
+          links: [
+            { label: "Best Time to Visit", href: "/blog/best-time-to-visit-egypt" },
+            { label: "First Nile Cruise", href: "/blog/first-time-nile-cruise" },
+            { label: "7-Day Itinerary", href: "/blog/seven-days-in-egypt" },
+            { label: "What to Pack", href: "/blog/what-to-pack-for-egypt" },
+          ],
+        },
+        {
+          heading: "Places & Stories",
+          links: [
+            { label: "Cairo Beyond the Guidebook", href: "/blog/cairo-beyond-the-guidebook" },
+            { label: "Alexandria's Soul", href: "/blog/alexandria-mediterranean-soul" },
+            { label: "Beyond Giza", href: "/blog/beyond-giza-underrated-sites" },
+            { label: "An Evening at Karnak", href: "/blog/karnak-sound-and-light" },
+          ],
+        },
+        {
+          heading: "Travel Smart",
+          links: [
+            { label: "Egypt with Kids", href: "/blog/egypt-with-kids-family-guide" },
+            { label: "Red Sea Reef Etiquette", href: "/blog/red-sea-reef-etiquette" },
+            { label: "Slow Nile Felucca Days", href: "/blog/slow-nile-felucca-days" },
+            { label: "All Journal Posts", href: "/blog" },
+          ],
+        },
+      ],
+      imageCtas: [
+        {
+          label: "Trip Planning",
+          heading: "When to Visit Egypt",
+          href: "/blog/best-time-to-visit-egypt",
+          image: { src: `${A}/hero/hero-giza-portrait.webp`, alt: "The pyramids of Giza under a clear winter sky." },
+        },
+        {
+          label: "On the River",
+          heading: "A First Nile Cruise",
+          href: "/blog/first-time-nile-cruise",
+          image: { src: `${A}/cta/fifty-nile-cruise.webp`, alt: "A Nile cruise ship moored beside a green riverbank." },
+        },
+        {
+          label: "With the Family",
+          heading: "Egypt with Kids",
+          href: "/blog/egypt-with-kids-family-guide",
+          image: { src: `${A}/activities/nubian-culture.webp`, alt: "A brightly painted Nubian village lane above the Nile at Aswan." },
         },
       ],
     },

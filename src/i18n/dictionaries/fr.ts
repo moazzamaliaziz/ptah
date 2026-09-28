@@ -87,6 +87,19 @@ export const fr = {
           { label: "Sous l'eau", heading: "Voyages plongée et tuba" },
         ],
       },
+      {
+        title: "Journal",
+        columns: [
+          { heading: "Pour commencer", links: ["Quand partir", "Première croisière sur le Nil", "Itinéraire de 7 jours", "Que mettre dans sa valise"] },
+          { heading: "Lieux & récits", links: ["Le Caire hors des sentiers", "L'âme d'Alexandrie", "Au-delà de Gizeh", "Une soirée à Karnak"] },
+          { heading: "Voyager malin", links: ["L'Égypte en famille", "Respecter les récifs", "Felouque au fil du Nil", "Tous les articles"] },
+        ],
+        imageCtas: [
+          { label: "Préparer son voyage", heading: "Quand visiter l'Égypte" },
+          { label: "Sur le fleuve", heading: "Première croisière" },
+          { label: "En famille", heading: "L'Égypte avec des enfants" },
+        ],
+      },
     ],
   },
   footer: {

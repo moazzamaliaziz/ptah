@@ -67,7 +67,7 @@ export const en = {
       "Private Cairo Tour",
       "Christmas in Egypt",
     ],
-    /** Mega-menu sections, in order: About Egypt, Plan Your Trip, Tours. */
+    /** Mega-menu sections, in order: About Egypt, Plan Your Trip, Tours, Journal. */
     sections: [
       {
         title: "About Egypt",
@@ -106,6 +106,19 @@ export const en = {
           { label: "Signature Journey", heading: "Classic Egypt, 8 Days" },
           { label: "On the River", heading: "Nile Cruise Collection" },
           { label: "Under the Water", heading: "Dive & Snorkel Trips" },
+        ],
+      },
+      {
+        title: "Journal",
+        columns: [
+          { heading: "Start Here", links: ["Best Time to Visit", "First Nile Cruise", "7-Day Itinerary", "What to Pack"] },
+          { heading: "Places & Stories", links: ["Cairo Beyond the Guidebook", "Alexandria's Soul", "Beyond Giza", "An Evening at Karnak"] },
+          { heading: "Travel Smart", links: ["Egypt with Kids", "Red Sea Reef Etiquette", "Slow Nile Felucca Days", "All Journal Posts"] },
+        ],
+        imageCtas: [
+          { label: "Trip Planning", heading: "When to Visit Egypt" },
+          { label: "On the River", heading: "A First Nile Cruise" },
+          { label: "With the Family", heading: "Egypt with Kids" },
         ],
       },
     ],

@@ -161,7 +161,8 @@
   align-items: center;
   gap: 2rem;
   min-height: var(--top-bar-height);
-  padding-inline: var(--container-padding);
+  /* Inline padding is set per width band below (shared with .primary-bar so
+     both desktop rows keep the same left/right edge). */
   border-bottom: 1px solid color-mix(in srgb, var(--hdr-fg) 14%, transparent);
 }
 .quick-links a {
@@ -181,13 +182,28 @@
   align-items: center;
   min-height: var(--primary-bar-height);
   padding-top: 1.125rem;
-  padding-inline: var(--container-padding);
-  /* logo -> nav gap clamp (single clamp; dead second rule dropped per §8.4 I-6) */
-  column-gap: clamp(1.875rem, -2.00255rem + 6.53061vw, 3.875rem);
+  /* Inline padding is set per width band below (not here) so the two bands
+     never compete in the cascade under this build's CSS ordering. */
+  /* logo -> nav gap: tightened for the >=1128 single-row fit */
+  column-gap: clamp(1rem, 2vw, 2.25rem);
 }
-/* Condensed band 744-949 (§2.1.2 "condensed band") */
-@media (min-width: 46.5em) and (max-width: 59.34375em) {
-  .primary-bar { padding-top: 1.25rem; padding-inline: 1.625rem; }
+
+/* Desktop header inline padding, partitioned into two mutually exclusive width
+   bands so exactly one applies at any width (order-independent — no base rule
+   competes). The desktop rows render only >=1128px (MQ_HEADER_DESKTOP).
+   - 1128-1480: the full 7-item nav + actions can't fit inside the flat ~74px
+     container padding, so trim it. clamp's 5vw term ramps ~56px (1128) -> 74px
+     (1480), meeting --container-padding exactly at the band edge (seamless).
+   - >=1480: use --container-padding so the header re-aligns to the page content
+     edge and tracks the token's wide-viewport growth (no drift on 1920/ultrawide).
+   The bands touch at exactly 1480px, where both resolve to ~74px (no jump). */
+@media (min-width: 70.5em) and (max-width: 92.5em) {
+  .primary-bar,
+  .quick-links { padding-inline: clamp(2.25rem, 5vw, var(--container-padding)); }
+}
+@media (min-width: 92.5em) {
+  .primary-bar,
+  .quick-links { padding-inline: var(--container-padding); }
 }
 
 .brand-logo {
@@ -208,7 +224,11 @@
 .primary-nav {
   display: flex;
   align-items: center;
-  gap: clamp(1.5rem, -3.92308rem + 7.69231vw, 3rem);
+  /* Internal item spacing (7 items) — does NOT affect header<->page edge
+     alignment (that's padding-inline); trimming here is free. Kept tight so the
+     bar's min-content clears the 1113px layout width at the 1128 floor (viewport
+     minus scrollbar), then grows toward 1.5rem as the viewport widens. */
+  gap: clamp(0.55rem, 0.85vw, 1.5rem);
 }
 .nav-item {
   position: relative;
@@ -249,7 +269,8 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  /* Tightened for the >=1128 single-row fit; grows to ~0.85rem when wider. */
+  gap: clamp(0.5rem, 0.9vw, 0.85rem);
 }
 .icon-button {
   display: inline-flex;
@@ -291,7 +312,10 @@
   border: 1px solid currentColor;
 }
 .bookmarks-pill__text { display: none; }
-@media (min-width: 70.5em) { .bookmarks-pill__text { display: inline; font-size: 13px; } }
+/* Bumped 70.5em -> 82em: the desktop bar now renders from 1128px, where the
+   full 7-item nav + actions are tightest. Keep the wishlist pill icon-only
+   until ~1312px so the label's ~50px doesn't push the row into overflow. */
+@media (min-width: 82em) { .bookmarks-pill__text { display: inline; font-size: 13px; } }
 @media (hover: hover) {
   .bookmarks-pill:hover { background: color-mix(in srgb, var(--hdr-fg) 10%, transparent); }
 }

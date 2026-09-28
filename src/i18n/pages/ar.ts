@@ -1351,4 +1351,9 @@ export const arPages = {
     },
   },
 
+  landing: {
+    journalCta: "اقرأ المدوّنة",
+    faqsCta: "عرض كل الأسئلة الشائعة",
+  },
+
 } satisfies PageContent;

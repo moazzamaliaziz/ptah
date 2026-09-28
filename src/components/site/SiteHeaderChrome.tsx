@@ -9,9 +9,12 @@
  *   - hide-on-scroll backdrop behavior (§2.4) + on-dark/on-light theme swap (§2.1.3)
  *   - bookmarks pill wired to the localStorage wishlist adapter
  *
- * Markup swaps between mobile/desktop variants at 46.5em via matchMedia
- * (§5.2 rule 2 — never CSS-hidden duplicates). Before hydration a 73px
- * placeholder bar renders (deterministic, no layout thrash).
+ * Markup swaps between mobile/desktop variants at 70.5em (1128px — see
+ * MQ_HEADER_DESKTOP) via matchMedia (§5.2 rule 2 — never CSS-hidden
+ * duplicates). The full desktop primary bar (logo + 7 nav items + 6 action
+ * controls in one non-wrapping row) cannot fit below ~1128px, so tablets get
+ * the hamburger curtain — which carries the identical nav — up to 1127px.
+ * Before hydration a 73px placeholder bar renders (deterministic, no thrash).
  *
  * Server wrapper: SiteHeader.tsx reads the content module and passes plain
  * props, so nav copy never ships in the client manifest beyond this island.
@@ -36,7 +39,7 @@ import SearchDialog from "@/components/site/SearchDialog";
 import InstallButton from "@/components/pwa/InstallButton";
 import { LocaleSwitcher } from "@/components/i18n/LocaleSwitcher";
 import type { HeaderChromeStrings } from "@/i18n/chrome";
-import { MQ_DESKTOP, useMediaQuery } from "@/hooks/use-media-query";
+import { MQ_HEADER_DESKTOP, useMediaQuery } from "@/hooks/use-media-query";
 
 type ScrollState = "top" | "up" | "down";
 
@@ -52,7 +55,7 @@ export interface SiteHeaderChromeProps {
 
 export function SiteHeaderChrome({ nav, t, logoSrc = null, siteName = "Ptah Tours" }: SiteHeaderChromeProps): JSX.Element {
   const pathname = usePathname();
-  const isDesktop = useMediaQuery(MQ_DESKTOP);
+  const isDesktop = useMediaQuery(MQ_HEADER_DESKTOP);
   // Locale-agnostic home check: the home route is `/{locale}` (e.g. /en, /ar),
   // never bare `/`, so strip the locale prefix before comparing (drives the
   // on-dark hero theme swap in §2.1.3).
@@ -128,7 +131,7 @@ export function SiteHeaderChrome({ nav, t, logoSrc = null, siteName = "Ptah Tour
     };
   }, [curtainOpen, searchOpen]);
 
-  /* ---- When the viewport crosses 744px, reset transient chrome state --- */
+  /* ---- When the viewport crosses 1128px, reset transient chrome state -- */
   const [handledDesktop, setHandledDesktop] = useState<boolean | null>(isDesktop);
   if (isDesktop !== handledDesktop) {
     setHandledDesktop(isDesktop);

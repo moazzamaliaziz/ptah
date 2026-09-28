@@ -1351,4 +1351,9 @@ export const itPages = {
     },
   },
 
+  landing: {
+    journalCta: "Leggi il diario",
+    faqsCta: "Tutte le domande frequenti",
+  },
+
 } satisfies PageContent;
