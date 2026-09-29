@@ -55,8 +55,8 @@ export default async function RedSeaPage({
     >
       <FactStrip facts={c.facts} />
       {c.timeline ? <Timeline head={c.timeline.head} entries={c.timeline.entries} /> : null}
-      <FeatureRows theme={THEME} head={c.features.head} rows={c.features.rows} />
-      {c.places ? <PlaceCards theme={THEME} head={c.places.head} cards={c.places.cards} /> : null}
+      <FeatureRows resolveImage={(s) => themeImage(THEME, s)} head={c.features.head} rows={c.features.rows} />
+      {c.places ? <PlaceCards resolveImage={(s) => themeImage(THEME, s)} head={c.places.head} cards={c.places.cards} /> : null}
       <ThemeGallery head={c.gallery} images={themeMedia[THEME]} labels={galleryLabels} />
     </ThemeHub>
   );

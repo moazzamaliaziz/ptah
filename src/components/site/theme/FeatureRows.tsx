@@ -1,19 +1,20 @@
 import Image from "next/image";
 import ThemeSectionHead from "./ThemeSectionHead";
-import { themeImage, type ThemeSlug } from "@/content/theme-media";
+import type { ThemeImage } from "@/content/theme-media";
 import type { FeatureRow, SectionHead } from "@/content/theme-content";
 
 /**
  * Image-led feature rows (server). Alternating photo/text layout; each row's
- * image slug is resolved against the typed theme-media set so alt text and
- * intrinsic dimensions stay source-grounded.
+ * image slug is resolved through the caller-supplied `resolveImage` so the
+ * component works for any typed media set (theme pages or city pages) while
+ * alt text and intrinsic dimensions stay source-grounded.
  */
 export default function FeatureRows({
-  theme,
+  resolveImage,
   head,
   rows,
 }: {
-  theme: ThemeSlug;
+  resolveImage: (slug: string) => ThemeImage;
   head: SectionHead;
   rows: FeatureRow[];
 }) {
@@ -22,7 +23,7 @@ export default function FeatureRows({
       <ThemeSectionHead head={head} />
       <div className="mt-12 space-y-16">
         {rows.map((row, i) => {
-          const img = themeImage(theme, row.image);
+          const img = resolveImage(row.image);
           const flip = i % 2 === 1;
           return (
             <article key={row.image} className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
