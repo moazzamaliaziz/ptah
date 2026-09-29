@@ -1,18 +1,20 @@
 import Image from "next/image";
 import ThemeSectionHead from "./ThemeSectionHead";
-import { themeImage, type ThemeSlug } from "@/content/theme-media";
+import type { ThemeImage } from "@/content/theme-media";
 import type { PlaceCard, SectionHead } from "@/content/theme-content";
 
 /**
  * Secondary "more to see" places (server). Image cards in a responsive grid;
- * images resolve against the typed theme-media set for grounded alt + sizing.
+ * each card's image slug is resolved through the caller-supplied `resolveImage`
+ * so the component serves any typed media set (theme or city pages) with
+ * grounded alt + intrinsic sizing.
  */
 export default function PlaceCards({
-  theme,
+  resolveImage,
   head,
   cards,
 }: {
-  theme: ThemeSlug;
+  resolveImage: (slug: string) => ThemeImage;
   head: SectionHead;
   cards: PlaceCard[];
 }) {
@@ -21,7 +23,7 @@ export default function PlaceCards({
       <ThemeSectionHead head={head} />
       <ul className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
-          const img = themeImage(theme, c.image);
+          const img = resolveImage(c.image);
           return (
             <li key={c.image} className="overflow-hidden rounded-2xl border border-grey-300/50 bg-white">
               <div className="relative aspect-[3/2] bg-papyrus">

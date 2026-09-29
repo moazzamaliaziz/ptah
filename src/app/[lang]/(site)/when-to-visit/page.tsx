@@ -75,7 +75,7 @@ export default async function WhenToVisitPage() {
       </section>
 
       <div className="mt-16">
-        <FeatureRows theme={THEME} head={wtv.regions.head} rows={wtv.regions.rows} />
+        <FeatureRows resolveImage={(s) => themeImage(THEME, s)} head={wtv.regions.head} rows={wtv.regions.rows} />
       </div>
 
       <div className="mt-16">
