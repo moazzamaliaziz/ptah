@@ -9,10 +9,11 @@ import TourTypes from "@/components/landing/TourTypes";
 import TravelersShowcase from "@/components/landing/TravelersShowcase";
 import LandingJournal from "@/components/landing/LandingJournal";
 import LandingFaqs from "@/components/landing/LandingFaqs";
-import { siteMeta } from "@/content/landing";
 import { featuredPhotos } from "@/content/gallery";
 import { getLandingContent } from "@/server/content";
+import { getLandingDefaults } from "@/content/localized/landing";
 import { getPageContent } from "@/i18n/pages";
+import { toLocale, localeHtmlLang } from "@/i18n/config";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ptahtours.com";
 
@@ -28,47 +29,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-/* Structured data (design.md §2.7 note / §9 Phase 7): WebSite + SearchAction +
-   Organization. Rendered inline as JSON-LD (inert data, not executable JS, so
-   it is compatible with the CSP in src/proxy.ts). `legalName`/`tagline` from
-   the content SSOT are the Organization's legal identity and slogan.
-
-   XSS hardening: the values below are static today, but the Phase-2 CMS
-   contract makes them editor-supplied (ContentSection rows). The serializer
-   below escapes every less-than character to its unicode escape so no value
-   can break out of the script element via a closing tag or comment sequence.
-   Standard Next.js JSON-LD pattern. */
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": `${siteUrl}/#website`,
-      url: siteUrl,
-      name: siteMeta.name,
-      description: siteMeta.tagline,
-      inLanguage: "en",
-      publisher: { "@id": `${siteUrl}/#organization` },
-      potentialAction: {
-        "@type": "SearchAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: `${siteUrl}/search?term={search_term_string}`,
-        },
-        "query-input": "required name=search_term_string",
-      },
-    },
-    {
-      "@type": "Organization",
-      "@id": `${siteUrl}/#organization`,
-      name: siteMeta.name,
-      legalName: siteMeta.legalName,
-      url: siteUrl,
-      slogan: siteMeta.tagline,
-    },
-  ],
-};
-
 /**
  * Landing page (design.md §3, DOM order).
  *
@@ -81,10 +41,52 @@ const jsonLd = {
  * hero band is pulled under the sticky chrome by CSS (.hero margin-top) so the
  * transparent header's on-dark state reads over the imagery.
  */
-export default async function Home(): Promise<JSX.Element> {
-  const { heroSlides, inspiredTabs, planCta, fiftyCtas, kbygItems, tourTypes } =
-    await getLandingContent();
-  const pc = await getPageContent();
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<JSX.Element> {
+  const { lang } = await params;
+  const locale = toLocale(lang);
+  const [{ heroSlides, inspiredTabs, planCta, fiftyCtas, kbygItems, tourTypes }, landing, pc] =
+    await Promise.all([getLandingContent(locale), getLandingDefaults(locale), getPageContent(locale)]);
+  const siteMeta = landing.siteMeta;
+
+  /* Structured data (design.md §2.7 / §9): WebSite + SearchAction + Organization,
+     inline JSON-LD (inert data, CSP-safe per src/proxy.ts). name/legalName are the
+     brand identity (kept verbatim across locales); the tagline/slogan and
+     inLanguage follow the active locale. XSS hardening: every "<" is escaped to
+     its unicode form so no value can break out of the <script>. */
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        url: siteUrl,
+        name: siteMeta.name,
+        description: siteMeta.tagline,
+        inLanguage: localeHtmlLang[locale],
+        publisher: { "@id": `${siteUrl}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteUrl}/search?term={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "Organization",
+        "@id": `${siteUrl}/#organization`,
+        name: siteMeta.name,
+        legalName: siteMeta.legalName,
+        url: siteUrl,
+        slogan: siteMeta.tagline,
+      },
+    ],
+  };
 
   return (
     <>
@@ -118,7 +120,7 @@ export default async function Home(): Promise<JSX.Element> {
       <TravelersShowcase photos={featuredPhotos} strings={pc.gallery.showcase} />
 
       {/* 3.7 The Journal — static blog card grid (replaces DB Stories carousel) */}
-      <LandingJournal />
+      <LandingJournal locale={locale} />
 
       {/* 3.8 FAQ accordion — nearest the footer, emits FAQPage JSON-LD */}
       <LandingFaqs />

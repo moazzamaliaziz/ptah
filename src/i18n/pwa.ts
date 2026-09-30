@@ -2,7 +2,7 @@ import type { Locale } from "@/i18n/config";
 
 /**
  * Self-contained copy for the PWA install and update prompts (spec §3, D3),
- * localized for all six supported locales. Kept separate from the public-site
+ * localized for all seven supported locales. Kept separate from the public-site
  * dictionary so the PWA UI has complete translations regardless of the wider
  * i18n copy rollout. Client components receive only the plain strings they need.
  */
@@ -94,6 +94,17 @@ const STRINGS: Record<Locale, PwaStrings> = {
       iosHint: "Per installare: tocca il pulsante Condividi, poi «Aggiungi a Home».",
     },
     update: { body: "È disponibile una nuova versione.", action: "Aggiorna", dismiss: "Chiudi" },
+  },
+  ru: {
+    install: {
+      title: "Установить Птах Турс",
+      body: "Добавьте наше приложение на главный экран для более быстрой работы в полноэкранном режиме.",
+      action: "Установить",
+      short: "Установить приложение",
+      dismiss: "Не сейчас",
+      iosHint: "Чтобы установить, нажмите кнопку «Поделиться», затем «На экран „Домой“».",
+    },
+    update: { body: "Доступна новая версия.", action: "Обновить", dismiss: "Закрыть" },
   },
 };
 

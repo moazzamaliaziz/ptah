@@ -28,6 +28,8 @@ import {
 } from "@/content/landing";
 import type { HeroSlide, InspiredTab, PlanCtaBlock, Story } from "@/content/landing";
 import { landingSchemas, type LandingSectionKey } from "@/content/landing-schema";
+import { getLandingDefaults } from "@/content/localized/landing";
+import { type Locale } from "@/i18n/config";
 
 /* Tuple-typed sections must keep their exact tuple shape (the components take
    fixed-length tuples, not open arrays) — mirror the SSOT export types. */
@@ -97,16 +99,32 @@ function resolve<K extends LandingSectionKey>(
   return fallback;
 }
 
-export async function getLandingContent(): Promise<LandingContent> {
+export async function getLandingContent(locale: Locale = "en"): Promise<LandingContent> {
+  const d = await getLandingDefaults(locale);
+  // The landing CMS overrides are authored in English by the admin, so they
+  // apply to the English homepage only. Non-English locales serve the localized
+  // static editorial directly (its own English fallback already happened inside
+  // the loader for any missing locale).
+  if (locale !== "en") {
+    return {
+      heroSlides: d.heroSlides,
+      inspiredTabs: d.inspiredTabs,
+      planCta: d.planCta,
+      fiftyCtas: d.fiftyCtas,
+      kbygItems: d.kbygItems,
+      tourTypes: d.tourTypes,
+      stories: d.stories,
+    };
+  }
   const o = await readOverrides();
   return {
-    heroSlides: resolve("hero", o, defHeroSlides) as HeroSlide[],
-    inspiredTabs: resolve("getInspired", o, defInspiredTabs) as InspiredTab[],
-    planCta: resolve("planCta", o, defPlanCta) as PlanCtaBlock,
-    fiftyCtas: resolve("fiftyCtas", o, defFiftyCtas) as FiftyCtaTuple,
-    kbygItems: resolve("kbyg", o, defKbygItems) as KbygTuple,
-    tourTypes: resolve("tourTypes", o, defTourTypes) as TourTypeTuple,
-    stories: resolve("stories", o, defStories) as Story[],
+    heroSlides: resolve("hero", o, d.heroSlides) as HeroSlide[],
+    inspiredTabs: resolve("getInspired", o, d.inspiredTabs) as InspiredTab[],
+    planCta: resolve("planCta", o, d.planCta) as PlanCtaBlock,
+    fiftyCtas: resolve("fiftyCtas", o, d.fiftyCtas) as FiftyCtaTuple,
+    kbygItems: resolve("kbyg", o, d.kbygItems) as KbygTuple,
+    tourTypes: resolve("tourTypes", o, d.tourTypes) as TourTypeTuple,
+    stories: resolve("stories", o, d.stories) as Story[],
   };
 }
 

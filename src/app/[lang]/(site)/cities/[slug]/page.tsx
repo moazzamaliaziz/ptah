@@ -28,8 +28,9 @@ import {
 import { getSessionUser } from "@/server/auth/session";
 import { toLocale } from "@/i18n/config";
 import { getPageContent } from "@/i18n/pages";
-import { galleryLabels } from "@/content/theme-content";
-import { cityContent } from "@/content/city-content";
+import { getThemeEditorial } from "@/content/localized/theme-content";
+import { getCityContent } from "@/content/localized/city-content";
+import { getUiSupplemental } from "@/content/localized/ui-supplemental";
 import { cityMedia, cityImage, type CitySlug } from "@/content/city-media";
 
 // City slugs are static content; the tour list + session are read at request
@@ -43,11 +44,12 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ lang: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { lang, slug } = await params;
   const city = getCity(slug);
   if (!city) return {};
+  const cityContent = await getCityContent(toLocale(lang));
   const content = cityContent[city.slug as CitySlug];
   if (!content) return { title: `${city.name} Tours | Ptah Tours`, description: city.intro };
   const hero = cityImage(city.slug as CitySlug, content.heroSlug);
@@ -76,17 +78,19 @@ export default async function CityPage({
   if (!city) notFound();
 
   const citySlug = city.slug as CitySlug;
-  const content = cityContent[citySlug];
-  if (!content) notFound();
-
   const country = getCountry(city.countrySlug);
   const locale = toLocale(lang);
-  const [tours, counts, user, pc] = await Promise.all([
+  const [tours, counts, user, pc, cityContent, theme, ui] = await Promise.all([
     listPublishedTours(city.slug, locale),
     getPublishedTourCountsByDestination(),
     getSessionUser(),
     getPageContent(locale),
+    getCityContent(locale),
+    getThemeEditorial(locale),
+    getUiSupplemental(locale),
   ]);
+  const content = cityContent[citySlug];
+  if (!content) notFound();
   const isAuthenticated = user !== null;
   const t = pc.cityDetail;
   const hero = cityImage(citySlug, content.heroSlug);
@@ -137,13 +141,13 @@ export default async function CityPage({
   const mapsHref = `https://www.google.com/maps/search/?api=1&query=${city.coordinates.lat},${city.coordinates.lng}`;
 
   const navSections = [
-    { id: "overview", label: "Overview" },
-    { id: "tours", label: "Tours" },
-    { id: "things-to-do", label: "Things to do" },
-    { id: "explore", label: "Explore" },
-    { id: "photos", label: "Photos" },
-    { id: "plan", label: "Plan your visit" },
-    { id: "faq", label: "FAQ" },
+    { id: "overview", label: ui["cityNav.overview"] },
+    { id: "tours", label: ui["cityNav.tours"] },
+    { id: "things-to-do", label: ui["cityNav.thingsToDo"] },
+    { id: "explore", label: ui["cityNav.explore"] },
+    { id: "photos", label: ui["cityNav.photos"] },
+    { id: "plan", label: ui["cityNav.plan"] },
+    { id: "faq", label: ui["cityNav.faq"] },
   ];
   return (
     <div>
@@ -230,11 +234,11 @@ export default async function CityPage({
 
         {/* Photo gallery */}
         <section id="photos" className="scroll-mt-32 pt-16">
-          <ThemeGallery head={content.gallery} images={media} labels={galleryLabels} />
+          <ThemeGallery head={content.gallery} images={media} labels={theme.galleryLabels} />
         </section>
         {/* Plan your visit */}
         <section id="plan" className="scroll-mt-32 pt-16">
-          <h2 className="text-section-h2 font-bold text-ink">Plan your visit to {city.name}</h2>
+          <h2 className="text-section-h2 font-bold text-ink">{ui.cityPlanHeading.replace("{name}", city.name)}</h2>
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-grey-300/60 bg-papyrus/50 p-6 sm:p-8">
               <div className="flex items-center gap-2 text-rust">
@@ -265,7 +269,7 @@ export default async function CityPage({
                 rel="noopener noreferrer"
                 className="mt-4 inline-flex items-center gap-1.5 text-meta font-semibold text-nile underline underline-offset-4 hover:text-rust"
               >
-                <MapPin size={16} /> View {city.name} on Google Maps
+                <MapPin size={16} /> {ui.cityViewOnMaps.replace("{name}", city.name)}
               </a>
             </div>
           </div>

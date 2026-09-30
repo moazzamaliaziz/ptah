@@ -2,8 +2,8 @@
  * Locale configuration for the public-site internationalization (item #11, Phase 3).
  *
  * Locked product decisions:
- *  - Six languages: English (default), Arabic, French, German, Spanish, Italian.
- *  - Arabic renders right-to-left.
+ *  - Seven languages: English (default), Arabic, French, German, Spanish, Italian, Russian.
+ *  - Arabic renders right-to-left; Russian is left-to-right (Cyrillic).
  *  - Scope is the PUBLIC customer-facing site only. The admin panel, API routes
  *    and system emails stay English and are NOT localized.
  *
@@ -14,7 +14,7 @@
  */
 
 /** All supported public-site locales. `en` MUST stay first (it is the default/source). */
-export const locales = ["en", "ar", "fr", "de", "es", "it"] as const;
+export const locales = ["en", "ar", "fr", "de", "es", "it", "ru"] as const;
 
 export type Locale = (typeof locales)[number];
 
@@ -45,6 +45,7 @@ export const localeNames: Record<Locale, string> = {
   de: "Deutsch",
   es: "Español",
   it: "Italiano",
+  ru: "Русский",
 };
 
 /**
@@ -59,6 +60,7 @@ export const localeHtmlLang: Record<Locale, string> = {
   de: "de",
   es: "es",
   it: "it",
+  ru: "ru",
 };
 
 /**
@@ -73,6 +75,7 @@ export const localeOgLocale: Record<Locale, string> = {
   de: "de_DE",
   es: "es_ES",
   it: "it_IT",
+  ru: "ru_RU",
 };
 
 /**
