@@ -8,9 +8,10 @@ import ClimateWidget from "@/components/site/theme/ClimateWidget";
 import FeatureRows from "@/components/site/theme/FeatureRows";
 import { ThemeGallery } from "@/components/site/theme/ThemeGallery";
 import ImageCredits from "@/components/site/theme/ImageCredits";
-import { whenToVisitContent as wtv, galleryLabels } from "@/content/theme-content";
+import { getThemeEditorial } from "@/content/localized/theme-content";
 import { themeMedia, themeImage } from "@/content/theme-media";
 import { getPageContent } from "@/i18n/pages";
+import { toLocale } from "@/i18n/config";
 
 const THEME = "when-to-visit" as const;
 
@@ -21,9 +22,17 @@ export const metadata: Metadata = {
   alternates: { canonical: "/when-to-visit" },
 };
 
-export default async function WhenToVisitPage() {
-  const pc = await getPageContent();
+export default async function WhenToVisitPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const locale = toLocale(lang);
+  const [pc, theme] = await Promise.all([getPageContent(locale), getThemeEditorial(locale)]);
   const t = pc.whenToVisit;
+  const wtv = theme.whenToVisitContent;
+  const galleryLabels = theme.galleryLabels;
   const hero = themeImage(THEME, "luxor-nile-sunset");
   return (
     <Container className="py-14">

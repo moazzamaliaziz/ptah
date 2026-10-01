@@ -20,9 +20,9 @@ export default async function BlogIndexPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const pc = await getPageContent(toLocale(lang));
+  const locale = toLocale(lang);
+  const [pc, posts] = await Promise.all([getPageContent(locale), getAllBlogPosts(locale)]);
   const t = pc.blog;
-  const posts = getAllBlogPosts();
   const [lead, ...rest] = posts;
 
   return (
@@ -63,7 +63,7 @@ export default async function BlogIndexPage({
             </h2>
             <p className="mt-3 line-clamp-3 text-body leading-relaxed text-ink/70">{lead.summary}</p>
             <p className="mt-4 text-meta text-ink/55">
-              {formatBlogDate(lead.publishedISO)} · {lead.readMinutes} {t.minRead}
+              {formatBlogDate(lead.publishedISO, locale)} · {lead.readMinutes} {t.minRead}
             </p>
           </div>
         </Link>
@@ -95,7 +95,7 @@ export default async function BlogIndexPage({
               </h3>
               <p className="mt-2 line-clamp-3 text-meta text-ink/65">{post.summary}</p>
               <p className="mt-4 text-meta text-ink/50">
-                {formatBlogDate(post.publishedISO)} · {post.readMinutes} {t.minRead}
+                {formatBlogDate(post.publishedISO, locale)} · {post.readMinutes} {t.minRead}
               </p>
             </div>
           </Link>

@@ -16,10 +16,10 @@ export function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ lang: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const post = getBlogPost(slug);
+  const { lang, slug } = await params;
+  const post = await getBlogPost(slug, toLocale(lang));
   if (!post) return {};
   const canonical = `/blog/${slug}`;
   return {
@@ -42,9 +42,9 @@ export default async function BlogPostPage({
   params: Promise<{ lang: string; slug: string }>;
 }) {
   const { lang, slug } = await params;
-  const post = getBlogPost(slug);
+  const locale = toLocale(lang);
+  const [post, pc] = await Promise.all([getBlogPost(slug, locale), getPageContent(locale)]);
   if (!post) notFound();
-  const pc = await getPageContent(toLocale(lang));
   const t = pc.blogDetail;
 
   return (
@@ -69,7 +69,7 @@ export default async function BlogPostPage({
         <p className="text-eyebrow uppercase tracking-[0.14em] text-rust">{t.eyebrow}</p>
         <h1 className="mt-2 text-section-h2 font-bold leading-tight text-ink">{post.title}</h1>
         <p className="mt-3 text-meta text-ink/55">
-          {t.byPrefix} {post.author} · {formatBlogDate(post.publishedISO)} · {post.readMinutes} {t.minRead}
+          {t.byPrefix} {post.author} · {formatBlogDate(post.publishedISO, locale)} · {post.readMinutes} {t.minRead}
         </p>
         <p className="mt-6 text-body font-medium leading-relaxed text-ink/80">{post.summary}</p>
 

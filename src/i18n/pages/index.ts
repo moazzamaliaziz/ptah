@@ -28,6 +28,7 @@ const pageDictionaries: Record<Locale, () => Promise<PageContent>> = {
   de: () => import("./de").then((m) => m.dePages),
   es: () => import("./es").then((m) => m.esPages),
   it: () => import("./it").then((m) => m.itPages),
+  ru: () => import("./ru").then((m) => m.ruPages),
 };
 
 /**

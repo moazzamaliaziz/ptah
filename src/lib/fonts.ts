@@ -1,4 +1,4 @@
-import { Cabin, Noto_Sans_Arabic, Playfair_Display } from "next/font/google";
+import { Cabin, Noto_Sans, Noto_Sans_Arabic, Playfair_Display } from "next/font/google";
 
 /**
  * Shared Cabin variable font (design.md §1.2.1), weights 400–700 incl. italics.
@@ -10,11 +10,15 @@ import { Cabin, Noto_Sans_Arabic, Playfair_Display } from "next/font/google";
  * module keeps the `--font-cabin` CSS variable consistent without duplicating
  * the loader config. `next/font` dedupes identical requests at build time.
  *
- * Arabic/RTL: Cabin is a Latin-only face, so the `ar` locale pairs it with
- * `notoArabic` below (a proper Arabic face) — the public root layout adds the
- * `--font-arabic` variable only for `ar`, and globals.css prefers it when the
- * document is RTL. Latin locales never download the Arabic file (its @font-face
- * is Arabic-only unicode-range), so there is no cost outside Arabic.
+ * Non-Latin scripts: Cabin ships only latin/latin-ext/vietnamese subsets (no
+ * Arabic, no Cyrillic), so scripts it can't render are paired with a companion
+ * face loaded only on the relevant locale:
+ *  - `ar` → `notoArabic` below (`--font-arabic`), preferred under `dir="rtl"`.
+ *  - `ru` → `notoCyrillic` below (`--font-cyrillic`), preferred under `[lang="ru"]`.
+ * The public root layout adds the companion variable only for that locale, and
+ * globals.css prefers it there; other locales never download the companion file
+ * (each companion's @font-face is script-only unicode-range), so there is no
+ * cost outside the locale that needs it.
  */
 export const cabin = Cabin({
   weight: "variable",
@@ -42,6 +46,22 @@ export const notoArabic = Noto_Sans_Arabic({
   variable: "--font-arabic",
   display: "swap",
   fallback: ["Segoe UI", "Tahoma", "sans-serif"],
+});
+
+/**
+ * Cyrillic companion face (Noto Sans — a neutral, highly legible variable sans).
+ * Cabin has no Cyrillic glyphs, so the `ru` locale pairs it with this face.
+ * Loaded only on `ru` via the public root layout; its subset is Cyrillic-only so
+ * it never affects Latin or Arabic pages. Exposed as `--font-cyrillic` for
+ * globals.css to prefer under `[lang="ru"]`. Mirrors the Arabic companion above.
+ */
+export const notoCyrillic = Noto_Sans({
+  weight: "variable",
+  style: ["normal", "italic"],
+  subsets: ["cyrillic"],
+  variable: "--font-cyrillic",
+  display: "swap",
+  fallback: ["Arial", "Helvetica", "sans-serif"],
 });
 
 /**

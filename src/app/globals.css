@@ -41,6 +41,26 @@ body {
   font-family: var(--font-arabic), var(--font-cabin), "Segoe UI", Tahoma, sans-serif;
 }
 
+/* Russian/Cyrillic: Cabin has no Cyrillic glyphs, so on the ru locale the public
+   root layout loads Noto Sans as --font-cyrillic; prefer it here so Russian copy
+   renders in a real webfont rather than a system fallback (Arial). The variable
+   is only present on the ru document, so this rule is otherwise inert. */
+[lang="ru"] body {
+  font-family: var(--font-cyrillic), var(--font-cabin), "Segoe UI", Tahoma, sans-serif;
+}
+
+/* Route the design font tokens through the Cyrillic companion on Russian pages so
+   heading/body utilities (font-display, font-sans → var(--font-cabin)) render
+   Cyrillic in a real webfont, not a system fallback. Each companion carries a
+   cyrillic-only unicode-range, so Latin runs (e.g. the "Ptah Tours" wordmark)
+   still fall through to Cabin. html[lang="ru"] outranks the :root tokens; the
+   --font-cyrillic variable exists only on the ru document, so this is inert
+   elsewhere. */
+html[lang="ru"] {
+  --font-display: var(--font-cyrillic), var(--font-cabin);
+  --font-sans: var(--font-cyrillic), var(--font-cabin);
+}
+
 /* ---- Global focus ring (design.md §4.8.11 / §6.1) — instant, no transition */
 *:focus-visible {
   outline: currentColor solid 1px;

@@ -3,6 +3,7 @@ import Image from "next/image";
 import { LocaleLink as Link } from "@/components/i18n/LocaleLink";
 import { getAllBlogPosts, formatBlogDate } from "@/content/blog";
 import { getPageContent } from "@/i18n/pages";
+import type { Locale } from "@/i18n/config";
 
 /**
  * Landing section — "The Journal" blog grid (replaces the DB-backed Stories
@@ -13,10 +14,10 @@ import { getPageContent } from "@/i18n/pages";
  * SSOT surface here without a DB reseed. Shows the six most recent posts in the
  * same card pattern as /blog, then links through to the full journal.
  */
-export default async function LandingJournal(): Promise<JSX.Element> {
-  const pc = await getPageContent();
+export default async function LandingJournal({ locale }: { locale: Locale }): Promise<JSX.Element> {
+  const [pc, allPosts] = await Promise.all([getPageContent(locale), getAllBlogPosts(locale)]);
   const t = pc.blog;
-  const posts = getAllBlogPosts().slice(0, 6);
+  const posts = allPosts.slice(0, 6);
 
   return (
     <section
@@ -60,7 +61,7 @@ export default async function LandingJournal(): Promise<JSX.Element> {
               </h3>
               <p className="mt-2 line-clamp-3 text-meta text-ink/65">{post.summary}</p>
               <p className="mt-4 text-meta text-ink/50">
-                {formatBlogDate(post.publishedISO)} · {post.readMinutes} {t.minRead}
+                {formatBlogDate(post.publishedISO, locale)} · {post.readMinutes} {t.minRead}
               </p>
             </div>
           </Link>

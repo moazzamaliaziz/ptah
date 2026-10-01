@@ -31,6 +31,7 @@ const dictionaries: Record<Locale, () => Promise<Dictionary>> = {
   de: () => import("./de").then((m) => m.de),
   es: () => import("./es").then((m) => m.es),
   it: () => import("./it").then((m) => m.it),
+  ru: () => import("./ru").then((m) => m.ru),
 };
 
 /**

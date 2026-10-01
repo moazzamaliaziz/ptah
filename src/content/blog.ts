@@ -11,6 +11,8 @@
  * fabricated quotes, statistics, or attributions.
  */
 import { stories, type Story } from "./landing";
+import { localeHtmlLang, type Locale } from "@/i18n/config";
+import { getLandingDefaults } from "./localized/landing";
 
 /** A single rendered block within a post body. */
 export type BlogBlock =
@@ -235,12 +237,31 @@ const POST_BODIES: Record<string, BlogPostMeta> = {
   },
 };
 
-/** All blog posts, newest first, joining story metadata with body. */
-export function getAllBlogPosts(): BlogPost[] {
-  return stories
+/** Localized post bodies, keyed by slug. English is the SSOT + fallback. */
+const bodyLoaders: Record<Locale, () => Promise<Record<string, BlogPostMeta>>> = {
+  en: () => Promise.resolve(POST_BODIES),
+  ar: () => import("./localized/blog.ar").then((m) => m.postBodiesAr),
+  fr: () => import("./localized/blog.fr").then((m) => m.postBodiesFr),
+  de: () => import("./localized/blog.de").then((m) => m.postBodiesDe),
+  es: () => import("./localized/blog.es").then((m) => m.postBodiesEs),
+  it: () => import("./localized/blog.it").then((m) => m.postBodiesIt),
+  ru: () => import("./localized/blog.ru").then((m) => m.postBodiesRu),
+};
+
+async function getPostBodies(locale: Locale): Promise<Record<string, BlogPostMeta>> {
+  return (bodyLoaders[locale] ?? bodyLoaders.en)();
+}
+
+/** All blog posts, newest first, joining localized story metadata with body. */
+export async function getAllBlogPosts(locale: Locale = "en"): Promise<BlogPost[]> {
+  const [bodies, landing] = await Promise.all([
+    getPostBodies(locale),
+    getLandingDefaults(locale),
+  ]);
+  return landing.stories
     .flatMap((s): BlogPost[] => {
       const slug = slugFromHref(s.href);
-      const meta = slug ? POST_BODIES[slug] : undefined;
+      const meta = slug ? bodies[slug] : undefined;
       if (!slug || !meta) return [];
       return [
         {
@@ -257,20 +278,20 @@ export function getAllBlogPosts(): BlogPost[] {
     .sort((a, b) => (a.publishedISO < b.publishedISO ? 1 : -1));
 }
 
-/** One post by slug, or null if it doesn't exist. */
-export function getBlogPost(slug: string): BlogPost | null {
-  return getAllBlogPosts().find((post) => post.slug === slug) ?? null;
+/** One post by slug for a locale, or null if it doesn't exist. */
+export async function getBlogPost(slug: string, locale: Locale = "en"): Promise<BlogPost | null> {
+  return (await getAllBlogPosts(locale)).find((post) => post.slug === slug) ?? null;
 }
 
-/** All slugs (for generateStaticParams). */
+/** All slugs (for generateStaticParams). Locale-independent — slugs never translate. */
 export function blogSlugs(): string[] {
-  return getAllBlogPosts().map((post) => post.slug);
+  return stories.map((s) => slugFromHref(s.href)).filter((slug) => slug !== "" && slug in POST_BODIES);
 }
 
-/** Format an ISO date (YYYY-MM-DD) as e.g. "March 12, 2026". */
-export function formatBlogDate(iso: string): string {
+/** Format an ISO date (YYYY-MM-DD) for the active locale, e.g. "March 12, 2026". */
+export function formatBlogDate(iso: string, locale: Locale = "en"): string {
   const d = new Date(`${iso}T00:00:00Z`);
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(localeHtmlLang[locale], {
     month: "long",
     day: "numeric",
     year: "numeric",
