@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 import { locales, localeNames, localeHtmlLang, toLocale, type Locale } from "@/i18n/config";
 import { getPathLocale, switchLocalePath } from "@/i18n/routing";
 import { Icon } from "@/components/ui/Icon";
+import { Flag } from "@/components/i18n/Flag";
 
 const LOCALE_COOKIE = "NEXT_LOCALE";
 const ONE_YEAR = 60 * 60 * 24 * 365;
@@ -66,6 +67,7 @@ export function LocaleSwitcher({ variant = "menu" }: LocaleSwitcherProps): JSX.E
                 className="locale-switcher__chip"
                 onClick={() => persistLocale(loc)}
               >
+                <Flag locale={loc} />
                 {localeNames[loc]}
               </Link>
             </li>
@@ -138,6 +140,7 @@ function LocaleMenu({
                   close();
                 }}
               >
+                <Flag locale={loc} />
                 {localeNames[loc]}
               </Link>
             </li>

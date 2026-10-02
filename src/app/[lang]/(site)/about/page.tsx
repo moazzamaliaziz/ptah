@@ -5,6 +5,8 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Button from "@/components/ui/Button";
 import { featuredPhotos } from "@/content/gallery";
 import { getPageContent } from "@/i18n/pages";
+import { toLocale } from "@/i18n/config";
+import { getImageAltOverlay, localizeImages } from "@/content/localized/image-alt";
 
 export const metadata: Metadata = {
   title: "About Ptah Tours | Egypt, curated by the people who call it home",
@@ -13,9 +15,19 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
 };
 
-export default async function AboutPage() {
-  const pc = await getPageContent();
+export default async function AboutPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const locale = toLocale(lang);
+  const [pc, altOverlay] = await Promise.all([
+    getPageContent(locale),
+    getImageAltOverlay(locale),
+  ]);
   const t = pc.about;
+  const photos = localizeImages(featuredPhotos.slice(0, 8), altOverlay);
   return (
     <Container className="py-14">
       <Breadcrumbs items={[{ label: pc.common.home, href: "/" }, { label: t.breadcrumb }]} />
@@ -78,7 +90,7 @@ export default async function AboutPage() {
           <Button href="/gallery" variant="secondary">{t.photoBand.cta}</Button>
         </div>
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {featuredPhotos.slice(0, 8).map((photo) => (
+          {photos.map((photo) => (
             <div key={photo.src} className="relative aspect-[4/5] overflow-hidden rounded-xl bg-nile/5">
               <Image
                 src={photo.src}

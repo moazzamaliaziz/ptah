@@ -14,6 +14,7 @@ import { getLandingContent } from "@/server/content";
 import { getLandingDefaults } from "@/content/localized/landing";
 import { getPageContent } from "@/i18n/pages";
 import { toLocale, localeHtmlLang } from "@/i18n/config";
+import { getImageAltOverlay, localizeImages } from "@/content/localized/image-alt";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ptahtours.com";
 
@@ -48,8 +49,8 @@ export default async function Home({
 }): Promise<JSX.Element> {
   const { lang } = await params;
   const locale = toLocale(lang);
-  const [{ heroSlides, inspiredTabs, planCta, fiftyCtas, kbygItems, tourTypes }, landing, pc] =
-    await Promise.all([getLandingContent(locale), getLandingDefaults(locale), getPageContent(locale)]);
+  const [{ heroSlides, inspiredTabs, planCta, fiftyCtas, kbygItems, tourTypes }, landing, pc, altOverlay] =
+    await Promise.all([getLandingContent(locale), getLandingDefaults(locale), getPageContent(locale), getImageAltOverlay(locale)]);
   const siteMeta = landing.siteMeta;
 
   /* Structured data (design.md §2.7 / §9): WebSite + SearchAction + Organization,
@@ -117,7 +118,7 @@ export default async function Home({
       <TourTypes items={tourTypes} />
 
       {/* 3.6b Real travelers, real moments — featured guest photos → /gallery */}
-      <TravelersShowcase photos={featuredPhotos} strings={pc.gallery.showcase} />
+      <TravelersShowcase photos={localizeImages(featuredPhotos, altOverlay)} strings={pc.gallery.showcase} />
 
       {/* 3.7 The Journal — static blog card grid (replaces DB Stories carousel) */}
       <LandingJournal locale={locale} />

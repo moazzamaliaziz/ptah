@@ -32,6 +32,7 @@ import { getThemeEditorial } from "@/content/localized/theme-content";
 import { getCityContent } from "@/content/localized/city-content";
 import { getUiSupplemental } from "@/content/localized/ui-supplemental";
 import { cityMedia, cityImage, type CitySlug } from "@/content/city-media";
+import { getImageAltOverlay, localizeImage, localizeImages } from "@/content/localized/image-alt";
 
 // City slugs are static content; the tour list + session are read at request
 // time (force-dynamic), so params stay static but data stays live.
@@ -52,7 +53,8 @@ export async function generateMetadata({
   const cityContent = await getCityContent(toLocale(lang));
   const content = cityContent[city.slug as CitySlug];
   if (!content) return { title: `${city.name} Tours | Ptah Tours`, description: city.intro };
-  const hero = cityImage(city.slug as CitySlug, content.heroSlug);
+  const altOverlay = await getImageAltOverlay(toLocale(lang));
+  const hero = localizeImage(cityImage(city.slug as CitySlug, content.heroSlug), altOverlay);
   return {
     title: content.seo.title,
     description: content.seo.description,
@@ -80,7 +82,7 @@ export default async function CityPage({
   const citySlug = city.slug as CitySlug;
   const country = getCountry(city.countrySlug);
   const locale = toLocale(lang);
-  const [tours, counts, user, pc, cityContent, theme, ui] = await Promise.all([
+  const [tours, counts, user, pc, cityContent, theme, ui, altOverlay] = await Promise.all([
     listPublishedTours(city.slug, locale),
     getPublishedTourCountsByDestination(),
     getSessionUser(),
@@ -88,13 +90,14 @@ export default async function CityPage({
     getCityContent(locale),
     getThemeEditorial(locale),
     getUiSupplemental(locale),
+    getImageAltOverlay(locale),
   ]);
   const content = cityContent[citySlug];
   if (!content) notFound();
   const isAuthenticated = user !== null;
   const t = pc.cityDetail;
-  const hero = cityImage(citySlug, content.heroSlug);
-  const media = cityMedia[citySlug];
+  const hero = localizeImage(cityImage(citySlug, content.heroSlug), altOverlay);
+  const media = localizeImages(cityMedia[citySlug], altOverlay);
   const otherEgyptCities = citiesByCountry("egypt")
     .filter((c) => c.slug !== city.slug && (counts[c.slug] ?? 0) > 0)
     .slice(0, 4);
@@ -226,7 +229,7 @@ export default async function CityPage({
         {/* Explore — image-led feature rows */}
         <section id="explore" className="scroll-mt-32 pt-16">
           <FeatureRows
-            resolveImage={(s) => cityImage(citySlug, s)}
+            resolveImage={(s) => localizeImage(cityImage(citySlug, s), altOverlay)}
             head={content.features.head}
             rows={content.features.rows}
           />

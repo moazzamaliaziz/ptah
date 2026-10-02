@@ -9,6 +9,7 @@ import FeatureRows from "@/components/site/theme/FeatureRows";
 import { ThemeGallery } from "@/components/site/theme/ThemeGallery";
 import ImageCredits from "@/components/site/theme/ImageCredits";
 import { getThemeEditorial } from "@/content/localized/theme-content";
+import { getImageAltOverlay, localizeImage, localizeImages } from "@/content/localized/image-alt";
 import { themeMedia, themeImage } from "@/content/theme-media";
 import { getPageContent } from "@/i18n/pages";
 import { toLocale } from "@/i18n/config";
@@ -29,11 +30,15 @@ export default async function WhenToVisitPage({
 }) {
   const { lang } = await params;
   const locale = toLocale(lang);
-  const [pc, theme] = await Promise.all([getPageContent(locale), getThemeEditorial(locale)]);
+  const [pc, theme, altOverlay] = await Promise.all([
+    getPageContent(locale),
+    getThemeEditorial(locale),
+    getImageAltOverlay(locale),
+  ]);
   const t = pc.whenToVisit;
   const wtv = theme.whenToVisitContent;
   const galleryLabels = theme.galleryLabels;
-  const hero = themeImage(THEME, "luxor-nile-sunset");
+  const hero = localizeImage(themeImage(THEME, "luxor-nile-sunset"), altOverlay);
   return (
     <Container className="py-14">
       <Breadcrumbs items={[{ label: pc.common.home, href: "/" }, { label: t.breadcrumb }]} />
@@ -84,11 +89,11 @@ export default async function WhenToVisitPage({
       </section>
 
       <div className="mt-16">
-        <FeatureRows resolveImage={(s) => themeImage(THEME, s)} head={wtv.regions.head} rows={wtv.regions.rows} />
+        <FeatureRows resolveImage={(s) => localizeImage(themeImage(THEME, s), altOverlay)} head={wtv.regions.head} rows={wtv.regions.rows} />
       </div>
 
       <div className="mt-16">
-        <ThemeGallery head={wtv.gallery} images={themeMedia[THEME]} labels={galleryLabels} />
+        <ThemeGallery head={wtv.gallery} images={localizeImages(themeMedia[THEME], altOverlay)} labels={galleryLabels} />
       </div>
 
       <section className="mt-16 rounded-2xl bg-nile px-8 py-12 text-center">

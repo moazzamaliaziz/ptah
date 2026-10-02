@@ -7,6 +7,7 @@ import PlaceCards from "@/components/site/theme/PlaceCards";
 import { ThemeGallery } from "@/components/site/theme/ThemeGallery";
 import ImageCredits from "@/components/site/theme/ImageCredits";
 import { getThemeEditorial } from "@/content/localized/theme-content";
+import { getImageAltOverlay, localizeImage, localizeImages } from "@/content/localized/image-alt";
 import { themeMedia, themeImage } from "@/content/theme-media";
 import { listPublishedTours } from "@/server/catalog";
 import { getSessionUser } from "@/server/auth/session";
@@ -31,15 +32,16 @@ export default async function RedSeaPage({
 }) {
   const { lang } = await params;
   const locale = toLocale(lang);
-  const [tours, user, pc, theme] = await Promise.all([
+  const [tours, user, pc, theme, altOverlay] = await Promise.all([
     listPublishedTours({ tag: "red-sea" }, locale),
     getSessionUser(),
     getPageContent(locale),
     getThemeEditorial(locale),
+    getImageAltOverlay(locale),
   ]);
   const t = pc.redSea;
   const c = theme.themeContent[THEME];
-  const hero = themeImage(THEME, "dahab-paradise");
+  const hero = localizeImage(themeImage(THEME, "dahab-paradise"), altOverlay);
 
   return (
     <ThemeHub
@@ -56,9 +58,9 @@ export default async function RedSeaPage({
     >
       <FactStrip facts={c.facts} />
       {c.timeline ? <Timeline head={c.timeline.head} entries={c.timeline.entries} /> : null}
-      <FeatureRows resolveImage={(s) => themeImage(THEME, s)} head={c.features.head} rows={c.features.rows} />
-      {c.places ? <PlaceCards resolveImage={(s) => themeImage(THEME, s)} head={c.places.head} cards={c.places.cards} /> : null}
-      <ThemeGallery head={c.gallery} images={themeMedia[THEME]} labels={theme.galleryLabels} />
+      <FeatureRows resolveImage={(s) => localizeImage(themeImage(THEME, s), altOverlay)} head={c.features.head} rows={c.features.rows} />
+      {c.places ? <PlaceCards resolveImage={(s) => localizeImage(themeImage(THEME, s), altOverlay)} head={c.places.head} cards={c.places.cards} /> : null}
+      <ThemeGallery head={c.gallery} images={localizeImages(themeMedia[THEME], altOverlay)} labels={theme.galleryLabels} />
     </ThemeHub>
   );
 }
