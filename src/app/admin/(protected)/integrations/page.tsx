@@ -6,9 +6,11 @@ import {
   type IntegrationView,
 } from "@/server/integrations";
 import { saveIntegrationAction } from "./actions";
+import PaypalTest from "./PaypalTest";
 import AdminHint from "@/components/admin/AdminHint";
 import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict, type IntegrationsDict } from "@/i18n/admin/dictionary";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 const CATEGORY_ORDER: IntegrationCategory[] = [
   "analytics", "payments", "security", "email", "sms", "maps", "reviews", "monitoring", "automation",
@@ -43,24 +45,44 @@ function IntegrationCard({ item, canManage, labels, helpLabel }: { item: Integra
                 <em style={{ fontWeight: 400, opacity: 0.6 }}> · {f.isSet ? labels.secretSet : labels.secretNotSet}</em>
               ) : null}
             </span>
-            <input
-              className="admin-input"
-              type={f.secret ? "password" : "text"}
-              name={f.name}
-              defaultValue={f.value}
-              placeholder={f.secret ? (f.isSet ? "••••••••" : f.placeholder ?? "") : f.placeholder ?? ""}
-              autoComplete="off"
-              disabled={!canManage}
-            />
+            {f.options ? (
+              /* A fixed choice renders as a select seeded with the value ACTUALLY
+                 in force — an empty stored value falls back, so the control can
+                 never show a greyed placeholder that looks like a setting while
+                 the server quietly uses something else. */
+              <select
+                className="admin-input"
+                name={f.name}
+                defaultValue={f.value || f.fallback || f.options[0]?.value}
+                disabled={!canManage}
+              >
+                {f.options.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="admin-input"
+                type={f.secret ? "password" : "text"}
+                name={f.name}
+                defaultValue={f.value}
+                placeholder={f.secret ? (f.isSet ? "••••••••" : f.placeholder ?? "") : f.placeholder ?? ""}
+                autoComplete="off"
+                disabled={!canManage}
+              />
+            )}
           </label>
         ))}
 
         {canManage ? (
-          <button className="admin-btn" type="submit">
-            {labels.save}
-          </button>
+          <SubmitButton pendingLabel={labels.saving}>{labels.save}</SubmitButton>
         ) : null}
       </form>
+
+      {/* PayPal only: a checkout that will not start is otherwise invisible
+          here — the card happily reads "Enabled / Configured" while PayPal
+          refuses every order. */}
+      {item.key === "PAYPAL" && canManage ? <PaypalTest labels={labels.paypalTest} /> : null}
     </div>
   );
 }

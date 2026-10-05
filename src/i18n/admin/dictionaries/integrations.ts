@@ -15,7 +15,20 @@
  */
 import type { IntegrationCategory } from "@/server/integrations";
 
+/** "Test connection" panel on the PayPal card. */
+export interface PaypalTestDict {
+  test: string;
+  testing: string;
+  testHint: string;
+  okText: string;
+  notConfigured: string;
+  authRejected: string;
+  orderRejected: string;
+  network: string;
+}
+
 export interface IntegrationsDict {
+  paypalTest: PaypalTestDict;
   title: string;
   /** Intro line; `${count}` is the live integration count. */
   intro: (count: number) => string;
@@ -31,9 +44,25 @@ export interface IntegrationsDict {
   secretSet: string;
   secretNotSet: string;
   save: string;
+  saving: string;
 }
 
 export const integrationsEn: IntegrationsDict = {
+  paypalTest: {
+    test: "Test connection",
+    testing: "Testing…",
+    testHint:
+      "Asks PayPal for a token and tries a $1.00 test order. The order is never approved and nothing is charged — it just expires.",
+    okText: "PayPal is working ({environment}). Checkout can start.",
+    notConfigured:
+      "PayPal is not configured: the integration is switched off, or the Client ID / Secret are missing. Fill them in above, tick Enabled, and save.",
+    authRejected:
+      "PayPal rejected these credentials (HTTP {status}) against the {environment} environment. Either the Client ID / Secret are wrong, or they belong to the other environment — sandbox keys only work with Environment set to sandbox, live keys only with live.",
+    orderRejected:
+      "The credentials are valid, but PayPal refused a test order (HTTP {status}) in {currency}. This usually means the account cannot receive payments in that currency, or cannot receive payments at all yet. PayPal's exact reply is below.",
+    network:
+      "PayPal could not be reached. This is usually temporary — try again in a moment.",
+  },
   title: "Integrations",
   intro: (count) =>
     `${count} third-party integrations. Secrets are encrypted at rest and never sent back to the browser — a saved secret field shows only as “set”.`,
@@ -56,9 +85,24 @@ export const integrationsEn: IntegrationsDict = {
   secretSet: "set (leave blank to keep)",
   secretNotSet: "not set",
   save: "Save",
+  saving: "Saving…",
 };
 
 export const integrationsAr: IntegrationsDict = {
+  paypalTest: {
+    test: "اختبار الاتصال",
+    testing: "جارٍ الاختبار…",
+    testHint:
+      "يطلب رمزًا من PayPal ثم يجرّب طلبًا اختباريًا بقيمة 1.00 دولار. لا تتم الموافقة على الطلب ولا يُخصم أي مبلغ — ينتهي تلقائيًا.",
+    okText: "PayPal يعمل ({environment}). يمكن بدء الدفع.",
+    notConfigured:
+      "لم يُضبط PayPal: التكامل مُعطَّل، أو أن Client ID / Secret غير مُدخلين. أدخلهما أعلاه وفعّل الخيار ثم احفظ.",
+    authRejected:
+      "رفض PayPal بيانات الاعتماد هذه (HTTP {status}) في بيئة {environment}. إما أن Client ID / Secret غير صحيحين، أو أنهما يخصّان البيئة الأخرى — مفاتيح sandbox تعمل فقط مع sandbox، ومفاتيح live مع live فقط.",
+    orderRejected:
+      "بيانات الاعتماد صحيحة، لكن PayPal رفض طلبًا اختباريًا (HTTP {status}) بعملة {currency}. يعني هذا غالبًا أن الحساب لا يمكنه استقبال المدفوعات بهذه العملة، أو لا يمكنه استقبال المدفوعات بعد. ردّ PayPal الكامل في الأسفل.",
+    network: "تعذّر الوصول إلى PayPal. غالبًا ما يكون هذا مؤقتًا — أعد المحاولة بعد قليل.",
+  },
   title: "التكاملات",
   intro: (count) =>
     `${count} تكاملات مع خدمات خارجية. تُشفَّر الأسرار عند التخزين ولا تُعاد إلى المتصفح مطلقًا — يظهر حقل السرّ المحفوظ كـ«مُعيَّن» فقط.`,
@@ -81,4 +125,5 @@ export const integrationsAr: IntegrationsDict = {
   secretSet: "معيَّن (اتركه فارغًا للإبقاء عليه)",
   secretNotSet: "غير معيَّن",
   save: "حفظ",
+  saving: "جارٍ الحفظ…",
 };

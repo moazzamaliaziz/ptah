@@ -8,6 +8,7 @@ import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import { formatAdminDate } from "@/i18n/admin/format";
 import { setEnquiryStatusAction, deleteEnquiryAction } from "../actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -75,13 +76,13 @@ export default async function EnquiryDetailPage({
             <form action={setEnquiryStatusAction}>
               <input type="hidden" name="id" value={message.id} />
               <input type="hidden" name="status" value="ARCHIVED" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.archive}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.archiving}>{t.archive}</SubmitButton>
             </form>
           ) : (
             <form action={setEnquiryStatusAction}>
               <input type="hidden" name="id" value={message.id} />
               <input type="hidden" name="status" value="READ" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.restoreToRead}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.restoring}>{t.restoreToRead}</SubmitButton>
             </form>
           )}
         </div>

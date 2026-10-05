@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/server/auth/rbac";
 import { INTEGRATIONS, saveIntegration } from "@/server/integrations";
 import { writeAudit } from "@/server/audit";
+import { diagnosePaypal } from "@/server/payments/paypal";
+import { SITE_CURRENCY } from "@/content/currency";
 
 const BY_KEY = new Map(INTEGRATIONS.map((i) => [i.key, i]));
 
@@ -42,3 +44,40 @@ export async function saveIntegrationAction(formData: FormData): Promise<void> {
 
   revalidatePath("/admin/integrations");
 }
+
+/**
+ * Run the PayPal connection check and return a readable verdict.
+ *
+ * Exists so the operator can see WHY checkout will not start without reading
+ * server logs — the customer-facing funnel deliberately says only "could not
+ * start PayPal checkout", which is correct for them and useless for whoever has
+ * to fix it. Gated by `integrations.manage`: it reveals PayPal's response to
+ * our credentials, which is operator information.
+ */
+export async function testPaypalAction(): Promise<PaypalTestResult> {
+  await requireCapability("integrations.manage");
+  const diagnosis = await diagnosePaypal(SITE_CURRENCY);
+  if (diagnosis.ok) {
+    return { ok: true, environment: diagnosis.environment };
+  }
+  return {
+    ok: false,
+    code: diagnosis.code,
+    status: diagnosis.status ?? null,
+    detail: diagnosis.detail ?? null,
+    environment: diagnosis.environment ?? null,
+    currency: SITE_CURRENCY,
+  };
+}
+
+/** Serializable shape for the client button (no PayPal types cross the wire). */
+export type PaypalTestResult =
+  | { ok: true; environment: "live" | "sandbox" }
+  | {
+      ok: false;
+      code: "NOT_CONFIGURED" | "AUTH_REJECTED" | "ORDER_REJECTED" | "NETWORK";
+      status: number | null;
+      detail: string | null;
+      environment: "live" | "sandbox" | null;
+      currency: string;
+    };

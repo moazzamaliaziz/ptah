@@ -7,6 +7,7 @@ import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import TripIdeaEditor from "../TripIdeaEditor";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import SubmitButton from "@/components/admin/SubmitButton";
 import {
   setTripIdeaStatusAction,
   deleteTripIdeaAction,
@@ -58,20 +59,20 @@ export default async function TripIdeaEditPage({
             <form action={setTripIdeaStatusAction}>
               <input type="hidden" name="id" value={idea.id} />
               <input type="hidden" name="status" value="PUBLISHED" />
-              <button className="admin-btn" type="submit">{t.publish}</button>
+              <SubmitButton pendingLabel={dict.common.publishing}>{t.publish}</SubmitButton>
             </form>
           ) : (
             <form action={setTripIdeaStatusAction}>
               <input type="hidden" name="id" value={idea.id} />
               <input type="hidden" name="status" value="DRAFT" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.unpublish}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.unpublishing}>{t.unpublish}</SubmitButton>
             </form>
           )}
           {idea.status !== "ARCHIVED" ? (
             <form action={setTripIdeaStatusAction}>
               <input type="hidden" name="id" value={idea.id} />
               <input type="hidden" name="status" value="ARCHIVED" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.archive}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.archiving}>{t.archive}</SubmitButton>
             </form>
           ) : null}
         </div>
@@ -99,7 +100,7 @@ export default async function TripIdeaEditPage({
                 <input type="hidden" name="tripIdeaId" value={idea.id} />
                 <input type="hidden" name="tourId" value={tour.tourId} />
                 {tour.title}
-                <button type="submit" aria-label={t.removeAria(tour.title)} style={{ border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}>×</button>
+                <SubmitButton className="admin-inline-x" ariaLabel={t.removeAria(tour.title)} pendingLabel="…">×</SubmitButton>
               </form>
             ))
           )}
@@ -116,7 +117,7 @@ export default async function TripIdeaEditPage({
                 ))}
               </select>
             </label>
-            <button className="admin-btn" type="submit">{t.link}</button>
+            <SubmitButton pendingLabel={dict.common.linking}>{t.link}</SubmitButton>
           </form>
         ) : (
           <p className="admin-card__meta" style={{ marginTop: "0.75rem" }}>{t.allLinked}</p>

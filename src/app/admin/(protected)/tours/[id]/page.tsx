@@ -9,6 +9,7 @@ import TourEditor from "./TourEditor";
 import ItinerarySection from "./ItinerarySection";
 import DeparturesSection from "./DeparturesSection";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import SubmitButton from "@/components/admin/SubmitButton";
 import {
   setTourStatusAction,
   deleteTourAction,
@@ -60,20 +61,20 @@ export default async function TourEditPage({
             <form action={setTourStatusAction}>
               <input type="hidden" name="id" value={tour.id} />
               <input type="hidden" name="status" value="PUBLISHED" />
-              <button className="admin-btn" type="submit">{t.publish}</button>
+              <SubmitButton pendingLabel={dict.common.publishing}>{t.publish}</SubmitButton>
             </form>
           ) : (
             <form action={setTourStatusAction}>
               <input type="hidden" name="id" value={tour.id} />
               <input type="hidden" name="status" value="DRAFT" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.unpublish}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.unpublishing}>{t.unpublish}</SubmitButton>
             </form>
           )}
           {tour.status !== "ARCHIVED" ? (
             <form action={setTourStatusAction}>
               <input type="hidden" name="id" value={tour.id} />
               <input type="hidden" name="status" value="ARCHIVED" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.archive}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.archiving}>{t.archive}</SubmitButton>
             </form>
           ) : null}
         </div>
@@ -99,7 +100,7 @@ export default async function TourEditPage({
                 <input type="hidden" name="tourId" value={tour.id} />
                 <input type="hidden" name="destinationId" value={d.destinationId} />
                 {d.name}
-                <button type="submit" aria-label={t.removeAria(d.name)} style={{ border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}>×</button>
+                <SubmitButton className="admin-inline-x" ariaLabel={t.removeAria(d.name)} pendingLabel="…">×</SubmitButton>
               </form>
             ))
           )}
@@ -116,7 +117,7 @@ export default async function TourEditPage({
                 ))}
               </select>
             </label>
-            <button className="admin-btn" type="submit">{t.link}</button>
+            <SubmitButton pendingLabel={dict.common.linking}>{t.link}</SubmitButton>
           </form>
         ) : null}
       </section>

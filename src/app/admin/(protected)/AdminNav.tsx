@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 
 export interface AdminNavItem {
   href: string;
   label: string;
+  /**
+   * Optional server-rendered trailing content (the unread-enquiry count).
+   * Taken as a node rather than a number so the layout can hand over a
+   * <Suspense> boundary: the link renders immediately and the count streams in
+   * when its query resolves, instead of the whole sidebar waiting on it.
+   */
+  badge?: ReactNode;
 }
 
 /** Sidebar nav with active-item highlighting. Links are pre-filtered by
@@ -25,6 +32,7 @@ export default function AdminNav({ items, navLabel }: { items: AdminNavItem[]; n
             aria-current={active ? "page" : undefined}
           >
             {item.label}
+            {item.badge}
           </Link>
         );
       })}

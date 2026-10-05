@@ -35,6 +35,15 @@ export interface IntegrationField {
   placeholder?: string;
   /** Optional plain-language help shown as a "?" hint next to the field (P8). */
   help?: string;
+  /**
+   * Fixed choices. When present the admin renders a <select> instead of a text
+   * box, and `fallback` is what an empty stored value means at runtime — so the
+   * control shows the value actually in force rather than a greyed-out
+   * placeholder that merely looks like one.
+   */
+  options?: readonly { value: string; label: string }[];
+  /** The effective value when nothing is stored. Only meaningful with options. */
+  fallback?: string;
 }
 
 export interface IntegrationDef {
@@ -68,7 +77,17 @@ export const INTEGRATIONS: readonly IntegrationDef[] = [
   { key: "PAYPAL", label: "PayPal", category: "payments", fields: [
     { name: "CLIENT_ID", label: "Client ID", secret: false },
     { name: "CLIENT_SECRET", label: "Client secret", secret: true },
-    { name: "ENVIRONMENT", label: "Environment (sandbox or live)", secret: false, placeholder: "sandbox", help: "Type 'live' to take real payments, or 'sandbox' for testing. This must match the type of Client ID and Secret you entered above." },
+    {
+      name: "ENVIRONMENT",
+      label: "Environment",
+      secret: false,
+      options: [
+        { value: "sandbox", label: "Sandbox (testing)" },
+        { value: "live", label: "Live (real payments)" },
+      ],
+      fallback: "sandbox",
+      help: "Must match the credentials above: sandbox keys only work with Sandbox, live keys only with Live. A mismatch makes PayPal reject the Client ID and Secret, and checkout cannot start.",
+    },
     { name: "WEBHOOK_ID", label: "Webhook ID (for signature verification)", secret: false, help: "The ID of the webhook you created in the PayPal dashboard. Lets the site confirm payment updates really came from PayPal." },
   ] },
   { key: "RECAPTCHA", label: "reCAPTCHA v3", category: "security", fields: [

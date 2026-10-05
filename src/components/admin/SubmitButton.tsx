@@ -19,12 +19,16 @@ export default function SubmitButton({
   pendingLabel,
   className = "admin-btn",
   style,
+  ariaLabel,
 }: {
   children: ReactNode;
   /** Shown in place of `children` while the action is running. */
   pendingLabel?: ReactNode;
   className?: string;
   style?: CSSProperties;
+  /** For icon-only buttons (the "×" that unlinks a destination/tour), whose
+   *  visible glyph is not a usable accessible name. */
+  ariaLabel?: string;
 }): JSX.Element {
   const { pending } = useFormStatus();
   return (
@@ -33,6 +37,7 @@ export default function SubmitButton({
       type="submit"
       disabled={pending}
       aria-busy={pending}
+      aria-label={ariaLabel}
       style={style}
     >
       {pending ? pendingLabel ?? children : children}

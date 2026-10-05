@@ -7,6 +7,7 @@ import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import WidgetEditor from "../WidgetEditor";
 import { deleteWidgetAction } from "../actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,9 @@ export default async function WidgetEditPage({
         <p className="admin-card__meta">{t.deleteHint}</p>
         <form action={deleteWidgetAction} style={{ marginTop: "0.5rem" }}>
           <input type="hidden" name="id" value={widget.id} />
-          <button className="admin-btn admin-btn--danger" type="submit">{dict.common.deletePermanently}</button>
+          <SubmitButton className="admin-btn admin-btn--danger" pendingLabel={dict.common.deleting}>
+            {dict.common.deletePermanently}
+          </SubmitButton>
         </form>
       </section>
     </>

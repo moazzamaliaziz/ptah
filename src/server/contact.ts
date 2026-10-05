@@ -6,6 +6,7 @@
  * submitContactMessage; the admin inbox uses the list/read/status/delete fns.
  */
 import "server-only";
+import { cache } from "react";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { sha256Hex } from "@/lib/crypto";
@@ -85,10 +86,16 @@ export async function listContactMessages(): Promise<ContactRow[]> {
   });
 }
 
-/** Count of unread (NEW) messages — for the admin nav badge. */
-export async function countNewContactMessages(): Promise<number> {
-  return db.contactMessage.count({ where: { status: "NEW" } });
-}
+/**
+ * Count of unread (NEW) messages — for the admin nav badge.
+ *
+ * Memoized per request because the protected layout (nav badge) and the
+ * dashboard (alert banner) both want it, which was the same COUNT twice in one
+ * render.
+ */
+export const countNewContactMessages: () => Promise<number> = cache(
+  async (): Promise<number> => db.contactMessage.count({ where: { status: "NEW" } }),
+);
 
 export async function getContactMessage(id: string): Promise<ContactDetail | null> {
   return db.contactMessage.findUnique({

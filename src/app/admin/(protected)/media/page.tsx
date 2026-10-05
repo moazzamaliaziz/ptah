@@ -5,6 +5,7 @@ import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import MediaUploadForm from "./MediaUploadForm";
 import { updateAltTextAction, deleteMediaAction } from "./actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -107,11 +108,11 @@ export default async function MediaPage({
                       <span>{t.altText}</span>
                       <input className="admin-input" type="text" name="altText" defaultValue={a.altText ?? ""} maxLength={512} />
                     </label>
-                    <button className="admin-btn admin-btn--ghost" type="submit">{t.saveAlt}</button>
+                    <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.saving}>{t.saveAlt}</SubmitButton>
                   </form>
                   <form action={deleteMediaAction} style={{ marginTop: "0.5rem" }}>
                     <input type="hidden" name="id" value={a.id} />
-                    <button className="admin-btn admin-btn--danger" type="submit">{dict.common.delete}</button>
+                    <SubmitButton className="admin-btn admin-btn--danger" pendingLabel={dict.common.deleting}>{dict.common.delete}</SubmitButton>
                   </form>
                 </>
               ) : (

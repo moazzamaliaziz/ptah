@@ -33,6 +33,8 @@ export interface ChromeDict {
   language: string;
   /** aria-label for the sidebar <nav> landmark. */
   navLabel: string;
+  /** Screen-reader suffix for the unread-enquiry count on the nav link. */
+  unreadEnquiries: string;
 }
 
 export const navEn: NavDict = {
@@ -82,6 +84,7 @@ export const chromeEn: ChromeDict = {
   signingOut: "Signing out…",
   language: "Language",
   navLabel: "Admin sections",
+  unreadEnquiries: "unread enquiries",
 };
 
 export const chromeAr: ChromeDict = {
@@ -91,4 +94,5 @@ export const chromeAr: ChromeDict = {
   signingOut: "جارٍ تسجيل الخروج…",
   language: "اللغة",
   navLabel: "أقسام الإدارة",
+  unreadEnquiries: "استفسارات غير مقروءة",
 };

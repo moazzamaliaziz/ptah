@@ -36,6 +36,7 @@ export interface AuthDict {
   forbiddenBody: string;
   backToSite: string;
   signOut: string;
+  signingOut: string;
 }
 
 export const authEn: AuthDict = {
@@ -64,6 +65,7 @@ export const authEn: AuthDict = {
   forbiddenBody: "Your account doesn’t have permission to view this area.",
   backToSite: "Back to site",
   signOut: "Sign out",
+  signingOut: "Signing out…",
 };
 
 export const authAr: AuthDict = {
@@ -92,4 +94,5 @@ export const authAr: AuthDict = {
   forbiddenBody: "لا يملك حسابك صلاحية الوصول إلى هذا القسم.",
   backToSite: "العودة إلى الموقع",
   signOut: "تسجيل الخروج",
+  signingOut: "جارٍ تسجيل الخروج…",
 };
