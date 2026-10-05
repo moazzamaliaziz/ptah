@@ -13,7 +13,7 @@
  *   • 20 Integration registry rows (all disabled)
  *   • 6 Destinations (Cairo, Luxor, Aswan, Alexandria, Hurghada, Sharm El Sheikh)
  *   • 12 Tours with itinerary days + departures + destination links + real hero
- *     images (2 premium USD multi-day tours + 10 EGP day/half-day tours). Every
+ *     images (2 premium multi-day tours + 10 day/half-day tours, all USD). Every
  *     tour slug here resolves at /tours/<slug>, so the DB-backed catalog and the
  *     city/country pages link to real, bookable detail pages.
  *   • 2 ContentSections (hero slide + story card)
@@ -177,7 +177,10 @@ function departureDate(daysFromNow: number): Date {
 type Diff = "EASY" | "MODERATE" | "CHALLENGING";
 
 /**
- * Egyptian day/half-day tours (prices in EGP — these are locally-priced
+ * Egyptian day/half-day tours. Priced in USD like everything else on the site
+ * (see src/content/currency.ts); the figures are sample data, converted from the
+ * original EGP at 48 EGP = 1 USD and rounded to the nearest $5 — not commercial
+ * rates. These are locally-priced
  * excursions, distinct from the two premium USD multi-day journeys below).
  * Every slug maps to a real hero image under /public/assets/tours/<slug>/1.webp.
  */
@@ -201,7 +204,7 @@ interface SeedTour {
   metaDesc: string;
 }
 
-const EGP_TOURS: SeedTour[] = [
+const DAY_TOURS: SeedTour[] = [
   {
     slug: "catacombs-pompeys-pillar",
     destinationSlug: "alexandria",
@@ -211,8 +214,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "A half-day through Alexandria's Greco-Roman underground: the three-tiered catacombs at Kom el Shoqafa, one of the few Egyptian sites that blends Pharaonic, Greek and Roman styles in the same carvings, then the towering red-granite column known as Pompey's Pillar.\n\nHighlights:\n• Descend through all three levels of the Kom el Shoqafa catacombs\n• See Egyptian funerary imagery carved in a distinctly Roman style\n• Pompey's Pillar and the nearby Serapeum ruins",
     durationDays: 1,
-    priceCents: 145000,
-    currency: "EGP",
+    priceCents: 3000,
+    currency: "USD",
     difficulty: "EASY",
     tags: ["classic"],
     heroImage: "/assets/tours/catacombs-pompeys-pillar/1.webp",
@@ -235,8 +238,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "The modern Bibliotheca Alexandrina, built as a reinterpretation of the ancient Library of Alexandria, paired with the 15th-century Qaitbay Citadel standing on the site of the ancient lighthouse.\n\nHighlights:\n• The Bibliotheca Alexandrina's main reading hall and manuscript exhibits\n• Qaitbay Citadel on the harbor, built where the Lighthouse of Alexandria once stood\n• Corniche waterfront views between stops",
     durationDays: 1,
-    priceCents: 138000,
-    currency: "EGP",
+    priceCents: 2900,
+    currency: "USD",
     difficulty: "EASY",
     tags: ["classic", "family"],
     heroImage: "/assets/tours/alexandria-library-citadel/1.webp",
@@ -259,8 +262,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "A night departure from Sharm El Sheikh, a torch-lit climb to Mount Sinai's summit for sunrise, and a morning visit to St. Catherine's Monastery, one of the oldest continuously inhabited Christian monasteries in the world.\n\nHighlights:\n• Sunrise from the summit of Mount Sinai\n• St. Catherine's Monastery, including the Burning Bush site\n• A Bedouin guide for the overnight ascent",
     durationDays: 1,
-    priceCents: 265000,
-    currency: "EGP",
+    priceCents: 5500,
+    currency: "USD",
     difficulty: "CHALLENGING",
     tags: ["desert"],
     heroImage: "/assets/tours/st-catherine-mount-sinai/1.webp",
@@ -284,8 +287,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "A full day by boat to Ras Mohammed National Park, where the reef walls drop close to shore and marine life density is among the highest on this stretch of coast.\n\nHighlights:\n• Two to three snorkeling stops inside the protected park\n• Reef walls and coral gardens close to the boat\n• Lunch served on board",
     durationDays: 1,
-    priceCents: 178000,
-    currency: "EGP",
+    priceCents: 3700,
+    currency: "USD",
     difficulty: "EASY",
     tags: ["red-sea", "family"],
     heroImage: "/assets/tours/ras-mohammed-snorkeling/1.webp",
@@ -309,8 +312,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "An afternoon into the Eastern Desert just outside Hurghada — quad biking through the dunes, a stop at a Bedouin camp, and sunset over the desert.\n\nHighlights:\n• Guided quad-bike ride through desert dunes\n• Bedouin tea and hospitality stop\n• Sunset over the desert with photo stops",
     durationDays: 1,
-    priceCents: 112000,
-    currency: "EGP",
+    priceCents: 2300,
+    currency: "USD",
     difficulty: "MODERATE",
     tags: ["desert", "family"],
     heroImage: "/assets/tours/desert-safari-quad-bike/1.webp",
@@ -334,8 +337,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "A day on the water off Hurghada, with stops at reef sites close enough to shore that the boat ride out is short and the time in the water is long.\n\nHighlights:\n• Two to three snorkeling stops at different reef sites\n• Lunch served on board\n• Short boat transfers between sites",
     durationDays: 1,
-    priceCents: 105000,
-    currency: "EGP",
+    priceCents: 2200,
+    currency: "USD",
     difficulty: "EASY",
     tags: ["red-sea", "family"],
     heroImage: "/assets/tours/red-sea-snorkeling/1.webp",
@@ -359,8 +362,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "A slow-paced afternoon on the Nile: a felucca sail up to a Nubian village, tea with a local family, and a walk through the village's distinctive painted houses.\n\nHighlights:\n• Traditional felucca sailing on the Nile\n• Tea with a Nubian family\n• The painted houses of a Nubian village",
     durationDays: 1,
-    priceCents: 98000,
-    currency: "EGP",
+    priceCents: 2000,
+    currency: "USD",
     difficulty: "EASY",
     tags: ["classic", "family"],
     heroImage: "/assets/tours/nubian-village-felucca/1.webp",
@@ -384,8 +387,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "Philae Temple, dedicated to Isis and relocated stone by stone in one of the 20th century's largest archaeological rescue projects, paired with a stop at the Aswan High Dam.\n\nHighlights:\n• Philae Temple, reached by a short boat crossing\n• The Temple of Isis's reliefs and hypostyle hall\n• The Aswan High Dam, one of the largest of its kind in the world",
     durationDays: 1,
-    priceCents: 124000,
-    currency: "EGP",
+    priceCents: 2600,
+    currency: "USD",
     difficulty: "EASY",
     tags: ["classic"],
     heroImage: "/assets/tours/philae-temple-high-dam/1.webp",
@@ -408,8 +411,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "Karnak Temple in the morning light, when the hypostyle hall's columns are at their most dramatic, then Luxor Temple again after dark, lit in a way that changes the whole feel of the site.\n\nHighlights:\n• Karnak's Great Hypostyle Hall, 134 columns in the morning light\n• The avenue of sphinxes connecting Karnak to Luxor Temple\n• Luxor Temple illuminated after sunset",
     durationDays: 1,
-    priceCents: 198000,
-    currency: "EGP",
+    priceCents: 4100,
+    currency: "USD",
     difficulty: "EASY",
     tags: ["classic"],
     heroImage: "/assets/tours/karnak-luxor-temple/1.webp",
@@ -432,8 +435,8 @@ const EGP_TOURS: SeedTour[] = [
     descriptionLong:
       "Luxor's West Bank in a single day: royal tombs cut deep into the Valley of the Kings, Hatshepsut's terraced mortuary temple at Deir el-Bahari, and the twin Colossi of Memnon.\n\nHighlights:\n• Entry to three tombs in the Valley of the Kings\n• Hatshepsut's mortuary temple, one of ancient Egypt's most distinctive buildings\n• The Colossi of Memnon",
     durationDays: 1,
-    priceCents: 215000,
-    currency: "EGP",
+    priceCents: 4500,
+    currency: "USD",
     difficulty: "MODERATE",
     tags: ["classic"],
     heroImage: "/assets/tours/valley-of-the-kings/1.webp",
@@ -637,9 +640,9 @@ async function main(): Promise<void> {
     },
   });
 
-  // 6) EGP day/half-day tours — created once; hero image refreshed on re-run.
+  // 6) Day/half-day tours — created once; hero image refreshed on re-run.
   const egpTourIds = new Map<string, string>();
-  for (const t of EGP_TOURS) {
+  for (const t of DAY_TOURS) {
     const created = await db.tour.upsert({
       where: { slug: t.slug },
       update: {
@@ -685,7 +688,7 @@ async function main(): Promise<void> {
     });
     egpTourIds.set(t.slug, created.id);
   }
-  console.log(`  ✓ ${EGP_TOURS.length} EGP day tours`);
+  console.log(`  ✓ ${DAY_TOURS.length} day tours`);
 
   // 7) Tour ↔ destination links (idempotent via composite key).
   const cairoId = destinations.get("cairo") as string;
@@ -697,7 +700,7 @@ async function main(): Promise<void> {
     [luxorTour.id, luxorId, 0],
     [luxorTour.id, sharmId, 1], // optional extension pairing
   ];
-  for (const t of EGP_TOURS) {
+  for (const t of DAY_TOURS) {
     const tourId = egpTourIds.get(t.slug) as string;
     const destId = destinations.get(t.destinationSlug) as string;
     links.push([tourId, destId, 1]);

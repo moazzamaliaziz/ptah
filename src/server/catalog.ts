@@ -663,6 +663,34 @@ export async function getPublishedTourCountsByDestination(): Promise<Record<stri
   return counts;
 }
 
+/**
+ * Localized names for specific destination slugs, in the order asked for.
+ *
+ * Unlike `listDestinationsWithTours` this does NOT require the destination to
+ * have published tours — the homepage focus rail labels its Luxor and Aswan
+ * tabs with these, and must still name a destination whose catalog is empty
+ * (it falls back to curated trip ideas for the cards). A slug with no row is
+ * simply absent, so callers can decide whether to skip it.
+ */
+export async function listDestinationNames(
+  slugs: readonly string[],
+  locale: Locale = defaultLocale,
+): Promise<{ slug: string; name: string }[]> {
+  if (slugs.length === 0) return [];
+  const rows = await db.destination.findMany({
+    where: { slug: { in: [...slugs] } },
+    select: { id: true, slug: true, name: true },
+  });
+  const tr = await getTranslations("Destination", rows.map((r) => r.id), locale);
+  const bySlug = new Map(
+    rows.map((r) => [r.slug, tString(tr.get(r.id), "name", r.name)] as const),
+  );
+  return slugs.flatMap((slug) => {
+    const name = bySlug.get(slug);
+    return name ? [{ slug, name }] : [];
+  });
+}
+
 /** Destinations that have at least one published tour — for the catalog filter. */
 export async function listDestinationsWithTours(
   locale: Locale = defaultLocale,

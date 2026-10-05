@@ -73,6 +73,8 @@ export interface TourFormFieldsDict {
   basePrice: string;
   /** Read-only currency note; carries a {currency} token. */
   currencyNote: string;
+  /** Warning for a tour stored in another currency; {stored} + {currency}. */
+  currencyMismatch: string;
   difficulty: string;
   pricingLegend: string;
   childPrice: string;
@@ -249,6 +251,8 @@ export const toursEn: ToursDict = {
     durationDays: "Duration (days)",
     basePrice: "Base price",
     currencyNote: "All prices are in {currency}.",
+    currencyMismatch:
+      "This tour's price is stored in {stored}, not {currency}. Saving will record the number above as {currency} without converting it — re-enter the price in {currency} first, or the tour will be mispriced.",
     difficulty: "Difficulty",
     pricingLegend: "Passenger pricing & availability",
     childPrice: "Child price (optional)",
@@ -400,6 +404,8 @@ export const toursAr: ToursDict = {
     durationDays: "المدة (أيام)",
     basePrice: "السعر الأساسي",
     currencyNote: "جميع الأسعار بعملة {currency}.",
+    currencyMismatch:
+      "سعر هذه الجولة مخزَّن بعملة {stored} وليس {currency}. سيؤدي الحفظ إلى تسجيل الرقم أعلاه بعملة {currency} دون تحويله — أعد إدخال السعر بعملة {currency} أولًا، وإلا سيصبح سعر الجولة خاطئًا.",
     difficulty: "مستوى الصعوبة",
     pricingLegend: "تسعير المسافرين والإتاحة",
     childPrice: "سعر الطفل (اختياري)",
