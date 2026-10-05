@@ -315,6 +315,21 @@ export default function TourFormFields({ initial, saved, pending, labels, faqLab
             {v.currency}
           </p>
         </div>
+      </div>
+
+      {/* A tour stored in some other currency predates the USD-only rule. Saving
+          stamps SITE_CURRENCY while keeping whatever number is in the box, which
+          would silently reprice it (1450 EGP becoming $1450), so say so loudly
+          rather than letting a save quietly multiply the price ~48x. */}
+      {v.currency !== SITE_CURRENCY ? (
+        <div className="admin-alert admin-alert--warn" role="alert" style={{ marginBottom: "0.75rem" }}>
+          {labels.currencyMismatch
+            .replace("{stored}", v.currency)
+            .replace("{currency}", SITE_CURRENCY)}
+        </div>
+      ) : null}
+
+      <div className="admin-row" style={{ gap: "1rem" }}>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
           <span>{labels.difficulty}</span>
           <select className="admin-input" name="difficulty" defaultValue={v.difficulty}>

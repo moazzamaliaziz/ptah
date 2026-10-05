@@ -74,7 +74,43 @@ export interface InspiredCard {
   href: string;
   days?: number;
   experiences?: number;
+  /** "From" price in minor units — shown on cards built from real catalog
+   *  tours. Curated trip-idea cards leave it unset and show `experiences`. */
+  priceFromCents?: number;
+  currency?: string;
   image: ImageRef;
+}
+
+/**
+ * Trip ideas that belong to each focus destination (P8).
+ *
+ * The homepage "Get Inspired" rail leads with real published tours from Luxor
+ * and Aswan. When a destination has fewer tours than the rail can show, it is
+ * topped up with these — looked up BY HREF inside whichever locale's
+ * `inspiredTabs` is active, so the fallback cards arrive already translated and
+ * no copy has to be duplicated per locale.
+ */
+export const FOCUS_IDEA_SLUGS: Record<string, string[]> = {
+  luxor: ["karnak-luxor-evening", "kings-and-queens-of-thebes", "luxor-sunrise-weekend"],
+  aswan: ["philae-island-aswan", "nubian-village-aswan"],
+};
+
+/**
+ * Pull the cards for `slugs` out of a locale's inspired tabs, in slug order and
+ * deduplicated by href. Several tabs reuse the same trip idea with different
+ * framing; the first match wins, which is the Itineraries one — the version
+ * that carries day and experience counts.
+ */
+export function pickIdeaCards(tabs: InspiredTab[], slugs: string[]): InspiredCard[] {
+  const byHref = new Map<string, InspiredCard>();
+  for (const tab of tabs) {
+    for (const card of tab.cards) {
+      if (!byHref.has(card.href)) byHref.set(card.href, card);
+    }
+  }
+  return slugs
+    .map((slug) => byHref.get(`/trip-ideas/${slug}`))
+    .filter((card): card is InspiredCard => card !== undefined);
 }
 
 export interface InspiredTab {
