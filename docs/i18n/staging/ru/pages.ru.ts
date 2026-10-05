@@ -1321,6 +1321,12 @@ export const ruPages = {
   },
 
   landing: {
+    /** Homepage Luxor & Aswan tour grid (FocusTours). */
+    focusTours: {
+      heading: "Туры по Луксору и Асуану",
+      intro: "Экскурсионные дни среди храмов, усыпальниц и островов Верхнего Египта — цена за человека, бронирование на удобную вам дату.",
+      cta: "Все туры",
+    },
     journalCta: "Читать журнал",
     faqsCta: "Все частые вопросы",
   },

@@ -1391,6 +1391,12 @@ export const arPages = {
   },
 
   landing: {
+    /** Homepage Luxor & Aswan tour grid (FocusTours). */
+    focusTours: {
+      heading: "جولات الأقصر وأسوان",
+      intro: "أيام بصحبة مرشد بين معابد صعيد مصر ومقابره وجزره — بسعر للفرد، ويمكن حجزها في التاريخ الذي يناسبك.",
+      cta: "عرض كل الجولات",
+    },
     journalCta: "اقرأ المدوّنة",
     faqsCta: "عرض كل الأسئلة الشائعة",
   },

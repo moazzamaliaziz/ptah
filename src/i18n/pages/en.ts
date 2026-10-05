@@ -1406,6 +1406,12 @@ export const enPages = {
   },
 
   landing: {
+    /** Homepage Luxor & Aswan tour grid (FocusTours). */
+    focusTours: {
+      heading: "Luxor & Aswan Tours",
+      intro: "Guided days through Upper Egypt's temples, tombs and islands — priced per person, bookable on the date that suits you.",
+      cta: "View all tours",
+    },
     journalCta: "Read the journal",
     faqsCta: "See all FAQs",
   },

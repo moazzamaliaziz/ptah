@@ -29,8 +29,6 @@ import Icon from "@/components/ui/Icon";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { MQ_LAPTOP, useMediaQuery } from "@/hooks/use-media-query";
 import type { InspiredCard, InspiredTab } from "@/content/landing";
-import { formatPriceCents } from "@/lib/utils";
-import { SITE_CURRENCY } from "@/content/currency";
 import { applyRailParallax } from "./rail-parallax";
 import "swiper/css";
 
@@ -53,7 +51,7 @@ function TripCard({ card }: { card: InspiredCard }): JSX.Element {
         </div>
       </div>
       <h3 className="gi-card__title text-trip-h3">{card.title}</h3>
-      {card.days !== undefined || card.experiences !== undefined || card.priceFromCents !== undefined ? (
+      {card.days !== undefined || card.experiences !== undefined ? (
         <dl className="gi-card__meta">
           {card.days !== undefined ? (
             <>
@@ -72,17 +70,6 @@ function TripCard({ card }: { card: InspiredCard }): JSX.Element {
               <dd className="gi-card__meta-item">
                 <Icon name="tag" size={14} className="gi-card__meta-icon" />
                 <span>{card.experiences} Experiences</span>
-              </dd>
-            </>
-          ) : null}
-          {/* Cards built from real catalog tours carry a price instead of an
-              experience count — the "from" rate a traveler would actually pay. */}
-          {card.priceFromCents !== undefined ? (
-            <>
-              <dt className="sr-only">Price from</dt>
-              <dd className="gi-card__meta-item">
-                <Icon name="tag" size={14} className="gi-card__meta-icon" />
-                <span>from {formatPriceCents(card.priceFromCents, card.currency ?? SITE_CURRENCY)}</span>
               </dd>
             </>
           ) : null}

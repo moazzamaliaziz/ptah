@@ -1391,6 +1391,12 @@ export const dePages = {
   },
 
   landing: {
+    /** Homepage Luxor & Aswan tour grid (FocusTours). */
+    focusTours: {
+      heading: "Touren in Luxor & Assuan",
+      intro: "Geführte Tage durch die Tempel, Gräber und Inseln Oberägyptens — Preis pro Person, buchbar an dem Tag, der Ihnen passt.",
+      cta: "Alle Touren ansehen",
+    },
     journalCta: "Zum Journal",
     faqsCta: "Alle FAQ ansehen",
   },

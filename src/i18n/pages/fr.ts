@@ -1391,6 +1391,12 @@ export const frPages = {
   },
 
   landing: {
+    /** Homepage Luxor & Aswan tour grid (FocusTours). */
+    focusTours: {
+      heading: "Circuits à Louxor et Assouan",
+      intro: "Des journées guidées parmi les temples, tombeaux et îles de Haute-Égypte — prix par personne, réservables à la date qui vous convient.",
+      cta: "Voir tous les circuits",
+    },
     journalCta: "Lire le journal",
     faqsCta: "Voir toutes les FAQ",
   },
