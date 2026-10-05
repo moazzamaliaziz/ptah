@@ -44,15 +44,32 @@ function IntegrationCard({ item, canManage, labels, helpLabel }: { item: Integra
                 <em style={{ fontWeight: 400, opacity: 0.6 }}> · {f.isSet ? labels.secretSet : labels.secretNotSet}</em>
               ) : null}
             </span>
-            <input
-              className="admin-input"
-              type={f.secret ? "password" : "text"}
-              name={f.name}
-              defaultValue={f.value}
-              placeholder={f.secret ? (f.isSet ? "••••••••" : f.placeholder ?? "") : f.placeholder ?? ""}
-              autoComplete="off"
-              disabled={!canManage}
-            />
+            {f.options ? (
+              /* A fixed choice renders as a select seeded with the value ACTUALLY
+                 in force — an empty stored value falls back, so the control can
+                 never show a greyed placeholder that looks like a setting while
+                 the server quietly uses something else. */
+              <select
+                className="admin-input"
+                name={f.name}
+                defaultValue={f.value || f.fallback || f.options[0]?.value}
+                disabled={!canManage}
+              >
+                {f.options.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="admin-input"
+                type={f.secret ? "password" : "text"}
+                name={f.name}
+                defaultValue={f.value}
+                placeholder={f.secret ? (f.isSet ? "••••••••" : f.placeholder ?? "") : f.placeholder ?? ""}
+                autoComplete="off"
+                disabled={!canManage}
+              />
+            )}
           </label>
         ))}
 
