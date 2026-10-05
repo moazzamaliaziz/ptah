@@ -126,16 +126,28 @@ const isoDateSchema = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose your travel date");
 
-/** The three date fields the funnel posts, narrowed to a DateSelection. An
- *  empty string counts as absent: unused hidden inputs post "" , not nothing. */
+/**
+ * The three date fields the funnel posts, narrowed to a DateSelection.
+ *
+ * `nullish`, not `optional`, and that distinction is load-bearing: only ONE of
+ * the two shapes is ever rendered, so the other's inputs are absent from the
+ * form, and `formData.get()` returns **null** — not undefined — for a field
+ * that is not there. A plain `.optional()` rejects null outright ("expected
+ * string, received null") and fails every single booking. Absent, null and ""
+ * all mean the same thing here: not supplied.
+ */
 const dateSelectionFields = {
-  departureId: z.string().trim().optional(),
-  tourSlug: z.string().trim().optional(),
-  departureDate: z.string().trim().optional(),
+  departureId: z.string().trim().nullish(),
+  tourSlug: z.string().trim().nullish(),
+  departureDate: z.string().trim().nullish(),
 };
 
 function narrowDateSelection(
-  data: { departureId?: string; tourSlug?: string; departureDate?: string },
+  data: {
+    departureId?: string | null;
+    tourSlug?: string | null;
+    departureDate?: string | null;
+  },
   ctx: z.RefinementCtx,
 ): DateSelection | undefined {
   if (data.departureDate) {
