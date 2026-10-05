@@ -1,13 +1,19 @@
 -- P8: price-per-person-by-group-size tiers + customer-chosen departure dates.
 --
--- Additive except for one new UNIQUE index on `tour_departures(tourId,
--- startDate)`, which is what makes the customer-chosen-date path race-safe (the
--- reserve path upserts the departure for the picked date). Duplicate
--- (tour, start date) rows were always a data error; the cleanup below drops only
--- the ones that carry NO bookings, keeping the oldest row of each group. A
--- duplicate pair where BOTH rows have bookings cannot be resolved
--- automatically — the index creation will fail loudly in that case, which is
--- the correct outcome (a human has to merge those departures).
+-- Purely additive. Nothing in this migration deletes or rewrites a row: the
+-- only pre-existing object it touches is a redundant index, and that only after
+-- its replacement exists.
+--
+-- If the UNIQUE index at the end fails, the database has duplicate
+-- (tourId, startDate) departures. That was always a data error — nothing in the
+-- app creates them — and it is NOT resolved here, because a build-time
+-- migration is the wrong place to delete production rows. Find them with:
+--
+--   SELECT tourId, startDate, COUNT(*) c, GROUP_CONCAT(id) ids
+--   FROM tour_departures GROUP BY tourId, startDate HAVING c > 1;
+--
+-- then merge each group by hand (move any bookings onto the row you keep, then
+-- delete the others) and re-run the deploy.
 
 -- 1) Group-size pricing tiers. `maxPax` NULL = "and above" (the open-ended top
 --    band). Non-overlap is enforced at the admin boundary, not here.
@@ -38,21 +44,19 @@ ALTER TABLE `tours`
   ADD COLUMN `requestCapacity` INTEGER NOT NULL DEFAULT 20,
   ADD COLUMN `blackoutDates` JSON NULL;
 
--- 3) Drop booking-free duplicate departures, keeping the oldest of each
---    (tourId, startDate) group, then make that pair unique.
-DELETE `d` FROM `tour_departures` AS `d`
-  JOIN (
-    SELECT `tourId`, `startDate`, MIN(`createdAt`) AS `keepFrom`
-    FROM `tour_departures`
-    GROUP BY `tourId`, `startDate`
-    HAVING COUNT(*) > 1
-  ) AS `dupe`
-    ON `dupe`.`tourId` = `d`.`tourId` AND `dupe`.`startDate` = `d`.`startDate`
-  LEFT JOIN `bookings` AS `b` ON `b`.`departureId` = `d`.`id`
-  WHERE `d`.`createdAt` > `dupe`.`keepFrom` AND `b`.`id` IS NULL;
-
--- The old non-unique index is subsumed by the new UNIQUE one.
-DROP INDEX `tour_departures_tourId_startDate_idx` ON `tour_departures`;
-
+-- 3) One departure per tour per start date. This is what makes the
+--    customer-chosen-date path race-safe: concurrent first-bookings of the same
+--    date both reach `upsert`, one creates and the other reads, so a date can
+--    never end up with two independent capacity pools.
+--
+--    ORDER MATTERS. `tour_departures.tourId` carries a foreign key to
+--    `tours.id`, and MySQL/TiDB require that FK to be backed by an index whose
+--    leftmost column is `tourId`. Today that is the non-unique
+--    (tourId, startDate) index. Dropping it before its replacement exists
+--    fails with errno 1553 ("needed in a foreign key constraint"), so the new
+--    UNIQUE index — which satisfies the FK just as well — is created FIRST and
+--    the now-redundant non-unique index is dropped only afterwards.
 CREATE UNIQUE INDEX `tour_departures_tourId_startDate_key`
   ON `tour_departures`(`tourId`, `startDate`);
+
+DROP INDEX `tour_departures_tourId_startDate_idx` ON `tour_departures`;
