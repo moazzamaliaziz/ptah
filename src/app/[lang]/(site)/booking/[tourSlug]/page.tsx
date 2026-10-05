@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 import Container from "@/components/layout/Container";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import BookingForm, {
+  type BookingCalendarConfig,
   type BookingDepartureOption,
   type PaymentMethod,
 } from "@/components/commerce/BookingForm";
 import { getTourDetail } from "@/server/catalog";
+import { dateWindowBounds, isDateSelectable, toIsoDate } from "@/server/booking-core";
 import { getToggles } from "@/server/toggles";
 import { toLocale } from "@/i18n/config";
 import { getPageContent } from "@/i18n/pages";
@@ -71,10 +73,10 @@ export default async function BookingPage({
   searchParams,
 }: {
   params: Promise<{ lang: string; tourSlug: string }>;
-  searchParams: Promise<{ departure?: string }>;
+  searchParams: Promise<{ departure?: string; date?: string }>;
 }) {
   const { lang, tourSlug } = await params;
-  const { departure } = await searchParams;
+  const { departure, date } = await searchParams;
   const locale = toLocale(lang);
   const [tour, pc] = await Promise.all([
     getTourDetail(tourSlug, locale),
@@ -91,7 +93,37 @@ export default async function BookingPage({
     remainingCapacity: d.remainingCapacity,
   }));
 
-  const anyBookable = options.some((o) => o.remainingCapacity > 0);
+  // P8: when the tour takes customer-chosen dates the funnel shows a calendar
+  // instead of this list. Its bounds are computed HERE, on the server, and
+  // handed down as plain "YYYY-MM-DD" strings — the component never reads a
+  // clock, so the rendered grid can't disagree with the server's own check.
+  const calendar: BookingCalendarConfig | null = tour.onRequestDates
+    ? (() => {
+        const { first, last } = dateWindowBounds(tour.dateWindow);
+        // Days the operator already has a departure for that is full or closed:
+        // inside the window, but not actually bookable today.
+        const unavailableDates = tour.departures
+          .filter((d) => d.soldOut)
+          .map((d) => toIsoDate(d.startDate));
+        return {
+          tourSlug: tour.slug,
+          firstDate: toIsoDate(first),
+          lastDate: toIsoDate(last),
+          blackoutDates: [...tour.dateWindow.blackoutDates],
+          unavailableDates,
+          capacity: tour.requestCapacity,
+          // Honour a `?date=` deep link only if it is genuinely bookable.
+          initialDate:
+            date && isDateSelectable(date, tour.dateWindow) && !unavailableDates.includes(date)
+              ? date
+              : undefined,
+        };
+      })()
+    : null;
+
+  // With a calendar there is always something to book, so the "no seats" state
+  // only applies to the fixed-departure funnel.
+  const anyBookable = calendar != null || options.some((o) => o.remainingCapacity > 0);
 
   // Payment methods offered are the enabled runtime toggles. Falls back to card
   // so the funnel still renders (and gracefully routes to manual follow-up) when
@@ -141,6 +173,10 @@ export default async function BookingPage({
                 labels={t.form}
                 childPriceCents={tour.childPriceCents}
                 infantPriceCents={tour.infantPriceCents}
+                calendar={calendar ?? undefined}
+                basePriceCents={tour.basePriceCents}
+                priceTiers={tour.priceTiers}
+                currency={tour.currency}
               />
             ) : (
               <div className="rounded-xl border border-grey-300/60 bg-papyrus/50 p-8 text-center">

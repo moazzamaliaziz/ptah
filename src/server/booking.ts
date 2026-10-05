@@ -35,11 +35,15 @@ import {
   MIN_SEATS,
   PASSENGER_TYPES,
   ReserveError,
+  assertSelectableDate,
   assertValidCounts,
   evaluateCoupon,
+  parseBlackoutDates,
   priceBooking,
   reserveSeatsWith,
+  resolveRequestDepartureWith,
   type CouponRejectionReason,
+  type DateWindow,
   type PassengerCounts,
   type PassengerType,
   type PriceBreakdown,
@@ -92,9 +96,72 @@ export const contactSchema = z.object({
 });
 export type ContactInfo = z.infer<typeof contactSchema>;
 
+/**
+ * How the traveler told us WHEN they want to go (P8). Two shapes:
+ *   • `date` — they picked a day in the calendar, which is the funnel's default.
+ *     We carry the tour slug with it because a date on its own does not say
+ *     which tour, and the departure row for that day may not exist yet.
+ *   • `departure` — they picked one of the admin-scheduled departures, the
+ *     pre-P8 behaviour, still used by tours with `onRequestDates` off and by
+ *     any `?departure=<id>` deep link.
+ *
+ * Both resolve to a departure id before any seats are claimed, so there is
+ * exactly one reserve path and one oversell guarantee below this point.
+ */
+export type DateSelection =
+  | { kind: "departure"; departureId: string }
+  | { kind: "date"; tourSlug: string; isoDate: string };
+
+const tourSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(191)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Choose a tour");
+
+/** The `YYYY-MM-DD` value an <input type="date"> / the calendar posts. */
+const isoDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose your travel date");
+
+/** The three date fields the funnel posts, narrowed to a DateSelection. An
+ *  empty string counts as absent: unused hidden inputs post "" , not nothing. */
+const dateSelectionFields = {
+  departureId: z.string().trim().optional(),
+  tourSlug: z.string().trim().optional(),
+  departureDate: z.string().trim().optional(),
+};
+
+function narrowDateSelection(
+  data: { departureId?: string; tourSlug?: string; departureDate?: string },
+  ctx: z.RefinementCtx,
+): DateSelection | undefined {
+  if (data.departureDate) {
+    const date = isoDateSchema.safeParse(data.departureDate);
+    const slug = tourSlugSchema.safeParse(data.tourSlug);
+    if (!date.success || !slug.success) {
+      ctx.addIssue({
+        code: "custom",
+        message: date.success ? "Choose a tour" : "Choose your travel date",
+        path: ["departureDate"],
+      });
+      return undefined;
+    }
+    return { kind: "date", tourSlug: slug.data, isoDate: date.data };
+  }
+  const id = z.uuid().safeParse(data.departureId);
+  if (!id.success) {
+    ctx.addIssue({ code: "custom", message: "Choose your travel date", path: ["departureDate"] });
+    return undefined;
+  }
+  return { kind: "departure", departureId: id.data };
+}
+
 export const createBookingSchema = z
   .object({
-    departureId: z.uuid("Choose a departure date"),
+    ...dateSelectionFields,
     // P4 per-passenger-type counts. At least one adult; the total is bounded by
     // MAX_SEATS via the refine below (booking-core re-validates as the SSOT).
     adults: z.coerce.number().int().min(1, "At least one adult is required").max(MAX_SEATS),
@@ -114,7 +181,8 @@ export const createBookingSchema = z
   .refine((d) => d.adults + d.children + d.infants <= MAX_SEATS, {
     message: `Up to ${MAX_SEATS} travelers per booking.`,
     path: ["adults"],
-  });
+  })
+  .transform((d, ctx) => ({ ...d, selection: narrowDateSelection(d, ctx) }));
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 // ── Result types ──────────────────────────────────────────────────────────
@@ -146,7 +214,85 @@ const RESERVE_MESSAGES: Record<ReserveFailureReason, string> = {
   BOOKING_CLOSED: "This tour is not accepting online bookings right now. Please contact us to arrange your trip.",
   PRICE_UNAVAILABLE: "One of the selected traveler types is not available on this tour.",
   COUPON_INVALID: "That discount code is not valid for this booking. Remove it or enter a different code.",
+  DATE_UNAVAILABLE:
+    "That travel date isn’t available. Please pick another date on the calendar, or contact us to arrange it.",
 };
+
+// ── Resolving a customer-chosen date to a departure ─────────────────────────
+
+/** The tour fields the date-selection path needs. */
+const requestTourSelect = {
+  id: true,
+  durationDays: true,
+  bookingClosed: true,
+  onRequestDates: true,
+  requestLeadDays: true,
+  requestWindowDays: true,
+  requestCapacity: true,
+  blackoutDates: true,
+} as const;
+
+type RequestTourRow = {
+  id: string;
+  durationDays: number;
+  bookingClosed: boolean;
+  onRequestDates: boolean;
+  requestLeadDays: number;
+  requestWindowDays: number;
+  requestCapacity: number;
+  blackoutDates: unknown;
+};
+
+function windowOf(tour: RequestTourRow): DateWindow {
+  return {
+    leadDays: tour.requestLeadDays,
+    windowDays: tour.requestWindowDays,
+    blackoutDates: parseBlackoutDates(tour.blackoutDates),
+  };
+}
+
+/**
+ * Load the tour behind a customer-chosen date and check it may be booked on a
+ * chosen date at all. Throws ReserveError, so it reads the same as every other
+ * reserve guard. Only PUBLISHED tours resolve — a draft or archived tour is
+ * "not found" to the public funnel, exactly as elsewhere in the catalog.
+ */
+async function loadRequestTour(client: Prisma.TransactionClient | typeof db, tourSlug: string) {
+  const tour = await client.tour.findFirst({
+    where: { slug: tourSlug, status: "PUBLISHED" },
+    select: requestTourSelect,
+  });
+  if (!tour) throw new ReserveError("DEPARTURE_NOT_FOUND");
+  if (tour.bookingClosed) throw new ReserveError("BOOKING_CLOSED");
+  // A tour whose dates are not on request has no calendar; accepting an
+  // arbitrary date for it would invent inventory the operator never offered.
+  if (!tour.onRequestDates) throw new ReserveError("DATE_UNAVAILABLE");
+  return tour;
+}
+
+/**
+ * Turn a DateSelection into the departure id to claim seats on, creating the
+ * departure when the traveler is the first to ask for that date.
+ *
+ * Runs on the caller's transaction client so the departure it may create lives
+ * and dies with the reservation: if the seat claim or the coupon check fails,
+ * the rollback takes the new departure row with it and the calendar is left
+ * exactly as it was.
+ */
+async function resolveSelectionWith(
+  tx: Prisma.TransactionClient,
+  selection: DateSelection,
+): Promise<string> {
+  if (selection.kind === "departure") return selection.departureId;
+  const tour = await loadRequestTour(tx, selection.tourSlug);
+  const startDate = assertSelectableDate(selection.isoDate, windowOf(tour));
+  return resolveRequestDepartureWith(tx, {
+    tourId: tour.id,
+    startDate,
+    durationDays: tour.durationDays,
+    capacity: tour.requestCapacity,
+  });
+}
 
 /**
  * Parse the frozen price breakdown stored on a booking (Booking.pricing JSON).
@@ -189,7 +335,12 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
     const first = parsed.error.issues[0];
     return { ok: false, reason: "INVALID_INPUT", message: first?.message ?? "Invalid booking details." };
   }
-  const { departureId, adults, children, infants, coupon, contact } = parsed.data;
+  const { selection, adults, children, infants, coupon, contact } = parsed.data;
+  // `narrowDateSelection` already raised the issue that made it undefined, so
+  // safeParse would have failed; this is a type narrowing, not a second check.
+  if (!selection) {
+    return { ok: false, reason: "INVALID_INPUT", message: "Choose your travel date." };
+  }
   const counts: PassengerCounts = { adult: adults, child: children, infant: infants };
 
   const user = await getSessionUser();
@@ -202,14 +353,23 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
   const originCountry = contact.billing.country;
 
   try {
-    const reserved = await reserveSeatsWith(db, {
-      departureId,
-      counts,
-      userId,
-      guestEmail,
-      originCountry,
-      couponCode: coupon ?? null,
-      contactInfo: contact as unknown as Prisma.InputJsonValue,
+    // One transaction spans resolving the date AND claiming the seats, so a
+    // departure materialized for a customer-chosen date is never left behind by
+    // a reservation that then failed.
+    const { reserved, departureId } = await db.$transaction(async (tx) => {
+      const id = await resolveSelectionWith(tx, selection);
+      return {
+        departureId: id,
+        reserved: await reserveSeatsWith(tx, {
+          departureId: id,
+          counts,
+          userId,
+          guestEmail,
+          originCountry,
+          couponCode: coupon ?? null,
+          contactInfo: contact as unknown as Prisma.InputJsonValue,
+        }),
+      };
     });
 
     await writeAudit({
@@ -219,6 +379,9 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
       entityId: reserved.bookingId,
       meta: {
         departureId,
+        // Which way the date arrived is worth auditing: a departure
+        // materialized from a calendar pick has no admin behind it.
+        dateSource: selection.kind === "date" ? `requested:${selection.isoDate}` : "scheduled",
         seats: reserved.seats,
         counts: { ...counts },
         totalCents: reserved.totalCents,
@@ -267,7 +430,7 @@ const validateCouponSchema = z
       .min(1, "Enter a discount code")
       .max(40)
       .transform((c) => c.toUpperCase()),
-    departureId: z.uuid("Choose a departure date"),
+    ...dateSelectionFields,
     adults: z.coerce.number().int().min(1).max(MAX_SEATS),
     children: z.coerce.number().int().min(0).max(MAX_SEATS),
     infants: z.coerce.number().int().min(0).max(MAX_SEATS),
@@ -275,7 +438,8 @@ const validateCouponSchema = z
   .refine((d) => d.adults + d.children + d.infants <= MAX_SEATS, {
     message: `Up to ${MAX_SEATS} travelers per booking.`,
     path: ["adults"],
-  });
+  })
+  .transform((d, ctx) => ({ ...d, selection: narrowDateSelection(d, ctx) }));
 
 export type CouponPreview =
   | { ok: true; code: string; discountCents: number; netCents: number; grossCents: number; currency: string }
@@ -294,7 +458,8 @@ export async function validateCoupon(raw: unknown): Promise<CouponPreview> {
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid discount code." };
   }
-  const { code, departureId, adults, children, infants } = parsed.data;
+  const { code, selection, adults, children, infants } = parsed.data;
+  if (!selection) return { ok: false, message: "Choose your travel date." };
   const counts: PassengerCounts = { adult: adults, child: children, infant: infants };
 
   try {
@@ -303,32 +468,18 @@ export async function validateCoupon(raw: unknown): Promise<CouponPreview> {
     return { ok: false, message: "Choose your travelers before applying a code." };
   }
 
-  const dep = await db.tourDeparture.findUnique({
-    where: { id: departureId },
-    select: {
-      priceOverrideCents: true,
-      tour: {
-        select: {
-          basePriceCents: true,
-          childPriceCents: true,
-          infantPriceCents: true,
-          currency: true,
-          bookingClosed: true,
-        },
-      },
-    },
-  });
-  if (!dep) return { ok: false, message: "That departure could not be found." };
-  if (dep.tour.bookingClosed) {
-    return { ok: false, message: "This tour is not accepting online bookings right now." };
+  // Read-only pricing for the selection. The date branch deliberately does NOT
+  // go through resolveSelectionWith: previewing a code must never create a
+  // departure row, so it prices straight off the tour (a date the customer has
+  // not booked yet has no override by definition).
+  let pricing: TourPricing;
+  try {
+    pricing = await loadPricingForPreview(selection);
+  } catch (error) {
+    if (error instanceof ReserveError) return { ok: false, message: RESERVE_MESSAGES[error.reason] };
+    throw error;
   }
 
-  const pricing: TourPricing = {
-    adultCents: dep.priceOverrideCents ?? dep.tour.basePriceCents,
-    childCents: dep.tour.childPriceCents,
-    infantCents: dep.tour.infantPriceCents,
-    currency: dep.tour.currency,
-  };
   let grossCents: number;
   try {
     grossCents = priceBooking(counts, pricing).totalCents;
@@ -342,7 +493,7 @@ export async function validateCoupon(raw: unknown): Promise<CouponPreview> {
   const redemptions = await db.booking.count({
     where: { couponCode: coupon.code, status: { notIn: ["FAILED", "CANCELLED"] } },
   });
-  const outcome = evaluateCoupon({ coupon, grossCents, currency: dep.tour.currency, redemptions });
+  const outcome = evaluateCoupon({ coupon, grossCents, currency: pricing.currency, redemptions });
   if (!outcome.ok) return { ok: false, message: COUPON_REJECTION_MESSAGES[outcome.reason] };
 
   return {
@@ -351,7 +502,57 @@ export async function validateCoupon(raw: unknown): Promise<CouponPreview> {
     discountCents: outcome.discountCents,
     netCents: outcome.netCents,
     grossCents,
+    currency: pricing.currency,
+  };
+}
+
+/** Shared tour price columns — one shape for both preview branches. */
+const pricingTourSelect = {
+  basePriceCents: true,
+  childPriceCents: true,
+  infantPriceCents: true,
+  currency: true,
+  bookingClosed: true,
+  priceTiers: { select: { minPax: true, maxPax: true, pricePerPersonCents: true } },
+} as const;
+
+/**
+ * Resolve the per-type prices for a selection, read-only. Mirrors the pricing
+ * `reserveSeatsWith` computes — same override precedence, same tiers — so a
+ * previewed discount matches the final charge to the cent. Throws ReserveError
+ * for a selection the funnel must refuse.
+ */
+async function loadPricingForPreview(selection: DateSelection): Promise<TourPricing> {
+  if (selection.kind === "date") {
+    const tour = await loadRequestTour(db, selection.tourSlug);
+    // Re-check the date here too: a code previewed against a date the server
+    // would refuse would quote a total the customer can never actually pay.
+    assertSelectableDate(selection.isoDate, windowOf(tour));
+    const prices = await db.tour.findUniqueOrThrow({
+      where: { id: tour.id },
+      select: pricingTourSelect,
+    });
+    return {
+      adultCents: prices.basePriceCents,
+      childCents: prices.childPriceCents,
+      infantCents: prices.infantPriceCents,
+      currency: prices.currency,
+      tiers: prices.priceTiers,
+    };
+  }
+
+  const dep = await db.tourDeparture.findUnique({
+    where: { id: selection.departureId },
+    select: { priceOverrideCents: true, tour: { select: pricingTourSelect } },
+  });
+  if (!dep) throw new ReserveError("DEPARTURE_NOT_FOUND");
+  if (dep.tour.bookingClosed) throw new ReserveError("BOOKING_CLOSED");
+  return {
+    adultCents: dep.priceOverrideCents ?? dep.tour.basePriceCents,
+    childCents: dep.tour.childPriceCents,
+    infantCents: dep.tour.infantPriceCents,
     currency: dep.tour.currency,
+    tiers: dep.priceOverrideCents == null ? dep.tour.priceTiers : [],
   };
 }
 

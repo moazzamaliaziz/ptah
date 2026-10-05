@@ -8,7 +8,7 @@ import type { TourFormFieldsDict, FaqEditorDict } from "@/i18n/admin/dictionary"
 
 export interface TourEditorProps {
   /** Core tour fields — itinerary/departures/links are sibling page sections. */
-  tour: TourInput & { id: string; status: string; basePriceCents: number };
+  tour: TourInput & { id: string; status: string; basePriceCents: number; currency: string };
   /** Localized field labels forwarded to <TourFormFields>. */
   fields: TourFormFieldsDict;
   /** Localized labels for the nested FAQ editor. */

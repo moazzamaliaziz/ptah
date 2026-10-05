@@ -67,12 +67,12 @@ export const en = {
       "Private Cairo Tour",
       "Christmas in Egypt",
     ],
-    /** Mega-menu sections, in order: About Egypt, Plan Your Trip, Tours, Journal. */
+    /** Mega-menu sections, in order: About Egypt, Plan Your Trip, Tours. */
     sections: [
       {
         title: "About Egypt",
         columns: [
-          { heading: "Destinations", links: ["Cairo", "Luxor", "Aswan", "Alexandria", "Hurghada", "Sharm El Sheikh"] },
+          { heading: "Destinations", links: ["Luxor", "Aswan", "Cairo", "Alexandria", "Hurghada", "Sharm El Sheikh"] },
           { heading: "Know the Land", links: ["History & Heritage", "Seasons & Climate", "The Nile", "Deserts & Oases", "Red Sea Reefs"] },
           { heading: "Good to Know", links: ["Responsible Travel", "Accessibility", "Safety & Support", "Stories & Journal"] },
         ],
@@ -86,7 +86,6 @@ export const en = {
         title: "Plan Your Trip",
         columns: [
           { heading: "Getting There", links: ["Flights to Egypt", "Visas & Entry", "Arrival Days, Handled", "Getting Around"] },
-          { heading: "Deciding", links: ["When to Visit", "How Many Days", "Budget & Tipping", "Traveling with Kids"] },
           { heading: "Our Promise", links: ["How Ptah Trips Work", "Responsible Travel", "Reviews & Accreditation", "Contact the Team"] },
         ],
         imageCtas: [
@@ -98,27 +97,14 @@ export const en = {
       {
         title: "Tours",
         columns: [
+          { heading: "Luxor Tours", links: ["All Luxor Tours", "Temples & Tombs", "Nile Cruises from Luxor", "Explore Luxor"] },
+          { heading: "Aswan Tours", links: ["All Aswan Tours", "Abu Simbel & Philae", "Nile Cruises from Aswan", "Explore Aswan"] },
           { heading: "By Style", links: ["Classic Egypt", "Nile Cruises", "Red Sea & Beach", "Desert Adventures"] },
-          { heading: "By Length", links: ["Day Tours", "2–4 Day Trips", "5–9 Day Journeys", "10+ Day Expeditions"] },
-          { heading: "Special", links: ["Private & Tailor-Made", "Family Trips", "Honeymoons", "Last-Minute Departures"] },
         ],
         imageCtas: [
-          { label: "Signature Journey", heading: "Classic Egypt, 8 Days" },
+          { label: "West Bank", heading: "Luxor, Temple to Tomb" },
           { label: "On the River", heading: "Nile Cruise Collection" },
-          { label: "Under the Water", heading: "Dive & Snorkel Trips" },
-        ],
-      },
-      {
-        title: "Journal",
-        columns: [
-          { heading: "Start Here", links: ["Best Time to Visit", "First Nile Cruise", "7-Day Itinerary", "What to Pack"] },
-          { heading: "Places & Stories", links: ["Cairo Beyond the Guidebook", "Alexandria's Soul", "Beyond Giza", "An Evening at Karnak"] },
-          { heading: "Travel Smart", links: ["Egypt with Kids", "Red Sea Reef Etiquette", "Slow Nile Felucca Days", "All Journal Posts"] },
-        ],
-        imageCtas: [
-          { label: "Trip Planning", heading: "When to Visit Egypt" },
-          { label: "On the River", heading: "A First Nile Cruise" },
-          { label: "With the Family", heading: "Egypt with Kids" },
+          { label: "Upriver", heading: "Aswan & Abu Simbel" },
         ],
       },
     ],

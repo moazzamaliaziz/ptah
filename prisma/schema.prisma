@@ -156,6 +156,8 @@ model Tour {
   /// This is the ADULT price. Per-passenger-type pricing (P4) layers the two
   /// optional columns below on top; a departure `priceOverrideCents` overrides
   /// the ADULT price only.
+  /// This is also the FALLBACK adult price: when `priceTiers` holds a tier
+  /// matching the party size, that tier's per-person price wins over this.
   basePriceCents   Int
   /// P4 per-passenger-type pricing (minor units). NULL ⇒ that passenger type is
   /// NOT offered on this tour (its selector is hidden at checkout). May be 0
@@ -163,6 +165,9 @@ model Tour {
   /// per-type overrides.
   childPriceCents  Int?
   infantPriceCents Int?
+  /// Every price on the site is USD (see SITE_CURRENCY in src/content/currency.ts).
+  /// The column stays so historical rows and the money helpers keep their
+  /// currency pairing, but the app writes only "USD".
   currency         String     @default("USD") @db.Char(3)
   difficulty       Difficulty @default(EASY)
   /// Path under /public/assets (image library lands in a later phase) or CDN URL.
@@ -173,6 +178,21 @@ model Tour {
   /// booking-core rejects new reservations (defense in depth). Distinct from
   /// status ARCHIVED (hidden) and per-departure CLOSED.
   bookingClosed    Boolean    @default(false)
+  /// P8 customer-chosen dates. When true the booking funnel shows a calendar and
+  /// the traveler picks any date inside the window below; the reserve path
+  /// creates (or reuses) the departure for that date. When false the funnel
+  /// falls back to the admin-scheduled departures only.
+  onRequestDates   Boolean    @default(true)
+  /// Minimum days between today (UTC) and the earliest selectable date.
+  requestLeadDays  Int        @default(2)
+  /// How far ahead the calendar opens, in days from today (UTC).
+  requestWindowDays Int       @default(365)
+  /// Seats a departure auto-created from a calendar pick is opened with.
+  requestCapacity  Int        @default(20)
+  /// Dates the calendar must refuse, as a JSON array of "YYYY-MM-DD" strings.
+  /// Same Json-array rationale as the lists below: read with the tour, never
+  /// filtered relationally.
+  blackoutDates    Json?      // string[] of YYYY-MM-DD
   // JSON string arrays — chosen over child tables because these lists are
   // read together with the tour and never filtered/joined relationally.
   inclusions      Json? // string[]
@@ -204,10 +224,41 @@ model Tour {
   itinerary    ItineraryDay[]
   wishlists    Wishlist[]
   tripIdeas    TripIdeaTour[]
+  priceTiers   TourPriceTier[]
 
   @@index([status])
   @@index([status, createdAt])
   @@map("tours")
+}
+
+/// P8 "price per person by group size". One row = one party-size band and the
+/// per-person price inside it. The band that contains the TOTAL traveler count
+/// (adults + children + infants) sets the per-person ADULT price; child/infant
+/// prices stay on the tour. A tour with no tiers simply prices adults at
+/// `basePriceCents`, so this table is purely additive.
+///
+/// Bands are half-open on the top: `maxPax` NULL means "and above", which is
+/// how the last band ("7+") is expressed. Non-overlap is enforced at the admin
+/// boundary (see groupPriceTiersSchema) rather than by a DB constraint, which
+/// cannot express it portably; `resolveTierPriceCents` additionally picks the
+/// narrowest match so even bad data prices deterministically.
+model TourPriceTier {
+  id                   String @id @default(uuid()) @db.Char(36)
+  tourId               String @db.Char(36)
+  /// Smallest party size this band covers (>= 1).
+  minPax               Int
+  /// Largest party size covered, or NULL for "no upper bound".
+  maxPax               Int?
+  /// Per-person price in integer minor units, paired with `tour.currency`.
+  pricePerPersonCents  Int
+  sortOrder            Int    @default(0)
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  /// One band per starting size — the admin editor rewrites the whole set.
+  @@unique([tourId, minPax])
+  @@index([tourId, sortOrder])
+  @@map("tour_price_tiers")
 }
 
 model Destination {
@@ -269,7 +320,11 @@ model TourDeparture {
   tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings Booking[]
 
-  @@index([tourId, startDate])
+  /// P8: one departure per tour per start date. This is what makes the
+  /// customer-chosen-date path race-safe — two simultaneous bookings for the
+  /// same new date both reach `upsert`, one creates and the other reads, so a
+  /// date can never end up with two independent capacity pools.
+  @@unique([tourId, startDate])
   @@index([status, startDate])
   @@map("tour_departures")
 }

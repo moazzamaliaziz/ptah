@@ -14,12 +14,18 @@ import { logger } from "@/lib/logger";
 import {
   DEPARTING_SOON_DAYS,
   durationInBucket,
+  focusRank,
   type LengthToken,
   type TourTag,
   type TourSort,
   type TourDifficulty,
 } from "@/content/tour-tags";
 import { defaultLocale, type Locale } from "@/i18n/config";
+import {
+  parseBlackoutDates,
+  type DateWindow,
+  type GroupPriceTier,
+} from "@/server/booking-core";
 import {
   getTranslations,
   getRecordTranslation,
@@ -51,6 +57,9 @@ export interface TourListItem {
   difficulty: string;
   heroImage: string | null;
   destinations: string[];
+  /** Unlocalized destination slugs, in link order. Used for the featured sort;
+   *  `destinations` above holds the display names, which vary by locale. */
+  destinationSlugs: string[];
   tags: string[];
   nextDeparture: Date | null;
   openDepartureCount: number;
@@ -127,6 +136,17 @@ export interface TourDetail {
   ogImage: string | null;
   /** P4 close-tour toggle: tour is visible but online booking is disabled. */
   bookingClosed: boolean;
+  /** P8 group-size price bands, ascending by party size. Empty ⇒ one flat adult
+   *  price (`basePriceCents`). */
+  priceTiers: GroupPriceTier[];
+  /** P8 customer-chosen dates: true ⇒ the funnel shows a calendar over the
+   *  window below instead of a list of scheduled departures. */
+  onRequestDates: boolean;
+  /** P8 calendar rules — the same values the server re-checks on submit. */
+  dateWindow: DateWindow;
+  /** P8 seats a date materialized from a calendar pick opens with; also the
+   *  party-size cap the funnel shows in calendar mode. */
+  requestCapacity: number;
   destinations: { slug: string; name: string; region: string | null }[];
   itinerary: { dayNumber: number; title: string; description: string }[];
   departures: DepartureView[];
@@ -168,8 +188,9 @@ const tourListSelect = {
   tags: true,
   destinations: {
     orderBy: { sortOrder: "asc" },
-    select: { destination: { select: { id: true, name: true } } },
+    select: { destination: { select: { id: true, slug: true, name: true } } },
   },
+  priceTiers: { select: { pricePerPersonCents: true } },
   departures: {
     where: openFutureDepartureWhere(),
     orderBy: { startDate: "asc" },
@@ -188,7 +209,8 @@ type TourListRow = {
   difficulty: string;
   heroImage: string | null;
   tags: unknown;
-  destinations: { destination: { id: string; name: string } }[];
+  destinations: { destination: { id: string; slug: string; name: string } }[];
+  priceTiers: { pricePerPersonCents: number }[];
   departures: { startDate: Date; priceOverrideCents: number | null }[];
 };
 
@@ -210,8 +232,12 @@ async function localizeTourList(rows: TourListRow[], locale: Locale): Promise<To
     const overrides = t.departures
       .map((d) => d.priceOverrideCents)
       .filter((c): c is number => c !== null);
-    // "From" price = cheapest of (base, any departure overrides).
-    const fromPriceCents = Math.min(t.basePriceCents, ...overrides);
+    // "From" price = cheapest per-person price anyone could actually pay:
+    // the base, any departure override, and (P8) any group-size band — a larger
+    // party is usually the cheapest rate, and a card promising "from $X" has to
+    // honour the lowest price the tour really sells at.
+    const tierPrices = t.priceTiers.map((tier) => tier.pricePerPersonCents);
+    const fromPriceCents = Math.min(t.basePriceCents, ...overrides, ...tierPrices);
     return {
       slug: t.slug,
       title: tString(fm, "title", t.title),
@@ -225,6 +251,7 @@ async function localizeTourList(rows: TourListRow[], locale: Locale): Promise<To
       destinations: t.destinations.map((d) =>
         tString(destTr.get(d.destination.id), "name", d.destination.name),
       ),
+      destinationSlugs: t.destinations.map((d) => d.destination.slug),
       nextDeparture: t.departures[0]?.startDate ?? null,
       openDepartureCount: t.departures.length,
     };
@@ -298,12 +325,17 @@ export async function listPublishedTours(
 }
 
 /**
- * In-place sort for the finder. "featured" keeps the incoming createdAt-desc
+ * In-place sort for the finder. "featured" ranks the focus destinations
+ * (Luxor, then Aswan) first and otherwise keeps the incoming createdAt-desc
  * order from the DB; every other mode sorts a shallow copy's elements. V8's
  * Array.sort is stable, so ties preserve that catalog order.
  */
 function sortToursInPlace(items: TourListItem[], sort: TourSort): void {
   switch (sort) {
+    case "featured":
+      // Stable, so within a rank the newest-first catalog order is preserved.
+      items.sort((a, b) => focusRank(a.destinationSlugs) - focusRank(b.destinationSlugs));
+      break;
     case "price-asc":
       items.sort((a, b) => a.fromPriceCents - b.fromPriceCents);
       break;
@@ -432,6 +464,15 @@ export async function getTourDetail(
       metaDesc: true,
       ogImage: true,
       bookingClosed: true,
+      onRequestDates: true,
+      requestLeadDays: true,
+      requestWindowDays: true,
+      requestCapacity: true,
+      blackoutDates: true,
+      priceTiers: {
+        orderBy: { minPax: "asc" },
+        select: { minPax: true, maxPax: true, pricePerPersonCents: true },
+      },
       destinations: {
         orderBy: { sortOrder: "asc" },
         select: { destination: { select: { id: true, slug: true, name: true, region: true } } },
@@ -493,6 +534,14 @@ export async function getTourDetail(
     metaDesc: tNullableString(fm, "metaDesc", tour.metaDesc),
     ogImage: tour.ogImage,
     bookingClosed: tour.bookingClosed,
+    priceTiers: tour.priceTiers satisfies GroupPriceTier[],
+    onRequestDates: tour.onRequestDates,
+    dateWindow: {
+      leadDays: tour.requestLeadDays,
+      windowDays: tour.requestWindowDays,
+      blackoutDates: parseBlackoutDates(tour.blackoutDates),
+    },
+    requestCapacity: tour.requestCapacity,
     destinations: tour.destinations.map((d) => {
       const dfm = destTr.get(d.destination.id);
       return {

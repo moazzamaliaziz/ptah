@@ -719,11 +719,13 @@ export const siteNav: SiteNav = {
       title: "About Egypt",
       columns: [
         {
+          // Luxor and Aswan lead: they are the focus of the catalog, and the
+          // rest of Egypt stays one click away below them.
           heading: "Destinations",
           links: [
-            { label: "Cairo", href: "/cities/cairo" },
             { label: "Luxor", href: "/cities/luxor" },
             { label: "Aswan", href: "/cities/aswan" },
+            { label: "Cairo", href: "/cities/cairo" },
             { label: "Alexandria", href: "/cities/alexandria" },
             { label: "Hurghada", href: "/cities/hurghada" },
             { label: "Sharm El Sheikh", href: "/cities/sharm-el-sheikh" },
@@ -787,15 +789,6 @@ export const siteNav: SiteNav = {
           ],
         },
         {
-          heading: "Deciding",
-          links: [
-            { label: "When to Visit", href: "/when-to-visit" },
-            { label: "How Many Days", href: "/how-many-days" },
-            { label: "Budget & Tipping", href: "/travel-tips" },
-            { label: "Traveling with Kids", href: "/family-travel" },
-          ],
-        },
-        {
           heading: "Our Promise",
           links: [
             { label: "How Ptah Trips Work", href: "/how-it-works" },
@@ -831,6 +824,24 @@ export const siteNav: SiteNav = {
       title: "Tours",
       columns: [
         {
+          heading: "Luxor Tours",
+          links: [
+            { label: "All Luxor Tours", href: "/tours?destination=luxor" },
+            { label: "Temples & Tombs", href: "/tours?destination=luxor&type=classic" },
+            { label: "Nile Cruises from Luxor", href: "/tours?destination=luxor&type=nile-cruise" },
+            { label: "Explore Luxor", href: "/cities/luxor" },
+          ],
+        },
+        {
+          heading: "Aswan Tours",
+          links: [
+            { label: "All Aswan Tours", href: "/tours?destination=aswan" },
+            { label: "Abu Simbel & Philae", href: "/tours?destination=aswan&type=classic" },
+            { label: "Nile Cruises from Aswan", href: "/tours?destination=aswan&type=nile-cruise" },
+            { label: "Explore Aswan", href: "/cities/aswan" },
+          ],
+        },
+        {
           heading: "By Style",
           links: [
             { label: "Classic Egypt", href: "/tours?type=classic" },
@@ -839,31 +850,13 @@ export const siteNav: SiteNav = {
             { label: "Desert Adventures", href: "/tours?type=desert" },
           ],
         },
-        {
-          heading: "By Length",
-          links: [
-            { label: "Day Tours", href: "/tours?length=day" },
-            { label: "2–4 Day Trips", href: "/tours?length=short" },
-            { label: "5–9 Day Journeys", href: "/tours?length=week" },
-            { label: "10+ Day Expeditions", href: "/tours?length=grand" },
-          ],
-        },
-        {
-          heading: "Special",
-          links: [
-            { label: "Private & Tailor-Made", href: "/tours?type=private" },
-            { label: "Family Trips", href: "/tours?type=family" },
-            { label: "Honeymoons", href: "/tours?type=honeymoon" },
-            { label: "Last-Minute Departures", href: "/tours?filter=departing-soon" },
-          ],
-        },
       ],
       imageCtas: [
         {
-          label: "Signature Journey",
-          heading: "Classic Egypt, 8 Days",
-          href: "/tours?type=classic",
-          image: { src: `${A}/itineraries/giza-essentials.webp`, alt: "The Great Pyramid of Giza with a camel guide in the foreground." },
+          label: "West Bank",
+          heading: "Luxor, Temple to Tomb",
+          href: "/tours?destination=luxor",
+          image: { src: `${A}/itineraries/valley-of-kings.webp`, alt: "Painted tomb walls in the Valley of the Kings on Luxor's west bank." },
         },
         {
           label: "On the River",
@@ -872,63 +865,10 @@ export const siteNav: SiteNav = {
           image: { src: `${A}/tour-types/nile-cruise.webp`, alt: "Balloons lifting over the Nile valley near Luxor at first light." },
         },
         {
-          label: "Under the Water",
-          heading: "Dive & Snorkel Trips",
-          href: "/tours?type=red-sea",
-          image: { src: `${A}/activities/blue-hole-dive.webp`, alt: "A snorkeler over the coral shelf at Dahab's Blue Hole." },
-        },
-      ],
-    },
-    {
-      key: "journal",
-      title: "Journal",
-      columns: [
-        {
-          heading: "Start Here",
-          links: [
-            { label: "Best Time to Visit", href: "/blog/best-time-to-visit-egypt" },
-            { label: "First Nile Cruise", href: "/blog/first-time-nile-cruise" },
-            { label: "7-Day Itinerary", href: "/blog/seven-days-in-egypt" },
-            { label: "What to Pack", href: "/blog/what-to-pack-for-egypt" },
-          ],
-        },
-        {
-          heading: "Places & Stories",
-          links: [
-            { label: "Cairo Beyond the Guidebook", href: "/blog/cairo-beyond-the-guidebook" },
-            { label: "Alexandria's Soul", href: "/blog/alexandria-mediterranean-soul" },
-            { label: "Beyond Giza", href: "/blog/beyond-giza-underrated-sites" },
-            { label: "An Evening at Karnak", href: "/blog/karnak-sound-and-light" },
-          ],
-        },
-        {
-          heading: "Travel Smart",
-          links: [
-            { label: "Egypt with Kids", href: "/blog/egypt-with-kids-family-guide" },
-            { label: "Red Sea Reef Etiquette", href: "/blog/red-sea-reef-etiquette" },
-            { label: "Slow Nile Felucca Days", href: "/blog/slow-nile-felucca-days" },
-            { label: "All Journal Posts", href: "/blog" },
-          ],
-        },
-      ],
-      imageCtas: [
-        {
-          label: "Trip Planning",
-          heading: "When to Visit Egypt",
-          href: "/blog/best-time-to-visit-egypt",
-          image: { src: `${A}/hero/hero-giza-portrait.webp`, alt: "The pyramids of Giza under a clear winter sky." },
-        },
-        {
-          label: "On the River",
-          heading: "A First Nile Cruise",
-          href: "/blog/first-time-nile-cruise",
-          image: { src: `${A}/cta/fifty-nile-cruise.webp`, alt: "A Nile cruise ship moored beside a green riverbank." },
-        },
-        {
-          label: "With the Family",
-          heading: "Egypt with Kids",
-          href: "/blog/egypt-with-kids-family-guide",
-          image: { src: `${A}/activities/nubian-culture.webp`, alt: "A brightly painted Nubian village lane above the Nile at Aswan." },
+          label: "Upriver",
+          heading: "Aswan & Abu Simbel",
+          href: "/tours?destination=aswan",
+          image: { src: `${A}/itineraries/philae-island.webp`, alt: "The Temple of Philae rising from its island near Aswan." },
         },
       ],
     },

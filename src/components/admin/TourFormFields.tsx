@@ -5,8 +5,20 @@ import MediaPicker from "@/components/admin/MediaPicker";
 import FaqEditor from "@/components/admin/FaqEditor";
 import { useBeforeUnloadWarning } from "@/hooks/use-beforeunload-warning";
 import { DIFFICULTIES, centsToDollars, type TourInput } from "@/content/catalog-admin-schema";
+import { SITE_CURRENCY } from "@/content/currency";
 import { TOUR_TAGS, TOUR_TAG_LABELS, type TourTag } from "@/content/tour-tags";
 import type { TourFormFieldsDict, FaqEditorDict } from "@/i18n/admin/dictionary";
+
+/**
+ * One group-size band as the form holds it: numbers kept as strings so a
+ * half-typed field ("" or "1") does not snap to 0 under the editor's fingers.
+ * The server action parses these; `maxPax` empty means the open-ended top band.
+ */
+export interface TierRow {
+  minPax: string;
+  maxPax: string;
+  price: string; // major units, e.g. "85.00"
+}
 
 /** Editable core-field values, pre-formatted for the DOM inputs. */
 export interface TourFieldValues {
@@ -18,7 +30,17 @@ export interface TourFieldValues {
   basePrice: string; // major units, e.g. "1299.00"
   childPrice: string; // major units; "" ⇒ children not offered
   infantPrice: string; // major units; "" ⇒ infants not offered ("0.00" ⇒ free)
+  /** Display only — every price is written in SITE_CURRENCY, so this is not an
+   *  editable field. Shows what the row actually carries. */
   currency: string;
+  /** P8 group-size bands, as the DOM holds them (major-unit price strings). */
+  priceTiers: TierRow[];
+  /** P8 customer-chosen dates. */
+  onRequestDates: boolean;
+  requestLeadDays: number;
+  requestWindowDays: number;
+  requestCapacity: number;
+  blackoutDates: string[];
   bookingClosed: boolean;
   difficulty: TourInput["difficulty"];
   tags: TourTag[];
@@ -57,7 +79,13 @@ const EMPTY: TourFieldValues = {
   basePrice: "",
   childPrice: "",
   infantPrice: "",
-  currency: "USD",
+  currency: SITE_CURRENCY,
+  priceTiers: [],
+  onRequestDates: true,
+  requestLeadDays: 2,
+  requestWindowDays: 365,
+  requestCapacity: 20,
+  blackoutDates: [],
   bookingClosed: false,
   difficulty: "EASY",
   tags: [],
@@ -75,7 +103,9 @@ const EMPTY: TourFieldValues = {
 };
 
 /** Build a full value set from partial initial data (create passes nothing). */
-export function toFieldValues(input: (TourInput & { basePriceCents: number }) | undefined): TourFieldValues {
+export function toFieldValues(
+  input: (TourInput & { basePriceCents: number; currency: string }) | undefined,
+): TourFieldValues {
   if (!input) return EMPTY;
   return {
     slug: input.slug,
@@ -87,6 +117,16 @@ export function toFieldValues(input: (TourInput & { basePriceCents: number }) | 
     childPrice: input.childPriceCents == null ? "" : centsToDollars(input.childPriceCents),
     infantPrice: input.infantPriceCents == null ? "" : centsToDollars(input.infantPriceCents),
     currency: input.currency,
+    priceTiers: input.priceTiers.map((tier) => ({
+      minPax: String(tier.minPax),
+      maxPax: tier.maxPax == null ? "" : String(tier.maxPax),
+      price: centsToDollars(tier.pricePerPersonCents),
+    })),
+    onRequestDates: input.onRequestDates,
+    requestLeadDays: input.requestLeadDays,
+    requestWindowDays: input.requestWindowDays,
+    requestCapacity: input.requestCapacity,
+    blackoutDates: input.blackoutDates,
     bookingClosed: input.bookingClosed,
     difficulty: input.difficulty,
     tags: input.tags,
@@ -102,6 +142,109 @@ export function toFieldValues(input: (TourInput & { basePriceCents: number }) | 
     metaTitle: input.metaTitle,
     metaDesc: input.metaDesc,
   };
+}
+
+/**
+ * Group-size price bands editor (P8).
+ *
+ * The rows post as three parallel `tierMinPax` / `tierMaxPax` / `tierPrice`
+ * arrays — the plain multi-value FormData shape, which the server action zips
+ * back together by index. That keeps the whole thing inside the parent's single
+ * `<form>` with no JSON hidden field to keep in sync, and an editor with
+ * JavaScript off still submits whatever rows the server rendered.
+ */
+function PriceTierEditor({
+  initial,
+  labels,
+}: {
+  initial: TierRow[];
+  labels: TourFormFieldsDict;
+}): JSX.Element {
+  const [rows, setRows] = useState<TierRow[]>(initial);
+
+  const update = (index: number, patch: Partial<TierRow>) =>
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+
+  const addRow = () =>
+    setRows((prev) => {
+      // Start the new band one above the highest size seen, so the common case
+      // (stacking bands upward) needs no retyping.
+      const highest = prev.reduce((max, row) => {
+        const top = row.maxPax.trim() === "" ? Number(row.minPax) : Number(row.maxPax);
+        return Number.isFinite(top) ? Math.max(max, top) : max;
+      }, 0);
+      return [...prev, { minPax: String(highest + 1), maxPax: "", price: "" }];
+    });
+
+  return (
+    <fieldset
+      style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}
+    >
+      <legend className="admin-card__meta">{labels.tiersLegend}</legend>
+      <p className="admin-card__meta" style={{ margin: "0.25rem 0 0.75rem" }}>
+        {labels.tiersNote}
+      </p>
+
+      {rows.length === 0 ? (
+        <p className="admin-card__meta" style={{ margin: "0 0 0.75rem" }}>{labels.tiersEmpty}</p>
+      ) : (
+        rows.map((row, index) => (
+          <div key={index} className="admin-row" style={{ gap: "0.75rem", alignItems: "flex-end", marginBottom: "0.5rem" }}>
+            <label className="admin-field" style={{ flex: "1 1 110px" }}>
+              <span>{labels.tiersMinPax}</span>
+              <input
+                className="admin-input"
+                type="number"
+                name="tierMinPax"
+                value={row.minPax}
+                min={1}
+                max={1000}
+                onChange={(e) => update(index, { minPax: e.target.value })}
+                required
+              />
+            </label>
+            <label className="admin-field" style={{ flex: "1 1 110px" }}>
+              <span>{labels.tiersMaxPax}</span>
+              <input
+                className="admin-input"
+                type="number"
+                name="tierMaxPax"
+                value={row.maxPax}
+                min={1}
+                max={1000}
+                placeholder={labels.tiersMaxPaxPlaceholder}
+                onChange={(e) => update(index, { maxPax: e.target.value })}
+              />
+            </label>
+            <label className="admin-field" style={{ flex: "1 1 140px" }}>
+              <span>{labels.tiersPrice}</span>
+              <input
+                className="admin-input"
+                type="text"
+                name="tierPrice"
+                value={row.price}
+                inputMode="decimal"
+                placeholder="85.00"
+                onChange={(e) => update(index, { price: e.target.value })}
+                required
+              />
+            </label>
+            <button
+              type="button"
+              className="admin-btn admin-btn--ghost"
+              onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}
+            >
+              {labels.tiersRemove}
+            </button>
+          </div>
+        ))
+      )}
+
+      <button type="button" className="admin-btn admin-btn--ghost" onClick={addRow}>
+        {labels.tiersAdd}
+      </button>
+    </fieldset>
+  );
 }
 
 /**
@@ -164,10 +307,14 @@ export default function TourFormFields({ initial, saved, pending, labels, faqLab
           <span>{labels.basePrice}</span>
           <input className="admin-input" type="text" name="basePrice" defaultValue={v.basePrice} inputMode="decimal" placeholder="1299.00" required />
         </label>
-        <label className="admin-field" style={{ flex: "0 1 100px" }}>
-          <span>{labels.currency}</span>
-          <input className="admin-input" type="text" name="currency" defaultValue={v.currency} maxLength={3} required />
-        </label>
+        {/* Currency is not editable: every price on the site is SITE_CURRENCY,
+            stamped by the write path. Shown so the number has a unit. */}
+        <div className="admin-field" style={{ flex: "0 1 140px" }}>
+          <span>{labels.currencyNote.replace("{currency}", SITE_CURRENCY)}</span>
+          <p className="admin-input" style={{ background: "rgba(26,35,64,0.04)" }}>
+            {v.currency}
+          </p>
+        </div>
         <label className="admin-field" style={{ flex: "1 1 160px" }}>
           <span>{labels.difficulty}</span>
           <select className="admin-input" name="difficulty" defaultValue={v.difficulty}>
@@ -196,6 +343,43 @@ export default function TourFormFields({ initial, saved, pending, labels, faqLab
         <label className="admin-row" style={{ gap: "0.5rem", alignItems: "center" }}>
           <input type="checkbox" name="bookingClosed" defaultChecked={v.bookingClosed} />
           <span>{labels.bookingClosedLabel}</span>
+        </label>
+      </fieldset>
+
+      <PriceTierEditor initial={v.priceTiers} labels={labels} />
+
+      <fieldset style={{ border: "1px solid rgba(26,35,64,0.15)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+        <legend className="admin-card__meta">{labels.datesLegend}</legend>
+        <p className="admin-card__meta" style={{ margin: "0.25rem 0 0.75rem" }}>
+          {labels.datesNote}
+        </p>
+        <label className="admin-row" style={{ gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
+          <input type="checkbox" name="onRequestDates" defaultChecked={v.onRequestDates} />
+          <span>{labels.onRequestDatesLabel}</span>
+        </label>
+        <div className="admin-row" style={{ gap: "1rem" }}>
+          <label className="admin-field" style={{ flex: "1 1 140px" }}>
+            <span>{labels.requestLeadDays}</span>
+            <input className="admin-input" type="number" name="requestLeadDays" defaultValue={v.requestLeadDays} min={0} max={365} required />
+          </label>
+          <label className="admin-field" style={{ flex: "1 1 160px" }}>
+            <span>{labels.requestWindowDays}</span>
+            <input className="admin-input" type="number" name="requestWindowDays" defaultValue={v.requestWindowDays} min={1} max={1095} required />
+          </label>
+          <label className="admin-field" style={{ flex: "1 1 150px" }}>
+            <span>{labels.requestCapacity}</span>
+            <input className="admin-input" type="number" name="requestCapacity" defaultValue={v.requestCapacity} min={1} max={10000} required />
+          </label>
+        </div>
+        <label className="admin-field">
+          <span>{labels.blackoutDatesLabel}</span>
+          <textarea
+            className="admin-textarea"
+            name="blackoutDates"
+            defaultValue={v.blackoutDates.join("\n")}
+            placeholder={labels.blackoutDatesPlaceholder}
+            style={{ minHeight: "4.5rem" }}
+          />
         </label>
       </fieldset>
 

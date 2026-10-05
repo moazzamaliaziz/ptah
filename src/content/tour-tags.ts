@@ -92,6 +92,29 @@ export type TourSort = (typeof TOUR_SORTS)[number];
 /** Default sort when none is supplied / an unknown value is passed. */
 export const DEFAULT_TOUR_SORT: TourSort = "featured";
 
+/**
+ * Destination slugs the catalog leads with (P8). Ptah's focus is Upper Egypt,
+ * so under the default "featured" sort a Luxor or Aswan tour outranks the rest.
+ * Nothing is hidden: every other tour still lists, just below these, and any
+ * explicit sort (price, duration, soonest) ignores this entirely — a traveler
+ * who asked for "cheapest first" means it.
+ *
+ * Order matters: earlier slugs rank higher.
+ */
+export const FOCUS_DESTINATION_SLUGS = ["luxor", "aswan"] as const;
+
+/** Featured rank for a tour's destinations — lower sorts first. */
+export function focusRank(destinationSlugs: readonly string[]): number {
+  // Annotated because `.length` on the readonly tuple is a literal type, which
+  // would otherwise reject the assignment below.
+  let best: number = FOCUS_DESTINATION_SLUGS.length;
+  for (const slug of destinationSlugs) {
+    const index = (FOCUS_DESTINATION_SLUGS as readonly string[]).indexOf(slug);
+    if (index !== -1 && index < best) best = index;
+  }
+  return best;
+}
+
 const TOUR_SORT_SET: ReadonlySet<string> = new Set(TOUR_SORTS);
 
 /** Type guard: is an arbitrary string one of the known sort tokens? */

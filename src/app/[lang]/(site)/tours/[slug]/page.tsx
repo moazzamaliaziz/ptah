@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Container from "@/components/layout/Container";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import DepartureList from "@/components/commerce/DepartureList";
+import GroupPriceTable from "@/components/commerce/GroupPriceTable";
 import WishlistButton from "@/components/account/WishlistButton";
 import { getTourDetail, listPublishedTourSlugs } from "@/server/catalog";
 import { getSessionUser } from "@/server/auth/session";
@@ -279,9 +280,18 @@ export default async function TourDetailPage({
                 departures={tour.departures}
                 labels={t.departureList}
                 bookingClosed={tour.bookingClosed}
+                onRequestDates={tour.onRequestDates}
               />
             </div>
           </section>
+
+          {/* Price per person by group size — only for tours that have bands. */}
+          <GroupPriceTable
+            tiers={tour.priceTiers}
+            currency={tour.currency}
+            labels={t.groupPricing}
+            className="mt-10 rounded-2xl border border-grey-300/60 bg-white p-6"
+          />
 
           {/* FAQs — hidden when the editor supplied none. */}
           {tour.faqs.length > 0 && (

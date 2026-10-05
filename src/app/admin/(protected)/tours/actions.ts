@@ -48,6 +48,35 @@ function parseFaqs(raw: string): FaqItem[] {
 }
 
 /**
+ * Zip the three parallel band columns the tier editor posts
+ * (`tierMinPax[i]`, `tierMaxPax[i]`, `tierPrice[i]`) back into objects.
+ *
+ * Rows the editor left completely blank are dropped — adding a band and then
+ * deciding against it should not fail the save. Any row with SOME input is kept
+ * and passed on even if unparseable (NaN), so zod reports it instead of the
+ * form silently discarding a half-filled band the editor meant to keep.
+ */
+function readPriceTiers(fd: FormData): Record<string, unknown>[] {
+  const mins = fd.getAll("tierMinPax").map((v) => String(v).trim());
+  const maxes = fd.getAll("tierMaxPax").map((v) => String(v).trim());
+  const prices = fd.getAll("tierPrice").map((v) => String(v).trim());
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < mins.length; i++) {
+    const min = mins[i] ?? "";
+    const max = maxes[i] ?? "";
+    const price = prices[i] ?? "";
+    if (min === "" && max === "" && price === "") continue;
+    rows.push({
+      minPax: Number.parseInt(min, 10),
+      // Blank "to" = the open-ended top band.
+      maxPax: max === "" ? null : Number.parseInt(max, 10),
+      pricePerPersonCents: dollarsToCents(price) ?? Number.NaN,
+    });
+  }
+  return rows;
+}
+
+/**
  * Flatten a tour editor FormData into the raw object tourInputSchema validates.
  * Money arrives in major units; multi-line fields as textareas; FAQs as JSON.
  * A price that can't parse becomes NaN so zod rejects it with a field error.
@@ -69,8 +98,15 @@ function readTourInput(fd: FormData): Record<string, unknown> {
     basePriceCents: cents ?? Number.NaN,
     childPriceCents: childRaw === "" ? null : (dollarsToCents(childRaw) ?? Number.NaN),
     infantPriceCents: infantRaw === "" ? null : (dollarsToCents(infantRaw) ?? Number.NaN),
-    currency: str(fd, "currency") || "USD",
+    // No `currency`: the write path stamps SITE_CURRENCY (prices are USD only),
+    // so there is nothing here for a crafted POST to override.
+    priceTiers: readPriceTiers(fd),
     // Single checkbox: an unchecked box posts nothing, a checked one posts "on".
+    onRequestDates: str(fd, "onRequestDates") === "on",
+    requestLeadDays: Number.parseInt(str(fd, "requestLeadDays"), 10),
+    requestWindowDays: Number.parseInt(str(fd, "requestWindowDays"), 10),
+    requestCapacity: Number.parseInt(str(fd, "requestCapacity"), 10),
+    blackoutDates: splitLines(str(fd, "blackoutDates")),
     bookingClosed: str(fd, "bookingClosed") === "on",
     difficulty: str(fd, "difficulty"),
     // Checkbox group: each checked box posts its value under "tags".

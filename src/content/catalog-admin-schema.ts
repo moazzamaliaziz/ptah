@@ -59,6 +59,66 @@ const faqItem = z.object({
 });
 export type FaqItem = z.infer<typeof faqItem>;
 
+/**
+ * One "price per person by group size" band (P8). `maxPax` null = the
+ * open-ended top band ("7 or more").
+ */
+export const groupPriceTierSchema = z
+  .object({
+    minPax: z.number().int().min(1, "A band starts at one traveler.").max(1000),
+    maxPax: z.number().int().min(1).max(1000).nullable(),
+    pricePerPersonCents: z.number().int().min(0, "Price cannot be negative.").max(1_000_000_00),
+  })
+  .refine((t) => t.maxPax == null || t.maxPax >= t.minPax, {
+    message: "The band's largest size must be at least its smallest.",
+    path: ["maxPax"],
+  });
+export type GroupPriceTierInput = z.infer<typeof groupPriceTierSchema>;
+
+/**
+ * The whole band set for a tour, validated as a unit.
+ *
+ * Overlaps are rejected HERE rather than tolerated, because a party size that
+ * falls in two bands has two advertised prices — the customer reads one off the
+ * table and the engine may charge the other. (`resolveTierPriceCents` still
+ * picks deterministically for legacy rows, but we never let new ones in.) Gaps
+ * are allowed on purpose: a size no band covers falls back to the tour's base
+ * price, which is a sensible way to price, say, only groups of 4+.
+ */
+export const groupPriceTiersSchema = z
+  .array(groupPriceTierSchema)
+  .max(20, "Up to 20 group-size bands.")
+  .superRefine((tiers, ctx) => {
+    const sorted = [...tiers].sort((a, b) => a.minPax - b.minPax);
+    for (let i = 0; i < sorted.length; i++) {
+      const current = sorted[i];
+      const next = sorted[i + 1];
+      if (!current) continue;
+      if (next && current.minPax === next.minPax) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Two group-size bands both start at ${current.minPax} travelers.`,
+        });
+        return;
+      }
+      // An open-ended band swallows everything above it, so it must be last.
+      if (current.maxPax == null && next) {
+        ctx.addIssue({
+          code: "custom",
+          message: `The "${current.minPax}+" band has to be the last one.`,
+        });
+        return;
+      }
+      if (next && current.maxPax != null && current.maxPax >= next.minPax) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Group-size bands overlap: ${current.minPax}–${current.maxPax} and ${next.minPax}${next.maxPax == null ? "+" : `–${next.maxPax}`}.`,
+        });
+        return;
+      }
+    }
+  });
+
 /** Shared editable core of a tour (create + update). Money already in cents. */
 export const tourInputSchema = z.object({
   slug,
@@ -71,7 +131,19 @@ export const tourInputSchema = z.object({
   // (stepper hidden in the funnel); 0 is a valid free price. Adult uses basePriceCents.
   childPriceCents: z.number().int().min(0, "Price cannot be negative.").max(1_000_000_00).nullable(),
   infantPriceCents: z.number().int().min(0, "Price cannot be negative.").max(1_000_000_00).nullable(),
-  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, "Currency must be a 3-letter code (e.g. USD)."),
+  // NOTE: there is deliberately no `currency` field. Ptah publishes one
+  // currency (SITE_CURRENCY, see src/content/currency.ts), so it is not an
+  // editable property of a tour — the write path stamps it. Leaving it editable
+  // would let an editor quote a price in a currency the checkout and the
+  // payment gateways cannot actually take.
+  // P8 group-size bands. Empty ⇒ one flat adult price (basePriceCents).
+  priceTiers: groupPriceTiersSchema,
+  // P8 customer-chosen dates.
+  onRequestDates: z.boolean(),
+  requestLeadDays: z.number().int().min(0, "Lead time cannot be negative.").max(365),
+  requestWindowDays: z.number().int().min(1, "The booking window must be at least a day.").max(1095),
+  requestCapacity: z.number().int().min(1, "At least one seat.").max(10000),
+  blackoutDates: z.array(isoDate).max(366),
   // When true, the public funnel shows a "booking paused" notice and the
   // transactional core rejects new reservations (defense in depth).
   bookingClosed: z.boolean(),

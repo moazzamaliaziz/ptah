@@ -11,11 +11,12 @@ import {
   toDateInput,
   type CouponInput,
 } from "@/content/coupon-admin-schema";
+import { SITE_CURRENCY } from "@/content/currency";
 import type { CouponFormDict } from "@/i18n/admin/dictionary";
 
 export interface CouponEditorProps {
   /** Present → edit mode (update); absent → create mode. */
-  coupon?: CouponInput & { id: string };
+  coupon?: Omit<CouponInput, "currency"> & { id: string; currency: string | null };
   /** View-only for staff who can see but not edit coupons (disables the form). */
   readOnly?: boolean;
   /** Localized field labels/hints (passed from the server page). */
@@ -98,15 +99,17 @@ export default function CouponEditor({ coupon, readOnly = false, labels, savingL
         </label>
         <label className="admin-field" style={{ flex: "1 1 140px" }}>
           <span>{labels.currency}</span>
-          <input
+          {/* One site currency, so this is a two-way choice rather than free
+              text: leave it unset (a percentage applies to any total) or pin it
+              to the currency the shop actually charges in. */}
+          <select
             className="admin-input"
-            type="text"
             name="currency"
             defaultValue={coupon?.currency ?? ""}
-            maxLength={3}
-            placeholder="USD"
-            style={{ textTransform: "uppercase" }}
-          />
+          >
+            <option value="">—</option>
+            <option value={SITE_CURRENCY}>{SITE_CURRENCY}</option>
+          </select>
           <small className="admin-card__meta">
             {isPercent ? labels.currencyPercentHint : labels.currencyFixedHint}
           </small>

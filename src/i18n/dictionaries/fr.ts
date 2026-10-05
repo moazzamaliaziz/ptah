@@ -51,7 +51,7 @@ export const fr = {
       {
         title: "À propos de l'Égypte",
         columns: [
-          { heading: "Destinations", links: ["Le Caire", "Louxor", "Assouan", "Alexandrie", "Hurghada", "Charm el-Cheikh"] },
+          { heading: "Destinations", links: ["Louxor", "Assouan", "Le Caire", "Alexandrie", "Hurghada", "Charm el-Cheikh"] },
           { heading: "Connaître le pays", links: ["Histoire et patrimoine", "Saisons et climat", "Le Nil", "Déserts et oasis", "Récifs de la mer Rouge"] },
           { heading: "Bon à savoir", links: ["Voyage responsable", "Accessibilité", "Sécurité et assistance", "Récits et journal"] },
         ],
@@ -65,7 +65,6 @@ export const fr = {
         title: "Planifiez votre voyage",
         columns: [
           { heading: "Comment s'y rendre", links: ["Vols vers l'Égypte", "Visas et entrée", "Jours d'arrivée, pris en charge", "Se déplacer"] },
-          { heading: "Décider", links: ["Quand partir", "Combien de jours", "Budget et pourboires", "Voyager avec des enfants"] },
           { heading: "Notre promesse", links: ["Comment fonctionnent les voyages Ptah", "Voyage responsable", "Avis et accréditations", "Contacter l'équipe"] },
         ],
         imageCtas: [
@@ -77,27 +76,14 @@ export const fr = {
       {
         title: "Circuits",
         columns: [
+          { heading: "Circuits à Louxor", links: ["Tous les circuits à Louxor", "Temples et tombeaux", "Croisières sur le Nil au départ de Louxor", "Découvrir Louxor"] },
+          { heading: "Circuits à Assouan", links: ["Tous les circuits à Assouan", "Abou Simbel et Philae", "Croisières sur le Nil au départ d'Assouan", "Découvrir Assouan"] },
           { heading: "Par style", links: ["Égypte classique", "Croisières sur le Nil", "Mer Rouge et plage", "Aventures dans le désert"] },
-          { heading: "Par durée", links: ["Excursions d'une journée", "Voyages de 2 à 4 jours", "Voyages de 5 à 9 jours", "Expéditions de 10 jours et plus"] },
-          { heading: "Spécial", links: ["Privé et sur mesure", "Voyages en famille", "Lunes de miel", "Départs de dernière minute"] },
         ],
         imageCtas: [
-          { label: "Voyage signature", heading: "Égypte classique, 8 jours" },
+          { label: "Rive ouest", heading: "Louxor, du temple au tombeau" },
           { label: "Sur le fleuve", heading: "Collection croisières sur le Nil" },
-          { label: "Sous l'eau", heading: "Voyages plongée et tuba" },
-        ],
-      },
-      {
-        title: "Journal",
-        columns: [
-          { heading: "Pour commencer", links: ["Quand partir", "Première croisière sur le Nil", "Itinéraire de 7 jours", "Que mettre dans sa valise"] },
-          { heading: "Lieux & récits", links: ["Le Caire hors des sentiers", "L'âme d'Alexandrie", "Au-delà de Gizeh", "Une soirée à Karnak"] },
-          { heading: "Voyager malin", links: ["L'Égypte en famille", "Respecter les récifs", "Felouque au fil du Nil", "Tous les articles"] },
-        ],
-        imageCtas: [
-          { label: "Préparer son voyage", heading: "Quand visiter l'Égypte" },
-          { label: "Sur le fleuve", heading: "Première croisière" },
-          { label: "En famille", heading: "L'Égypte avec des enfants" },
+          { label: "En amont", heading: "Assouan et Abou Simbel" },
         ],
       },
     ],
