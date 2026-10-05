@@ -8,6 +8,7 @@ import { getAdminDict } from "@/i18n/admin/dictionary";
 import EventEditor from "../EventEditor";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import { setEventStatusAction, deleteEventAction } from "../actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -51,20 +52,20 @@ export default async function EventEditPage({
             <form action={setEventStatusAction}>
               <input type="hidden" name="id" value={event.id} />
               <input type="hidden" name="status" value="PUBLISHED" />
-              <button className="admin-btn" type="submit">{t.publish}</button>
+              <SubmitButton pendingLabel={dict.common.publishing}>{t.publish}</SubmitButton>
             </form>
           ) : (
             <form action={setEventStatusAction}>
               <input type="hidden" name="id" value={event.id} />
               <input type="hidden" name="status" value="DRAFT" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.unpublish}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.unpublishing}>{t.unpublish}</SubmitButton>
             </form>
           )}
           {event.status !== "ARCHIVED" ? (
             <form action={setEventStatusAction}>
               <input type="hidden" name="id" value={event.id} />
               <input type="hidden" name="status" value="ARCHIVED" />
-              <button className="admin-btn admin-btn--ghost" type="submit">{t.archive}</button>
+              <SubmitButton className="admin-btn admin-btn--ghost" pendingLabel={dict.common.archiving}>{t.archive}</SubmitButton>
             </form>
           ) : null}
         </div>

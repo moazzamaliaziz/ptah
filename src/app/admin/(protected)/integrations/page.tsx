@@ -10,6 +10,7 @@ import PaypalTest from "./PaypalTest";
 import AdminHint from "@/components/admin/AdminHint";
 import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict, type IntegrationsDict } from "@/i18n/admin/dictionary";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 const CATEGORY_ORDER: IntegrationCategory[] = [
   "analytics", "payments", "security", "email", "sms", "maps", "reviews", "monitoring", "automation",
@@ -74,9 +75,7 @@ function IntegrationCard({ item, canManage, labels, helpLabel }: { item: Integra
         ))}
 
         {canManage ? (
-          <button className="admin-btn" type="submit">
-            {labels.save}
-          </button>
+          <SubmitButton pendingLabel={labels.saving}>{labels.save}</SubmitButton>
         ) : null}
       </form>
 

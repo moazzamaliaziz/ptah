@@ -1,23 +1,25 @@
-import type { ReactNode, JSX } from "react";
+import { Suspense, type ReactNode, type JSX } from "react";
 import Link from "next/link";
 import { requireStaff, can } from "@/server/auth/rbac";
 import { logoutAction } from "@/app/admin/actions";
-import { countNewContactMessages } from "@/server/contact";
 import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import AdminNav, { type AdminNavItem } from "./AdminNav";
+import EnquiryBadge from "./EnquiryBadge";
 import AdminLocaleSwitcher from "@/components/admin/AdminLocaleSwitcher";
 import { MediaPickerLabelsProvider } from "@/components/admin/MediaPickerLabels";
 import SubmitButton from "@/components/admin/SubmitButton";
 
 export default async function ProtectedAdminLayout({ children }: { children: ReactNode }): Promise<JSX.Element> {
-  const user = await requireStaff();
-  const locale = await getAdminLocale();
+  // These two are the only things the shell genuinely cannot render without:
+  // who is signed in (the authorization gate, and it decides which nav items
+  // exist) and which language to render in. Both are now memoized per request
+  // (see getSessionUser / getAdminLocale), so the page rendered inside <main>
+  // re-checks authorization without paying for a second session query.
+  // They are independent of each other, so they run concurrently.
+  const [user, locale] = await Promise.all([requireStaff(), getAdminLocale()]);
   const dict = getAdminDict(locale);
   const t = dict.nav;
-
-  // Unread-enquiry badge for the nav (only queried when the user can see it).
-  const newEnquiries = can(user, "enquiries.view") ? await countNewContactMessages() : 0;
 
   const items: AdminNavItem[] = [{ href: "/admin", label: t.dashboard }];
   if (can(user, "bookings.view")) items.push({ href: "/admin/bookings", label: t.orders });
@@ -30,9 +32,17 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   if (can(user, "events.view")) items.push({ href: "/admin/events", label: t.events });
   if (can(user, "tripideas.view")) items.push({ href: "/admin/trip-ideas", label: t.tripIdeas });
   if (can(user, "enquiries.view")) {
+    // The unread count is the one piece of nav data that needs its own query,
+    // and nothing else on the page depends on it — so it streams in behind a
+    // Suspense boundary instead of holding up the whole shell.
     items.push({
       href: "/admin/enquiries",
-      label: newEnquiries > 0 ? `${t.enquiries} (${newEnquiries})` : t.enquiries,
+      label: t.enquiries,
+      badge: (
+        <Suspense fallback={null}>
+          <EnquiryBadge label={dict.chrome.unreadEnquiries} />
+        </Suspense>
+      ),
     });
   }
   if (can(user, "media.view")) items.push({ href: "/admin/media", label: t.media });

@@ -5,6 +5,7 @@ import { listAdminWidgets } from "@/server/admin/widgets-admin";
 import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import { setWidgetEnabledAction } from "./actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -68,9 +69,12 @@ export default async function WidgetsPage(): Promise<JSX.Element> {
                     <form action={setWidgetEnabledAction}>
                       <input type="hidden" name="id" value={w.id} />
                       <input type="hidden" name="enabled" value={w.enabled ? "false" : "true"} />
-                      <button className={`admin-btn admin-btn--ghost ${w.enabled ? "admin-btn--danger" : ""}`} type="submit">
+                      <SubmitButton
+                        className={`admin-btn admin-btn--ghost ${w.enabled ? "admin-btn--danger" : ""}`}
+                        pendingLabel={dict.common.updating}
+                      >
                         {w.enabled ? dict.common.disable : dict.common.enable}
-                      </button>
+                      </SubmitButton>
                     </form>
                   ) : null}
                 </td>

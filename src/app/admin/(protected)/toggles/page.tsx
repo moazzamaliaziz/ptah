@@ -4,6 +4,7 @@ import { getToggles, TOGGLE_KEYS } from "@/server/toggles";
 import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import { setToggleAction } from "./actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export default async function TogglesPage(): Promise<JSX.Element> {
   const user = await requireCapability("toggles.view");
@@ -45,12 +46,12 @@ export default async function TogglesPage(): Promise<JSX.Element> {
                 <form action={setToggleAction}>
                   <input type="hidden" name="key" value={key} />
                   <input type="hidden" name="value" value={on ? "false" : "true"} />
-                  <button
+                  <SubmitButton
                     className={`admin-btn ${on ? "admin-btn--danger" : ""}`}
-                    type="submit"
+                    pendingLabel={dict.common.updating}
                   >
                     {on ? t.disable : t.enable}
-                  </button>
+                  </SubmitButton>
                 </form>
               ) : null}
             </div>

@@ -24,6 +24,7 @@
  * render.
  */
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type { Role, UserStatus } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -100,8 +101,10 @@ export async function createSession(userId: string, meta: SessionMeta = {}): Pro
  * call during render: it does not write cookies, and the sliding-refresh bump
  * is a throttled fire-and-forget DB write whose failure is swallowed and can
  * never surface into the render tree.
+ *
+ * Not exported directly — callers get the memoized `getSessionUser` below.
  */
-export async function getSessionUser(): Promise<SessionUser | null> {
+async function readSessionUser(): Promise<SessionUser | null> {
   const store = await cookies();
   const raw = store.get(SESSION_COOKIE)?.value;
   if (!raw) return null;
@@ -147,6 +150,27 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   return session.user;
 }
+
+/**
+ * Request-scoped memoized session read — THE hot path of the admin panel.
+ *
+ * Authorization is checked at every layer that renders: the protected layout
+ * calls requireStaff(), the page calls requireCapability(), and a Server Action
+ * re-checks before writing and then triggers a re-render that does it all
+ * again. Each of those was its own `sessions.findUnique` round trip, so one
+ * admin page view cost 2 identical session queries and one save cost 3 — on a
+ * managed cloud MySQL (TiDB Serverless) every round trip is tens to hundreds of
+ * milliseconds, and they were strictly serial because authorization must
+ * resolve before the page's own data read starts.
+ *
+ * React's `cache()` dedupes by arguments for the lifetime of ONE request, so
+ * every guard in a render now shares a single query while keeping the guards
+ * themselves exactly where they were: no check is skipped or weakened, only the
+ * repeated I/O behind them is removed. The scope is one request, so revocation
+ * is still immediate on the next one (nothing is cached across requests), and
+ * the throttled lastSeenAt bump fires once instead of per guard.
+ */
+export const getSessionUser: () => Promise<SessionUser | null> = cache(readSessionUser);
 
 /**
  * Slide the current session's idle window forward (`lastSeenAt = now`) with an

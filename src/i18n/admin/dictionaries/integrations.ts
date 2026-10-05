@@ -44,6 +44,7 @@ export interface IntegrationsDict {
   secretSet: string;
   secretNotSet: string;
   save: string;
+  saving: string;
 }
 
 export const integrationsEn: IntegrationsDict = {
@@ -84,6 +85,7 @@ export const integrationsEn: IntegrationsDict = {
   secretSet: "set (leave blank to keep)",
   secretNotSet: "not set",
   save: "Save",
+  saving: "Saving…",
 };
 
 export const integrationsAr: IntegrationsDict = {
@@ -123,4 +125,5 @@ export const integrationsAr: IntegrationsDict = {
   secretSet: "معيَّن (اتركه فارغًا للإبقاء عليه)",
   secretNotSet: "غير معيَّن",
   save: "حفظ",
+  saving: "جارٍ الحفظ…",
 };

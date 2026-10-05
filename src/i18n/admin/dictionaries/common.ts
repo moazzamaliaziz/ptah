@@ -55,6 +55,17 @@ export interface CommonDict {
   sortOrder: string;
   /** Prefix for help-chip screen-reader labels: `${help}: ${text}`. */
   help: string;
+  /* Pending labels for the one-click action buttons (publish, archive, …).
+     Every one of those was a plain submit button that looked frozen for the
+     whole server round trip, so the verbs get a present-continuous twin. */
+  working: string;
+  publishing: string;
+  unpublishing: string;
+  archiving: string;
+  restoring: string;
+  removing: string;
+  linking: string;
+  updating: string;
 }
 
 export const commonEn: CommonDict = {
@@ -106,6 +117,14 @@ export const commonEn: CommonDict = {
   status: "Status",
   sortOrder: "Sort order",
   help: "Help",
+  working: "Working…",
+  publishing: "Publishing…",
+  unpublishing: "Unpublishing…",
+  archiving: "Archiving…",
+  restoring: "Restoring…",
+  removing: "Removing…",
+  linking: "Linking…",
+  updating: "Updating…",
 };
 
 export const commonAr: CommonDict = {
@@ -157,4 +176,12 @@ export const commonAr: CommonDict = {
   status: "الحالة",
   sortOrder: "ترتيب العرض",
   help: "مساعدة",
+  working: "جارٍ التنفيذ…",
+  publishing: "جارٍ النشر…",
+  unpublishing: "جارٍ إلغاء النشر…",
+  archiving: "جارٍ الأرشفة…",
+  restoring: "جارٍ الاستعادة…",
+  removing: "جارٍ الإزالة…",
+  linking: "جارٍ الربط…",
+  updating: "جارٍ التحديث…",
 };

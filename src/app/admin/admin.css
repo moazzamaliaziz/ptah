@@ -44,8 +44,25 @@
   text-decoration: none;
   font-size: 0.92rem;
 }
+.admin-nav-link { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .admin-nav-link:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 .admin-nav-link[aria-current="page"] { background: var(--color-gold, #d9822b); color: #1a2340; font-weight: 600; }
+/* Unread-enquiry count. It streams in after the link (see EnquiryBadge), so the
+   pill is sized by its own content and the link's flex layout absorbs it
+   without the label reflowing. */
+.admin-nav-link__badge {
+  flex: none;
+  min-width: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--color-gold, #d9822b);
+  color: #1a2340;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35rem;
+  text-align: center;
+}
+.admin-nav-link[aria-current="page"] .admin-nav-link__badge { background: #1a2340; color: #fff; }
 .admin-sidebar__spacer { flex: 1; }
 .admin-sidebar__user { font-size: 0.78rem; opacity: 0.75; padding: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.12); }
 
@@ -487,3 +504,19 @@
   /* Make data tables scroll within the viewport rather than overflow it. */
   .admin-table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
 }
+
+/* Inline "×" that unlinks a destination/tour from inside a badge-shaped form.
+   Previously an unstyled <button> with inline styles; now a SubmitButton so it
+   disables and shows "…" while the server action runs. Styles live here rather
+   than inline because the component owns its own markup. */
+.admin-inline-x {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  color: inherit;
+}
+.admin-inline-x[disabled] { cursor: progress; opacity: 0.6; }

@@ -8,6 +8,7 @@ import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict } from "@/i18n/admin/dictionary";
 import ContentEditor from "./ContentEditor";
 import { resetContentAction } from "../actions";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 function isSectionKey(key: string): key is LandingSectionKey {
   return Object.prototype.hasOwnProperty.call(LANDING_SECTIONS, key);
@@ -57,9 +58,9 @@ export default async function ContentEditorPage({
       {section.overridden ? (
         <form action={resetContentAction} style={{ marginTop: "1rem" }}>
           <input type="hidden" name="key" value={section.key} />
-          <button className="admin-btn admin-btn--danger" type="submit">
+          <SubmitButton className="admin-btn admin-btn--danger" pendingLabel={dict.common.working}>
             {t.resetToDefault}
-          </button>
+          </SubmitButton>
         </form>
       ) : null}
     </>
