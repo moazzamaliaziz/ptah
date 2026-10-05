@@ -879,14 +879,24 @@ export async function startPaypalCheckout(bookingId: string, locale: Locale): Pr
   }
 
   const baseUrl = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
-  const order = await paypal.createOrder({
-    amountCents: booking.totalCents,
-    currency: booking.currency,
-    referenceId: booking.id,
-    description: `${booking.departure.tour.title} · ${booking.seats} traveler(s)`,
-    returnUrl: `${baseUrl}${localizePath("/booking/paypal-return", locale)}?booking=${booking.id}`,
-    cancelUrl: `${baseUrl}${localizePath("/booking/cancelled", locale)}?booking=${booking.id}`,
-  });
+  // Mirrors startStripeCheckout: the gateway call is wrapped so a PayPal
+  // outage or credential problem becomes a clean message on the funnel, never
+  // an exception — the booking and its seat claim already exist by now, and a
+  // crash would leave the customer with no reference and no way back.
+  let order: Awaited<ReturnType<typeof paypal.createOrder>>;
+  try {
+    order = await paypal.createOrder({
+      amountCents: booking.totalCents,
+      currency: booking.currency,
+      referenceId: booking.id,
+      description: `${booking.departure.tour.title} · ${booking.seats} traveler(s)`,
+      returnUrl: `${baseUrl}${localizePath("/booking/paypal-return", locale)}?booking=${booking.id}`,
+      cancelUrl: `${baseUrl}${localizePath("/booking/cancelled", locale)}?booking=${booking.id}`,
+    });
+  } catch (error) {
+    logger.error("paypal checkout start failed", { bookingId: booking.id, error });
+    return { ok: false, reason: "GATEWAY_ERROR", message: "Could not start PayPal checkout. Please try again." };
+  }
   if (!order) {
     return { ok: false, reason: "GATEWAY_ERROR", message: "Could not start PayPal checkout. Please try again." };
   }

@@ -4,6 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import Container from "@/components/layout/Container";
 import { getBookingOutcome } from "@/server/booking-read";
 import { formatPriceCents } from "@/lib/utils";
+import BankDetails from "@/components/commerce/BankDetails";
+import { buildBankAccount } from "@/content/bank-details";
+import { getSettings } from "@/server/settings";
 import { env } from "@/lib/env";
 import { getPageContent } from "@/i18n/pages";
 
@@ -42,6 +45,20 @@ export default async function BankTransferPage({
   const booking = await getBookingOutcome(bookingId);
   if (!booking) notFound();
 
+  // Bank details come from site settings (Admin → Payments). `buildBankAccount`
+  // returns null when the account is not configured, and the page then keeps
+  // its honest "we'll email you the details" message rather than printing a
+  // half-filled account.
+  const settings = await getSettings();
+  const account = buildBankAccount({
+    accountName: settings["payments.bankAccountName"],
+    iban: settings["payments.bankIban"],
+    accountNumber: settings["payments.bankAccountNumber"],
+    bic: settings["payments.bankBic"],
+    currency: settings["payments.bankCurrency"],
+    note: settings["payments.bankNote"],
+  });
+  // Legacy env note still shows beneath the account, for deployments that set it.
   const instructions = env.BANK_TRANSFER_INSTRUCTIONS?.trim();
   const pc = await getPageContent();
   const t = pc.bookingBankTransfer;
@@ -80,8 +97,37 @@ export default async function BankTransferPage({
 
         <div className="mt-6 rounded-2xl border border-grey-300/60 bg-papyrus/50 p-6">
           <h2 className="text-card-title font-semibold text-ink">{t.transferDetailsHeading}</h2>
-          {instructions ? (
-            <p className="mt-3 whitespace-pre-line text-meta leading-relaxed text-ink/75">{instructions}</p>
+          {account ? (
+            <>
+              {/* The account itself: discrete, labelled, copyable rows. */}
+              <BankDetails
+                account={account}
+                labels={{
+                  accountName: t.accountNameLabel,
+                  iban: t.ibanLabel,
+                  accountNumber: t.accountNumberLabel,
+                  bic: t.bicLabel,
+                  currencyLabel: t.bankCurrencyLabel,
+                  copy: t.copyLabel,
+                  copied: t.copiedLabel,
+                }}
+              />
+              {/* Situational notes (correspondent bank, branch) — never the
+                  numbers, which are structured fields above. */}
+              {account.note ? (
+                <p className="mt-4 whitespace-pre-line text-meta leading-relaxed text-ink/75">{account.note}</p>
+              ) : null}
+              {instructions ? (
+                <p className="mt-4 whitespace-pre-line text-meta leading-relaxed text-ink/75">{instructions}</p>
+              ) : null}
+              <p className="mt-4 text-meta leading-relaxed text-ink/70">
+                {t.transferHelpPre}{" "}
+                <Link href="/contact" className="font-semibold text-rust hover:underline">
+                  {t.noInstructionsLink}
+                </Link>{" "}
+                {t.transferHelpPost}
+              </p>
+            </>
           ) : (
             <p className="mt-3 text-meta leading-relaxed text-ink/75">
               {t.noInstructionsPre}{" "}

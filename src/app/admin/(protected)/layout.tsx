@@ -40,6 +40,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   if (can(user, "widgets.view")) items.push({ href: "/admin/widgets", label: t.widgets });
   if (can(user, "toggles.view")) items.push({ href: "/admin/toggles", label: t.toggles });
   if (can(user, "integrations.view")) items.push({ href: "/admin/integrations", label: t.integrations });
+  if (can(user, "integrations.view")) items.push({ href: "/admin/payments", label: t.payments });
 
   return (
     <div className="admin-shell">

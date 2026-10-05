@@ -22,6 +22,7 @@ export interface NavDict {
   widgets: string;
   toggles: string;
   integrations: string;
+  payments: string;
 }
 
 export interface ChromeDict {
@@ -51,6 +52,7 @@ export const navEn: NavDict = {
   widgets: "Floating widgets",
   toggles: "Site toggles",
   integrations: "Integrations",
+  payments: "Payments",
 };
 
 export const navAr: NavDict = {
@@ -70,6 +72,7 @@ export const navAr: NavDict = {
   widgets: "الأدوات العائمة",
   toggles: "إعدادات الموقع",
   integrations: "التكاملات",
+  payments: "المدفوعات",
 };
 
 export const chromeEn: ChromeDict = {
