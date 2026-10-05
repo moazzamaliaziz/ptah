@@ -271,6 +271,36 @@ async function loadRequestTour(client: Prisma.TransactionClient | typeof db, tou
 }
 
 /**
+ * Does this error mean "someone else created the departure for this date while
+ * we were creating it"?
+ *
+ * Prisma's `upsert` is find-then-write, not atomic, so two first-bookings of the
+ * same new date can both find nothing and both insert. The
+ * (tourId, startDate) UNIQUE index is what stops that becoming two capacity
+ * pools — it lets exactly one insert through and raises P2002 on the other.
+ * That is contention, not a failure: the loser just needs to start over against
+ * the row that now exists.
+ *
+ * Checked structurally rather than with `instanceof` so this stays independent
+ * of which Prisma client instance threw.
+ */
+function isDepartureDateConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const e = error as { code?: unknown; meta?: { target?: unknown } };
+  if (e.code !== "P2002") return false;
+  const target = e.meta?.target;
+  const named = Array.isArray(target) ? target.join(",") : String(target ?? "");
+  // MySQL reports the constraint name; be generous, since the only unique
+  // constraint this transaction can violate is the departure date one.
+  return named === "" || /tour_departures|startDate|tourId/i.test(named);
+}
+
+/** How many times to re-run the reservation when it loses that race. Each retry
+ *  is a fresh transaction, which matters: InnoDB would otherwise keep serving
+ *  this transaction's original snapshot, in which the winner's row is invisible. */
+const MAX_DATE_CONFLICT_ATTEMPTS = 3;
+
+/**
  * Turn a DateSelection into the departure id to claim seats on, creating the
  * departure when the traveler is the first to ask for that date.
  *
@@ -352,11 +382,11 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
   // where the traveler is booking from. Already ISO alpha-2, uppercased by zod.
   const originCountry = contact.billing.country;
 
-  try {
-    // One transaction spans resolving the date AND claiming the seats, so a
-    // departure materialized for a customer-chosen date is never left behind by
-    // a reservation that then failed.
-    const { reserved, departureId } = await db.$transaction(async (tx) => {
+  // One transaction spans resolving the date AND claiming the seats, so a
+  // departure materialized for a customer-chosen date is never left behind by a
+  // reservation that then failed.
+  const runReserve = () =>
+    db.$transaction(async (tx) => {
       const id = await resolveSelectionWith(tx, selection);
       return {
         departureId: id,
@@ -371,6 +401,26 @@ export async function createPendingBooking(raw: unknown): Promise<BookingResult>
         }),
       };
     });
+
+  try {
+    // Losing the create-the-departure race is contention, not an error: retry
+    // in a NEW transaction, where the winner's row is visible, so the second
+    // customer either books the remaining seats or gets a clean SOLD_OUT —
+    // never a 500. Capacity is still guarded solely by the conditional UPDATE
+    // inside reserveSeatsWith, so a retry cannot oversell.
+    let outcome: Awaited<ReturnType<typeof runReserve>> | null = null;
+    for (let attempt = 1; attempt <= MAX_DATE_CONFLICT_ATTEMPTS; attempt++) {
+      try {
+        outcome = await runReserve();
+        break;
+      } catch (error) {
+        if (!isDepartureDateConflict(error) || attempt === MAX_DATE_CONFLICT_ATTEMPTS) throw error;
+        logger.warn("booking date conflict — retrying", { attempt, selection });
+      }
+    }
+    // Unreachable: the loop either assigns, breaks, or rethrows.
+    if (!outcome) throw new ReserveError("SOLD_OUT");
+    const { reserved, departureId } = outcome;
 
     await writeAudit({
       actorId: userId,
