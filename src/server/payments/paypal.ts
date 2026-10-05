@@ -54,29 +54,59 @@ const globalForPaypal = globalThis as unknown as {
   __ptahPaypalToken?: { key: string; token: string; expires: number };
 };
 
-async function getAccessToken(creds: PaypalCredentials): Promise<string> {
+/**
+ * Fetch (and cache) an OAuth token, or null when PayPal will not issue one.
+ *
+ * Returns null rather than throwing, which is this module's whole contract:
+ * every exported function promises null/false when PayPal cannot be reached, so
+ * the commerce flow degrades. It previously threw on a non-OK response, and
+ * nothing up the stack caught it — a wrong client id, a secret rotated in the
+ * PayPal dashboard, or a sandbox key set to "live" (all of which answer 401
+ * here) took the whole checkout page down with the generic error boundary,
+ * AFTER the booking row and its seat claim already existed. The customer saw a
+ * crash and never learned they had a held booking.
+ */
+async function getAccessToken(creds: PaypalCredentials): Promise<string | null> {
   const cacheKey = `${creds.baseUrl}:${creds.clientId}`;
   const cached = globalForPaypal.__ptahPaypalToken;
   if (cached && cached.key === cacheKey && cached.expires > Date.now()) return cached.token;
 
   const basic = Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString("base64");
-  const res = await fetch(`${creds.baseUrl}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-  if (!res.ok) throw new Error(`PayPal token HTTP ${res.status}`);
-  const json = (await res.json()) as { access_token: string; expires_in: number };
-  // Refresh a minute early to avoid using a token that expires mid-request.
-  globalForPaypal.__ptahPaypalToken = {
-    key: cacheKey,
-    token: json.access_token,
-    expires: Date.now() + Math.max(0, (json.expires_in - 60) * 1000),
-  };
-  return json.access_token;
+  try {
+    const res = await fetch(`${creds.baseUrl}/v1/oauth2/token`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basic}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials",
+    });
+    if (!res.ok) {
+      // 401 here is nearly always a credential problem; name it in the log so
+      // the cause is obvious without reproducing against live PayPal.
+      logger.error("paypal token request rejected", {
+        status: res.status,
+        hint: res.status === 401 ? "check CLIENT_ID/CLIENT_SECRET and the sandbox/live ENVIRONMENT setting" : undefined,
+      });
+      return null;
+    }
+    const json = (await res.json()) as { access_token?: string; expires_in?: number };
+    if (!json.access_token) {
+      logger.error("paypal token response carried no access_token");
+      return null;
+    }
+    // Refresh a minute early to avoid using a token that expires mid-request.
+    globalForPaypal.__ptahPaypalToken = {
+      key: cacheKey,
+      token: json.access_token,
+      expires: Date.now() + Math.max(0, ((json.expires_in ?? 60) - 60) * 1000),
+    };
+    return json.access_token;
+  } catch (error) {
+    // DNS/TLS/timeout — a network blip must not become a 500 either.
+    logger.error("paypal token request failed", { error });
+    return null;
+  }
 }
 
 /** Integer cents → PayPal's 2-decimal string (app currencies are 2-decimal). */
@@ -106,7 +136,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
   const creds = await resolvePaypalCredentials();
   if (!creds) return null;
   const token = await getAccessToken(creds);
+  if (!token) return null;
 
+  try {
   const res = await fetch(`${creds.baseUrl}/v2/checkout/orders`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -137,7 +169,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
   });
 
   if (!res.ok) {
-    logger.error("paypal createOrder failed", { status: res.status });
+    // PayPal explains the rejection in the body (unsupported currency for the
+    // account, a malformed amount); without it the log says nothing useful.
+    const detail = await res.text().catch(() => "");
+    logger.error("paypal createOrder failed", { status: res.status, detail: detail.slice(0, 500) });
     return null;
   }
   const json = (await res.json()) as {
@@ -150,6 +185,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
     return null;
   }
   return { orderId: json.id, approveUrl: approve.href };
+  } catch (error) {
+    logger.error("paypal createOrder threw", { error });
+    return null;
+  }
 }
 
 export interface CaptureResult {
@@ -166,6 +205,7 @@ export async function captureOrder(orderId: string): Promise<CaptureResult | nul
   const creds = await resolvePaypalCredentials();
   if (!creds) return null;
   const token = await getAccessToken(creds);
+  if (!token) return null;
 
   const res = await fetch(`${creds.baseUrl}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
@@ -184,6 +224,7 @@ export async function getOrder(orderId: string): Promise<CaptureResult | null> {
   const creds = await resolvePaypalCredentials();
   if (!creds) return null;
   const token = await getAccessToken(creds);
+  if (!token) return null;
   const res = await fetch(`${creds.baseUrl}/v2/checkout/orders/${orderId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -227,6 +268,7 @@ export async function refundCapture(captureId: string): Promise<boolean> {
   const creds = await resolvePaypalCredentials();
   if (!creds) return false;
   const token = await getAccessToken(creds);
+  if (!token) return false;
   const res = await fetch(`${creds.baseUrl}/v2/payments/captures/${captureId}/refund`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -279,6 +321,9 @@ export async function verifyWebhookSignature(
   }
 
   const token = await getAccessToken(creds);
+  // No token ⇒ the signature cannot be verified. Refuse: an unverified webhook
+  // must never be treated as genuine, since it confirms bookings and money.
+  if (!token) return false;
   const res = await fetch(`${creds.baseUrl}/v1/notifications/verify-webhook-signature`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

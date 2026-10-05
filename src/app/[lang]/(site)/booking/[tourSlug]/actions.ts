@@ -24,6 +24,7 @@ import {
   startPaypalCheckout,
   startBankTransfer,
   validateCoupon,
+  type CheckoutResult,
   type CouponPreview,
 } from "@/server/booking";
 
@@ -133,10 +134,26 @@ export async function submitBookingAction(
   }
 
   // Online: redirect the browser to the gateway's hosted page.
-  const checkout =
-    method === "paypal"
-      ? await startPaypalCheckout(booking.bookingId, locale)
-      : await startStripeCheckout(booking.bookingId, locale);
+  //
+  // Last line of defence. By this point the booking EXISTS and its seats are
+  // claimed, so an exception escaping here would show the generic error page to
+  // a customer who has a held booking and no reference for it. Only the gateway
+  // call is wrapped — `redirect()` throws by design and must stay outside.
+  let checkout: CheckoutResult;
+  try {
+    checkout =
+      method === "paypal"
+        ? await startPaypalCheckout(booking.bookingId, locale)
+        : await startStripeCheckout(booking.bookingId, locale);
+  } catch (error) {
+    logger.error("checkout start threw after booking", { bookingId: booking.bookingId, method, error });
+    checkout = {
+      ok: false,
+      reason: "GATEWAY_ERROR",
+      message:
+        "We couldn't reach the payment provider. Your seats are held — please try again, or contact us quoting your booking reference.",
+    };
+  }
 
   if (!checkout.ok) {
     if (checkout.reason === "PAYMENTS_UNAVAILABLE") {

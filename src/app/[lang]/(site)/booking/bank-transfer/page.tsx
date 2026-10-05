@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import Container from "@/components/layout/Container";
 import { getBookingOutcome } from "@/server/booking-read";
 import { formatPriceCents } from "@/lib/utils";
+import BankDetails from "@/components/commerce/BankDetails";
 import { env } from "@/lib/env";
 import { getPageContent } from "@/i18n/pages";
 
@@ -80,17 +81,31 @@ export default async function BankTransferPage({
 
         <div className="mt-6 rounded-2xl border border-grey-300/60 bg-papyrus/50 p-6">
           <h2 className="text-card-title font-semibold text-ink">{t.transferDetailsHeading}</h2>
+          {/* The account itself: discrete, labelled, copyable rows. */}
+          <BankDetails
+            labels={{
+              accountName: t.accountNameLabel,
+              iban: t.ibanLabel,
+              accountNumber: t.accountNumberLabel,
+              bic: t.bicLabel,
+              currencyLabel: t.bankCurrencyLabel,
+              copy: t.copyLabel,
+              copied: t.copiedLabel,
+            }}
+          />
+          {/* BANK_TRANSFER_INSTRUCTIONS is now an OPTIONAL note beneath the
+              account — for anything situational (correspondent bank, branch),
+              not for the numbers, which are no longer free text. */}
           {instructions ? (
-            <p className="mt-3 whitespace-pre-line text-meta leading-relaxed text-ink/75">{instructions}</p>
-          ) : (
-            <p className="mt-3 text-meta leading-relaxed text-ink/75">
-              {t.noInstructionsPre}{" "}
-              <Link href="/contact" className="font-semibold text-rust hover:underline">
-                {t.noInstructionsLink}
-              </Link>{" "}
-              {t.noInstructionsPost}
-            </p>
-          )}
+            <p className="mt-4 whitespace-pre-line text-meta leading-relaxed text-ink/75">{instructions}</p>
+          ) : null}
+          <p className="mt-4 text-meta leading-relaxed text-ink/70">
+            {t.transferHelpPre}{" "}
+            <Link href="/contact" className="font-semibold text-rust hover:underline">
+              {t.noInstructionsLink}
+            </Link>{" "}
+            {t.transferHelpPost}
+          </p>
           <p className="mt-4 border-t border-grey-300/50 pt-4 text-[11px] text-ink/50">
             {t.reminderPre} <span className="font-mono">{booking.id}</span> {t.reminderPost}
           </p>
