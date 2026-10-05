@@ -19,6 +19,7 @@
 import { z } from "zod";
 import { siteMeta, footerContent } from "@/content/landing";
 import { SAFE_URL_RE } from "@/lib/safe-url";
+import { SITE_CURRENCY } from "@/content/currency";
 
 /** Social icon keys the footer can render (subset of Icon.tsx that reads as a brand). */
 export const SOCIAL_ICON_KEYS = [
@@ -120,6 +121,59 @@ export const SETTINGS_SCHEMA = {
   },
   "contact.whatsapp": {
     schema: z.string().trim().max(40),
+    fallback: "",
+  },
+  // ── Bank transfer (shown to customers paying offline) ────────────────────
+  // Public payment details, not credentials — exactly what this table is for
+  // (the vault holds secrets). Every field may be blank: the bank-transfer page
+  // renders only the rows that are filled, and falls back to "we'll email you
+  // the details" when the account name and IBAN are both empty, so a
+  // half-configured shop never shows a half-account.
+  "payments.bankAccountName": {
+    schema: z.string().trim().max(160),
+    fallback: "",
+  },
+  "payments.bankIban": {
+    // Format only — IBANs vary 15-34 chars by country. The checksum is verified
+    // separately (validateIban) so the admin is warned about a typo rather than
+    // blocked by a rule this registry cannot keep current per country.
+    schema: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .refine((v) => v === "" || /^[A-Z]{2}[0-9A-Z]{13,32}$/.test(v), {
+        message: "An IBAN is two country letters followed by 13-32 letters/digits.",
+      }),
+    fallback: "",
+  },
+  "payments.bankAccountNumber": {
+    schema: z.string().trim().max(64),
+    fallback: "",
+  },
+  "payments.bankBic": {
+    // 8 or 11 characters, per ISO 9362.
+    schema: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .refine((v) => v === "" || /^[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/.test(v), {
+        message: "A BIC/SWIFT code is 8 or 11 characters, like NBEGEGCXXXX.",
+      }),
+    fallback: "",
+  },
+  "payments.bankCurrency": {
+    schema: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .refine((v) => v === "" || /^[A-Z]{3}$/.test(v), {
+        message: "A currency is a 3-letter code, like USD.",
+      }),
+    fallback: SITE_CURRENCY,
+  },
+  /** Free-text note shown beneath the account (correspondent bank, branch…). */
+  "payments.bankNote": {
+    schema: z.string().trim().max(2000),
     fallback: "",
   },
   "seo.ogImageMediaId": {

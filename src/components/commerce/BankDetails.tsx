@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * The receiving bank account, as discrete copyable rows.
+ * The receiving bank account, as discrete copyable rows. Values come from
+ * site settings (Admin → Payments) via `buildBankAccount`.
  *
  * Copy buttons are the point, not decoration: a 29-character IBAN retyped by
  * hand is a payment that bounces or lands somewhere else, and the customer only
@@ -14,7 +15,7 @@
  * the value stays on screen, selectable, as the fallback.
  */
 import { useEffect, useState, type JSX } from "react";
-import { BANK_ACCOUNT, formatIban, type BankAccountField } from "@/content/bank-details";
+import { formatIban, type BankAccount, type BankAccountField } from "@/content/bank-details";
 
 export interface BankDetailsLabels {
   accountName: string;
@@ -64,10 +65,16 @@ function CopyButton({ value, labels }: { value: string; labels: BankDetailsLabel
   );
 }
 
-export default function BankDetails({ labels }: { labels: BankDetailsLabels }): JSX.Element {
+export default function BankDetails({
+  account,
+  labels,
+}: {
+  account: BankAccount;
+  labels: BankDetailsLabels;
+}): JSX.Element {
   return (
     <dl className="mt-4 divide-y divide-grey-300/50 border-y border-grey-300/50">
-      {BANK_ACCOUNT.fields.map((field) => (
+      {account.fields.map((field) => (
         <div key={field.key} className="flex items-center justify-between gap-4 py-3">
           <div className="min-w-0">
             <dt className="text-[11px] uppercase tracking-wide text-ink/50">{labels[field.key]}</dt>
@@ -78,10 +85,12 @@ export default function BankDetails({ labels }: { labels: BankDetailsLabels }): 
           <CopyButton value={field.value} labels={labels} />
         </div>
       ))}
-      <div className="flex items-center justify-between gap-4 py-3">
-        <dt className="text-[11px] uppercase tracking-wide text-ink/50">{labels.currencyLabel}</dt>
-        <dd className="font-mono text-meta font-semibold text-ink">{BANK_ACCOUNT.currency}</dd>
-      </div>
+      {account.currency ? (
+        <div className="flex items-center justify-between gap-4 py-3">
+          <dt className="text-[11px] uppercase tracking-wide text-ink/50">{labels.currencyLabel}</dt>
+          <dd className="font-mono text-meta font-semibold text-ink">{account.currency}</dd>
+        </div>
+      ) : null}
     </dl>
   );
 }
