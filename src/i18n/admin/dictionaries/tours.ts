@@ -71,7 +71,8 @@ export interface TourFormFieldsDict {
   description: string;
   durationDays: string;
   basePrice: string;
-  currency: string;
+  /** Read-only currency note; carries a {currency} token. */
+  currencyNote: string;
   difficulty: string;
   pricingLegend: string;
   childPrice: string;
@@ -80,6 +81,25 @@ export interface TourFormFieldsDict {
   infantPlaceholder: string;
   pricingNote: string;
   bookingClosedLabel: string;
+  /** Group-size price bands (P8). */
+  tiersLegend: string;
+  tiersNote: string;
+  tiersMinPax: string;
+  tiersMaxPax: string;
+  tiersPrice: string;
+  tiersMaxPaxPlaceholder: string;
+  tiersAdd: string;
+  tiersRemove: string;
+  tiersEmpty: string;
+  /** Customer-chosen travel dates (P8). */
+  datesLegend: string;
+  datesNote: string;
+  onRequestDatesLabel: string;
+  requestLeadDays: string;
+  requestWindowDays: string;
+  requestCapacity: string;
+  blackoutDatesLabel: string;
+  blackoutDatesPlaceholder: string;
   tagsLegend: string;
   heroImage: string;
   ogImage: string;
@@ -228,7 +248,7 @@ export const toursEn: ToursDict = {
     description: "Description",
     durationDays: "Duration (days)",
     basePrice: "Base price",
-    currency: "Currency",
+    currencyNote: "All prices are in {currency}.",
     difficulty: "Difficulty",
     pricingLegend: "Passenger pricing & availability",
     childPrice: "Child price (optional)",
@@ -239,6 +259,25 @@ export const toursEn: ToursDict = {
       "Leave a price blank to hide that traveler type from the booking form. Enter 0.00 to offer it free (e.g. infants). The base price above is the adult price.",
     bookingClosedLabel:
       "Pause online booking for this tour (shows a “booking paused” notice; existing bookings are unaffected)",
+    tiersLegend: "Price per person by group size",
+    tiersNote:
+      "The band matching the total party size (adults + children + infants) sets the per-person adult price. Bands must not overlap; leave the largest size blank for an open-ended top band (“7+”). A party size no band covers pays the base price. A departure's own price override wins over these.",
+    tiersMinPax: "From (travelers)",
+    tiersMaxPax: "To (travelers)",
+    tiersPrice: "Price per person",
+    tiersMaxPaxPlaceholder: "blank = and above",
+    tiersAdd: "Add a band",
+    tiersRemove: "Remove",
+    tiersEmpty: "No bands yet — the base price applies to every party size.",
+    datesLegend: "Travel dates",
+    datesNote:
+      "With dates on request, customers pick their own day on a calendar and the departure for that day is created when the first booking comes in. Turn it off to sell only the scheduled departures below.",
+    onRequestDatesLabel: "Let customers choose their own travel date",
+    requestLeadDays: "Notice required (days)",
+    requestWindowDays: "Bookable window (days ahead)",
+    requestCapacity: "Seats per requested date",
+    blackoutDatesLabel: "Blackout dates (one YYYY-MM-DD per line)",
+    blackoutDatesPlaceholder: "2026-12-25",
     tagsLegend: "Style & special tags (drive the Tours menu filters)",
     heroImage: "Hero image",
     ogImage: "Social share image (OG)",
@@ -360,7 +399,7 @@ export const toursAr: ToursDict = {
     description: "الوصف",
     durationDays: "المدة (أيام)",
     basePrice: "السعر الأساسي",
-    currency: "العملة",
+    currencyNote: "جميع الأسعار بعملة {currency}.",
     difficulty: "مستوى الصعوبة",
     pricingLegend: "تسعير المسافرين والإتاحة",
     childPrice: "سعر الطفل (اختياري)",
@@ -371,6 +410,25 @@ export const toursAr: ToursDict = {
       "اترك السعر فارغًا لإخفاء هذا النوع من المسافرين من نموذج الحجز. أدخل 0.00 لتقديمه مجانًا (مثل الرضّع). السعر الأساسي أعلاه هو سعر البالغ.",
     bookingClosedLabel:
       "إيقاف الحجز الإلكتروني مؤقتًا لهذه الجولة (يعرض إشعار «الحجز متوقف»؛ الحجوزات القائمة لا تتأثر)",
+    tiersLegend: "السعر للفرد حسب حجم المجموعة",
+    tiersNote:
+      "النطاق المطابق لإجمالي عدد المسافرين (بالغون + أطفال + رضّع) يحدّد سعر البالغ للفرد. يجب ألّا تتداخل النطاقات؛ اترك الحد الأعلى فارغًا لنطاق مفتوح من الأعلى («7+»). أي حجم مجموعة لا يغطّيه نطاق يدفع السعر الأساسي. تجاوز سعر المغادرة له الأولوية على هذه النطاقات.",
+    tiersMinPax: "من (مسافرين)",
+    tiersMaxPax: "إلى (مسافرين)",
+    tiersPrice: "السعر للفرد",
+    tiersMaxPaxPlaceholder: "فارغ = وما فوق",
+    tiersAdd: "إضافة نطاق",
+    tiersRemove: "إزالة",
+    tiersEmpty: "لا نطاقات بعد — يُطبّق السعر الأساسي على كل أحجام المجموعات.",
+    datesLegend: "تواريخ السفر",
+    datesNote:
+      "مع التواريخ حسب الطلب، يختار العملاء يومهم من التقويم وتُنشأ المغادرة لذلك اليوم عند وصول أول حجز. أوقفه لبيع المغادرات المجدولة أدناه فقط.",
+    onRequestDatesLabel: "السماح للعملاء باختيار تاريخ سفرهم",
+    requestLeadDays: "مدة الإشعار المطلوبة (أيام)",
+    requestWindowDays: "نافذة الحجز (أيام مقدمًا)",
+    requestCapacity: "المقاعد لكل تاريخ مطلوب",
+    blackoutDatesLabel: "التواريخ المستبعدة (تاريخ YYYY-MM-DD في كل سطر)",
+    blackoutDatesPlaceholder: "2026-12-25",
     tagsLegend: "الأنماط والوسوم الخاصة (تُشغّل مرشّحات قائمة الجولات)",
     heroImage: "صورة الغلاف",
     ogImage: "صورة المشاركة الاجتماعية (OG)",

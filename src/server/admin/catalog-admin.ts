@@ -28,7 +28,10 @@ import {
   type TourInput,
   type DestinationInput,
   type ItineraryDayInput,
+  type GroupPriceTierInput,
 } from "@/content/catalog-admin-schema";
+import { SITE_CURRENCY, type SupportedCurrency } from "@/content/currency";
+import { parseBlackoutDates } from "@/server/booking-core";
 import { isTourTag, type TourTag } from "@/content/tour-tags";
 
 export type MutationResult<T = void> =
@@ -113,6 +116,11 @@ export async function listAdminTours(): Promise<AdminTourRow[]> {
 export interface AdminTourDetail extends TourInput {
   id: string;
   status: string;
+  /** The currency actually stored on the row. Not editable (every new price is
+   *  written in SITE_CURRENCY) but surfaced so the editor can display it, and
+   *  so a legacy row priced in something else is visible rather than silently
+   *  relabelled. */
+  currency: string;
   itinerary: (ItineraryDayInput & { id: string; sortOrder: number })[];
   departures: {
     id: string;
@@ -142,6 +150,12 @@ export async function getAdminTour(id: string): Promise<AdminTourDetail | null> 
       heroImage: true, tags: true, gallery: true, inclusions: true, exclusions: true,
       faqs: true, travelNotes: true, ctaLabel: true, ctaHref: true,
       metaTitle: true, metaDesc: true, ogImage: true, status: true,
+      onRequestDates: true, requestLeadDays: true, requestWindowDays: true,
+      requestCapacity: true, blackoutDates: true,
+      priceTiers: {
+        orderBy: { minPax: "asc" },
+        select: { minPax: true, maxPax: true, pricePerPersonCents: true },
+      },
       itinerary: {
         orderBy: [{ sortOrder: "asc" }, { dayNumber: "asc" }],
         select: { id: true, dayNumber: true, title: true, description: true, sortOrder: true },
@@ -173,6 +187,12 @@ export async function getAdminTour(id: string): Promise<AdminTourDetail | null> 
     infantPriceCents: t.infantPriceCents,
     currency: t.currency,
     bookingClosed: t.bookingClosed,
+    priceTiers: t.priceTiers,
+    onRequestDates: t.onRequestDates,
+    requestLeadDays: t.requestLeadDays,
+    requestWindowDays: t.requestWindowDays,
+    requestCapacity: t.requestCapacity,
+    blackoutDates: parseBlackoutDates(t.blackoutDates),
     difficulty: t.difficulty,
     heroImage: t.heroImage,
     tags: toTagArray(t.tags),
@@ -226,8 +246,13 @@ interface TourWriteData {
   basePriceCents: number;
   childPriceCents: number | null;
   infantPriceCents: number | null;
-  currency: string;
+  currency: SupportedCurrency;
   bookingClosed: boolean;
+  onRequestDates: boolean;
+  requestLeadDays: number;
+  requestWindowDays: number;
+  requestCapacity: number;
+  blackoutDates: Prisma.InputJsonValue;
   difficulty: TourInput["difficulty"];
   heroImage: string | null;
   tags: Prisma.InputJsonValue;
@@ -254,8 +279,14 @@ function tourWriteData(input: TourInput): TourWriteData {
     basePriceCents: input.basePriceCents,
     childPriceCents: input.childPriceCents,
     infantPriceCents: input.infantPriceCents,
-    currency: input.currency,
+    // Not an editable field: every tour is priced in the one site currency.
+    currency: SITE_CURRENCY,
     bookingClosed: input.bookingClosed,
+    onRequestDates: input.onRequestDates,
+    requestLeadDays: input.requestLeadDays,
+    requestWindowDays: input.requestWindowDays,
+    requestCapacity: input.requestCapacity,
+    blackoutDates: input.blackoutDates as Prisma.InputJsonValue,
     difficulty: input.difficulty,
     heroImage: input.heroImage,
     tags: input.tags as Prisma.InputJsonValue,
@@ -270,6 +301,42 @@ function tourWriteData(input: TourInput): TourWriteData {
     metaDesc: input.metaDesc,
     ogImage: input.ogImage,
   };
+}
+
+/**
+ * Rewrite a tour's group-size bands to exactly `tiers`.
+ *
+ * Delete-then-insert rather than a per-row diff: the band set is small, the
+ * editor always posts the whole table, and `minPax` is the natural key, so
+ * reconciling row identities would buy nothing. Both statements run in one
+ * transaction so a tour is never briefly left with no bands (which would price
+ * every party at the base rate for the length of a request).
+ *
+ * Price tiers are not historical records — a booking freezes its own breakdown
+ * in `Booking.pricing` — so replacing them cannot disturb money already charged.
+ */
+async function replaceTourPriceTiers(
+  tourId: string,
+  tiers: readonly GroupPriceTierInput[],
+): Promise<void> {
+  await db.$transaction([
+    db.tourPriceTier.deleteMany({ where: { tourId } }),
+    ...(tiers.length === 0
+      ? []
+      : [
+          db.tourPriceTier.createMany({
+            data: [...tiers]
+              .sort((a, b) => a.minPax - b.minPax)
+              .map((tier, index) => ({
+                tourId,
+                minPax: tier.minPax,
+                maxPax: tier.maxPax,
+                pricePerPersonCents: tier.pricePerPersonCents,
+                sortOrder: index,
+              })),
+          }),
+        ]),
+  ]);
 }
 
 function firstIssue(error: z.ZodError): string {
@@ -290,6 +357,7 @@ export async function createTour(raw: unknown): Promise<MutationResult<string>> 
       data: { ...tourWriteData(parsed.data), status: "DRAFT" },
       select: { id: true },
     });
+    await replaceTourPriceTiers(created.id, parsed.data.priceTiers);
     return ok(created.id);
   } catch {
     return fail("Could not create the tour (the slug may already be taken).");
@@ -311,6 +379,7 @@ export async function updateTour(id: string, raw: unknown): Promise<MutationResu
   if (!found) return fail("Tour not found.");
 
   await db.tour.update({ where: { id }, data: tourWriteData(parsed.data) });
+  await replaceTourPriceTiers(id, parsed.data.priceTiers);
   return { ok: true };
 }
 

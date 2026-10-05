@@ -57,7 +57,7 @@ export const de = {
       {
         title: "Über Ägypten",
         columns: [
-          { heading: "Reiseziele", links: ["Kairo", "Luxor", "Assuan", "Alexandria", "Hurghada", "Sharm El Sheikh"] },
+          { heading: "Reiseziele", links: ["Luxor", "Assuan", "Kairo", "Alexandria", "Hurghada", "Sharm El Sheikh"] },
           { heading: "Land kennenlernen", links: ["Geschichte & Kulturerbe", "Jahreszeiten & Klima", "Der Nil", "Wüsten & Oasen", "Riffe im Roten Meer"] },
           { heading: "Gut zu wissen", links: ["Verantwortungsvolles Reisen", "Barrierefreiheit", "Sicherheit & Unterstützung", "Geschichten & Journal"] },
         ],
@@ -71,7 +71,6 @@ export const de = {
         title: "Reise planen",
         columns: [
           { heading: "Anreise", links: ["Flüge nach Ägypten", "Visa & Einreise", "Ankunftstage, organisiert", "Fortbewegung vor Ort"] },
-          { heading: "Entscheidungshilfe", links: ["Beste Reisezeit", "Wie viele Tage", "Budget & Trinkgeld", "Reisen mit Kindern"] },
           { heading: "Unser Versprechen", links: ["So funktionieren Ptah-Reisen", "Verantwortungsvolles Reisen", "Bewertungen & Akkreditierung", "Team kontaktieren"] },
         ],
         imageCtas: [
@@ -83,27 +82,14 @@ export const de = {
       {
         title: "Touren",
         columns: [
+          { heading: "Luxor-Touren", links: ["Alle Luxor-Touren", "Tempel & Gräber", "Nilkreuzfahrten ab Luxor", "Luxor entdecken"] },
+          { heading: "Assuan-Touren", links: ["Alle Assuan-Touren", "Abu Simbel & Philae", "Nilkreuzfahrten ab Assuan", "Assuan entdecken"] },
           { heading: "Nach Stil", links: ["Klassisches Ägypten", "Nilkreuzfahrten", "Rotes Meer & Strand", "Wüstenabenteuer"] },
-          { heading: "Nach Dauer", links: ["Tagestouren", "2–4-Tages-Reisen", "5–9-Tages-Reisen", "Expeditionen ab 10 Tagen"] },
-          { heading: "Besonderes", links: ["Privat & Maßgeschneidert", "Familienreisen", "Flitterwochen", "Last-Minute-Reisen"] },
         ],
         imageCtas: [
-          { label: "Signature-Reise", heading: "Klassisches Ägypten, 8 Tage" },
+          { label: "Westufer", heading: "Luxor, Tempel und Gräber" },
           { label: "Auf dem Fluss", heading: "Nilkreuzfahrt-Kollektion" },
-          { label: "Unter Wasser", heading: "Tauch- & Schnorchelreisen" },
-        ],
-      },
-      {
-        title: "Journal",
-        columns: [
-          { heading: "Erste Schritte", links: ["Beste Reisezeit", "Erste Nilkreuzfahrt", "7-Tage-Route", "Packliste"] },
-          { heading: "Orte & Geschichten", links: ["Kairo abseits des Reiseführers", "Alexandrias Seele", "Jenseits von Giza", "Ein Abend in Karnak"] },
-          { heading: "Clever reisen", links: ["Ägypten mit Kindern", "Knigge fürs Riff", "Ruhige Feluken-Tage", "Alle Journal-Beiträge"] },
-        ],
-        imageCtas: [
-          { label: "Reiseplanung", heading: "Wann nach Ägypten" },
-          { label: "Auf dem Fluss", heading: "Erste Nilkreuzfahrt" },
-          { label: "Mit der Familie", heading: "Ägypten mit Kindern" },
+          { label: "Flussaufwärts", heading: "Assuan & Abu Simbel" },
         ],
       },
     ],

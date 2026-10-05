@@ -932,6 +932,21 @@ export const enPages = {
       departureLegend: "Choose your departure",
       soldOut: "Sold out",
       remaining: "{count} left",
+      /** P8 calendar: shown instead of the departure list when the tour takes
+       *  customer-chosen dates. */
+      dateLegend: "Choose your travel date",
+      dateHelp: "Pick any date that suits you. We confirm your guide and pickup time for that morning.",
+      calendarLabel: "Travel date calendar",
+      prevMonth: "Previous month",
+      nextMonth: "Next month",
+      dateUnavailable: "Not available",
+      /** "{date}" is the long-form chosen date. */
+      dateSelected: "Travelling on {date}",
+      datePlaceholder: "No date chosen yet — pick a day above.",
+      /** "{date}" is the earliest bookable date. */
+      earliestDate: "Earliest available date: {date}",
+      /** Submit is blocked until a day is picked. */
+      dateRequired: "Choose your travel date to continue.",
       travelersLegend: "Travelers",
       /** Per-passenger-type stepper labels. Children/infants only appear when the
        *  tour prices them. Price per person is appended from the tour data. */
@@ -944,7 +959,20 @@ export const enPages = {
       decrease: "Decrease {label}",
       increase: "Increase {label}",
       upTo: "Up to {max} on this departure",
+      /** P8 calendar mode: capacity is per-date, so the cap is about party size. */
+      upToParty: "Up to {max} travelers on one booking",
       selectDeparture: "Select a departure",
+      /** P8 group-size pricing table inside the form. */
+      groupPricing: {
+        heading: "Price per person by group size",
+        note: "Your rate follows your party size — the more of you travel, the less each person pays.",
+        sizeColumn: "Group size",
+        priceColumn: "Per person",
+        single: "{min} traveler",
+        range: "{min}–{max} travelers",
+        rangeOpen: "{min}+ travelers",
+        activeBadge: "Your rate",
+      },
       detailsLegend: "Your details",
       fullName: "Full name",
       email: "Email",
@@ -1219,6 +1247,24 @@ export const enPages = {
       bookThisDate: "Book this date",
       /** Shown on a departure's button when online booking is paused tour-wide. */
       bookingPaused: "Booking paused",
+      /** P8: replaces the list for tours that run on the traveler's own dates. */
+      onRequestTitle: "Travel on your own dates",
+      onRequestBody: "This tour runs on request. Pick the date that suits you at checkout and we'll confirm your guide for that morning.",
+      onRequestCta: "Choose your date",
+      /** Shown alongside the list when scheduled dates exist AND dates are also
+       *  on request — the traveler can do either. */
+      onRequestAlso: "Prefer a different day? You can pick your own date at checkout.",
+    },
+    /** P8 group-size pricing table on the tour detail page. */
+    groupPricing: {
+      heading: "Price per person by group size",
+      note: "Rates are per person. Larger groups pay less each — your party size picks the rate automatically at checkout.",
+      sizeColumn: "Group size",
+      priceColumn: "Per person",
+      single: "{min} traveler",
+      range: "{min}–{max} travelers",
+      rangeOpen: "{min}+ travelers",
+      activeBadge: "Your rate",
     },
   },
 

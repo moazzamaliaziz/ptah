@@ -927,6 +927,17 @@ export const frPages = {
       departureLegend: "Choisissez votre départ",
       soldOut: "Complet",
       remaining: "{count} restantes",
+      /** P8 calendar labels (shown instead of the departure list). */
+      dateLegend: "Choisissez votre date de voyage",
+      dateHelp: "Choisissez la date qui vous convient. Nous confirmons votre guide et l'heure de prise en charge pour ce matin-là.",
+      calendarLabel: "Calendrier des dates de voyage",
+      prevMonth: "Mois précédent",
+      nextMonth: "Mois suivant",
+      dateUnavailable: "Non disponible",
+      dateSelected: "Départ le {date}",
+      datePlaceholder: "Aucune date choisie pour l'instant — sélectionnez un jour ci-dessus.",
+      earliestDate: "Première date disponible : {date}",
+      dateRequired: "Choisissez votre date de voyage pour continuer.",
       travelersLegend: "Voyageurs",
       /** Per-passenger-type stepper labels. Children/infants only appear when the
        *  tour prices them. Price per person is appended from the tour data. */
@@ -939,7 +950,19 @@ export const frPages = {
       decrease: "Diminuer {label}",
       increase: "Augmenter {label}",
       upTo: "Jusqu'à {max} sur ce départ",
+      upToParty: "Jusqu'à {max} voyageurs par réservation",
       selectDeparture: "Sélectionnez un départ",
+      /** P8 group-size pricing table inside the form. */
+      groupPricing: {
+        heading: "Prix par personne selon la taille du groupe",
+        note: "Votre tarif suit la taille de votre groupe : plus vous êtes nombreux, moins chacun paie.",
+        sizeColumn: "Taille du groupe",
+        priceColumn: "Par personne",
+        single: "{min} voyageur",
+        range: "{min}–{max} voyageurs",
+        rangeOpen: "{min}+ voyageurs",
+        activeBadge: "Votre tarif",
+      },
       detailsLegend: "Vos informations",
       fullName: "Nom complet",
       email: "E-mail",
@@ -1214,6 +1237,22 @@ export const frPages = {
       bookThisDate: "Réserver cette date",
       /** Shown on a departure's button when online booking is paused tour-wide. */
       bookingPaused: "Réservation suspendue",
+      /** P8: replaces the list for tours that run on the traveler's own dates. */
+      onRequestTitle: "Voyagez à vos propres dates",
+      onRequestBody: "Ce circuit se fait sur demande. Choisissez la date qui vous convient au moment de réserver ; nous confirmons votre guide pour ce matin-là.",
+      onRequestCta: "Choisir votre date",
+      onRequestAlso: "Vous préférez un autre jour ? Vous pouvez choisir votre propre date au moment de réserver.",
+    },
+    /** P8 group-size pricing table on the tour detail page. */
+    groupPricing: {
+      heading: "Prix par personne selon la taille du groupe",
+      note: "Les tarifs sont par personne. Les groupes plus nombreux paient moins chacun : le tarif s'applique automatiquement selon la taille de votre groupe lors de la réservation.",
+      sizeColumn: "Taille du groupe",
+      priceColumn: "Par personne",
+      single: "{min} voyageur",
+      range: "{min}–{max} voyageurs",
+      rangeOpen: "{min}+ voyageurs",
+      activeBadge: "Votre tarif",
     },
   },
 

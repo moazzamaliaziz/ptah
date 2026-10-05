@@ -92,9 +92,13 @@ export async function listAdminCoupons(): Promise<AdminCouponRow[]> {
   }));
 }
 
-export interface AdminCouponDetail extends CouponInput {
+export interface AdminCouponDetail extends Omit<CouponInput, "currency"> {
   id: string;
   redemptions: number;
+  /** The currency actually stored on the row. New coupons are only ever written
+   *  in SITE_CURRENCY, but a legacy row may carry something else — show it as
+   *  stored rather than quietly relabelling it in the editor. */
+  currency: string | null;
 }
 
 /** Full editable detail for one coupon, or null. */

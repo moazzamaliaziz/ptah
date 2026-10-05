@@ -345,6 +345,9 @@ export function toTourListItem(t: TripIdeaTourItem): TourListItem {
     difficulty: t.difficulty,
     heroImage: t.heroImage,
     destinations: t.destinations,
+    // Trip-idea tours carry display names only, and this shape feeds TourCard
+    // rather than the finder's featured sort, so there are no slugs to pass.
+    destinationSlugs: [],
     tags: t.tags,
     nextDeparture: null,
     openDepartureCount: 0,

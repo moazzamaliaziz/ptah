@@ -927,6 +927,17 @@ export const arPages = {
       departureLegend: "اختر رحلتك",
       soldOut: "نفدت المقاعد",
       remaining: "بقي {count}",
+      /** P8 calendar labels (shown instead of the departure list). */
+      dateLegend: "اختر تاريخ سفرك",
+      dateHelp: "اختر أي تاريخ يناسبك. سنؤكّد لك المرشد وموعد الاستقبال في صباح ذلك اليوم.",
+      calendarLabel: "تقويم تاريخ السفر",
+      prevMonth: "الشهر السابق",
+      nextMonth: "الشهر التالي",
+      dateUnavailable: "غير متاح",
+      dateSelected: "السفر في {date}",
+      datePlaceholder: "لم تختر تاريخًا بعد — اختر يومًا من الأعلى.",
+      earliestDate: "أقرب تاريخ متاح: {date}",
+      dateRequired: "اختر تاريخ سفرك للمتابعة.",
       travelersLegend: "المسافرون",
       /** Per-passenger-type stepper labels. Children/infants only appear when the
        *  tour prices them. Price per person is appended from the tour data. */
@@ -939,7 +950,19 @@ export const arPages = {
       decrease: "إنقاص {label}",
       increase: "زيادة {label}",
       upTo: "حتى {max} في هذه الرحلة",
+      upToParty: "حتى {max} مسافرًا في الحجز الواحد",
       selectDeparture: "اختر رحلة",
+      /** P8 group-size pricing table inside the form. */
+      groupPricing: {
+        heading: "السعر للفرد حسب حجم المجموعة",
+        note: "سعرك يتبع حجم مجموعتك — كلما زاد عدد المسافرين، قلّ ما يدفعه كل فرد.",
+        sizeColumn: "حجم المجموعة",
+        priceColumn: "للفرد",
+        single: "مسافر {min}",
+        range: "{min}–{max} مسافرين",
+        rangeOpen: "{min}+ مسافرين",
+        activeBadge: "سعرك",
+      },
       detailsLegend: "بياناتك",
       fullName: "الاسم الكامل",
       email: "البريد الإلكتروني",
@@ -1214,6 +1237,22 @@ export const arPages = {
       bookThisDate: "احجز هذا التاريخ",
       /** Shown on a departure's button when online booking is paused tour-wide. */
       bookingPaused: "الحجز متوقف مؤقتًا",
+      /** P8: replaces the list for tours that run on the traveler's own dates. */
+      onRequestTitle: "سافر في التواريخ التي تناسبك",
+      onRequestBody: "تُنظَّم هذه الجولة حسب الطلب. اختر التاريخ المناسب لك عند إتمام الحجز وسنؤكّد لك المرشد في صباح ذلك اليوم.",
+      onRequestCta: "اختر تاريخك",
+      onRequestAlso: "تفضّل يومًا آخر؟ يمكنك اختيار تاريخك الخاص عند إتمام الحجز.",
+    },
+    /** P8 group-size pricing table on the tour detail page. */
+    groupPricing: {
+      heading: "السعر للفرد حسب حجم المجموعة",
+      note: "الأسعار للفرد. المجموعات الأكبر تدفع أقل لكل فرد — ويُحدَّد السعر تلقائيًا حسب حجم مجموعتك عند الحجز.",
+      sizeColumn: "حجم المجموعة",
+      priceColumn: "للفرد",
+      single: "مسافر {min}",
+      range: "{min}–{max} مسافرين",
+      rangeOpen: "{min}+ مسافرين",
+      activeBadge: "سعرك",
     },
   },
 

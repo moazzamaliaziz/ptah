@@ -63,6 +63,15 @@ export interface PriceBreakdown {
   currency: string;
 }
 
+/** One party-size band and its per-person price (P8). `maxPax` null means the
+ *  band is open-ended ("7 or more"). Mirrors the TourPriceTier row, declared
+ *  here as a plain shape so this pure module needs no runtime Prisma import. */
+export interface GroupPriceTier {
+  minPax: number;
+  maxPax: number | null;
+  pricePerPersonCents: number;
+}
+
 /** Resolved per-type unit prices for one tour/departure. `adultCents` is already
  *  resolved (departure override ?? tour base). A null child/infant price means
  *  that passenger type is NOT offered on this tour. May be 0 (e.g. free infant). */
@@ -71,6 +80,59 @@ export interface TourPricing {
   childCents: number | null;
   infantCents: number | null;
   currency: string;
+  /** P8 group-size bands. When one matches the party size its per-person price
+   *  REPLACES `adultCents`; an empty list leaves `adultCents` in force. */
+  tiers?: readonly GroupPriceTier[];
+}
+
+/**
+ * The per-person price for a party of `pax`, from the group-size bands — or
+ * null when no band covers that size (caller falls back to the adult price).
+ *
+ * Pure and total: it never throws and never depends on the bands being sorted
+ * or non-overlapping. Admin validation keeps them tidy, but legacy or
+ * hand-edited rows could overlap, so the NARROWEST covering band wins (an
+ * open-ended band is treated as the widest). That makes the price a
+ * deterministic function of the data, which is what matters — the same party
+ * size must never be quoted two different prices by two code paths.
+ */
+export function resolveTierPriceCents(
+  tiers: readonly GroupPriceTier[] | undefined,
+  pax: number,
+): number | null {
+  if (!tiers || tiers.length === 0) return null;
+  let best: GroupPriceTier | null = null;
+  let bestWidth = 0;
+  for (const tier of tiers) {
+    if (pax < tier.minPax) continue;
+    if (tier.maxPax != null && pax > tier.maxPax) continue;
+    // An open-ended band is the widest thing there is. Note this must be
+    // compared with care: `Infinity < Infinity` is false, so the first match
+    // has to be taken unconditionally rather than against a sentinel width.
+    const width = tier.maxPax == null ? Infinity : tier.maxPax - tier.minPax;
+    if (best == null) {
+      best = tier;
+      bestWidth = width;
+      continue;
+    }
+    // Ties (two bands of equal width covering `pax`) resolve to the higher
+    // minPax — the more specific band for this party size.
+    if (width < bestWidth || (width === bestWidth && tier.minPax > best.minPax)) {
+      best = tier;
+      bestWidth = width;
+    }
+  }
+  return best?.pricePerPersonCents ?? null;
+}
+
+/**
+ * The per-person adult price actually charged for a party of `pax`: the matching
+ * group-size band, else the tour's adult price. The one function both the
+ * server reserve path and the live checkout total go through, so the quote the
+ * customer sees and the charge they get are the same number by construction.
+ */
+export function adultUnitCents(pricing: TourPricing, pax: number): number {
+  return resolveTierPriceCents(pricing.tiers, pax) ?? pricing.adultCents;
 }
 
 export type ReserveFailureReason =
@@ -80,7 +142,10 @@ export type ReserveFailureReason =
   | "SOLD_OUT"
   | "BOOKING_CLOSED"
   | "PRICE_UNAVAILABLE"
-  | "COUPON_INVALID";
+  | "COUPON_INVALID"
+  /** P8: the customer-picked date is malformed, too soon, past the booking
+   *  window, or blacked out. */
+  | "DATE_UNAVAILABLE";
 
 export class ReserveError extends Error {
   constructor(public readonly reason: ReserveFailureReason) {
@@ -115,12 +180,19 @@ export function assertValidCounts(counts: PassengerCounts): number {
  * breakdown whose line totals sum EXACTLY to `totalCents`. No DB access, no
  * side effects. Validates counts (via assertValidCounts) and rejects any
  * requested type whose price is null with ReserveError("PRICE_UNAVAILABLE").
+ *
+ * P8: the adult per-person price is taken from the group-size band matching the
+ * TOTAL traveler count (children and infants count toward party size — a family
+ * of four is a party of four), falling back to `pricing.adultCents` when no
+ * band matches. Child and infant prices stay flat per-type; they are already a
+ * discount off the adult rate, and tiering them too would compound two
+ * discounts in a way no one can predict from the price table on the page.
  */
 export function priceBooking(counts: PassengerCounts, pricing: TourPricing): PriceBreakdown {
   assertValidCounts(counts);
 
   const entries: Array<[PassengerType, number, number | null]> = [
-    ["adult", counts.adult, pricing.adultCents],
+    ["adult", counts.adult, adultUnitCents(pricing, totalSeats(counts))],
     ["child", counts.child, pricing.childCents],
     ["infant", counts.infant, pricing.infantCents],
   ];
@@ -158,6 +230,149 @@ export function parsePriceBreakdown(value: unknown): PriceBreakdown | null {
     items.push({ type: line.type as PassengerType, count: line.count, unitCents: line.unitCents });
   }
   return { items, totalCents: obj.totalCents, currency: obj.currency };
+}
+
+// ─────────────────────── Customer-chosen dates (P8) ─────────────────────────
+//
+// Departures are still the unit of inventory — capacity, seat claims, bookings,
+// vouchers and invoices all hang off a TourDeparture row. What changes in P8 is
+// WHO creates them: instead of a traveler picking from a fixed list, they pick a
+// date in a calendar and the reserve path materializes the departure for that
+// date. Everything downstream is unchanged, and the oversell guarantee is
+// unchanged too: the upsert below is keyed on the (tourId, startDate) UNIQUE
+// index, so concurrent first-bookings of the same date converge on ONE row and
+// then contend for its seats through the same conditional UPDATE as always.
+
+/** The per-tour rules that decide which dates a traveler may pick. */
+export interface DateWindow {
+  /** Minimum days of notice: today + leadDays is the earliest date. */
+  leadDays: number;
+  /** How far ahead the calendar opens, in days from today. */
+  windowDays: number;
+  /** Dates to refuse, as "YYYY-MM-DD" strings. */
+  blackoutDates: readonly string[];
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * Parse a "YYYY-MM-DD" calendar date as UTC midnight, or null if it is not a
+ * real date. Dates are handled as UTC throughout (the `@db.Date` columns carry
+ * no zone) so a traveler in Auckland and the server in Cairo agree on which day
+ * "2026-11-04" is.
+ */
+export function parseIsoDate(value: string): Date | null {
+  if (!ISO_DATE_RE.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  // Round-trip guards against overflow dates like 2026-02-31, which Date
+  // silently rolls forward into March.
+  return date.toISOString().slice(0, 10) === value ? date : null;
+}
+
+/** Render a Date as its UTC "YYYY-MM-DD" calendar date. */
+export function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** UTC midnight of the day `date` falls on. */
+export function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+/** `date` shifted by `days`, staying at UTC midnight. */
+export function addUtcDays(date: Date, days: number): Date {
+  return new Date(startOfUtcDay(date).getTime() + days * MS_PER_DAY);
+}
+
+/** The inclusive first/last date a traveler may pick, given the tour's rules. */
+export function dateWindowBounds(window: DateWindow, now: Date = new Date()): { first: Date; last: Date } {
+  const today = startOfUtcDay(now);
+  const first = addUtcDays(today, Math.max(0, window.leadDays));
+  // A window shorter than the lead time would leave nothing selectable; clamp so
+  // the last date is never before the first.
+  const last = addUtcDays(today, Math.max(Math.max(0, window.leadDays), window.windowDays));
+  return { first, last };
+}
+
+/**
+ * Is this calendar date one the traveler may pick? Pure, so the calendar
+ * component greys out exactly the dates the server would refuse.
+ */
+export function isDateSelectable(iso: string, window: DateWindow, now: Date = new Date()): boolean {
+  const date = parseIsoDate(iso);
+  if (!date) return false;
+  if (window.blackoutDates.includes(iso)) return false;
+  const { first, last } = dateWindowBounds(window, now);
+  return date.getTime() >= first.getTime() && date.getTime() <= last.getTime();
+}
+
+/**
+ * Server-side gate on a customer-picked date: the same rule as
+ * `isDateSelectable`, but it returns the parsed UTC date and throws
+ * ReserveError("DATE_UNAVAILABLE") on refusal. The calendar's `disabled` state
+ * is a courtesy; THIS is the check that holds, because a crafted POST never
+ * goes through the calendar at all.
+ */
+export function assertSelectableDate(iso: string, window: DateWindow, now: Date = new Date()): Date {
+  const date = parseIsoDate(iso);
+  if (!date || !isDateSelectable(iso, window, now)) throw new ReserveError("DATE_UNAVAILABLE");
+  return date;
+}
+
+/** Read a tour's `blackoutDates` JSON column into a clean ISO-date list. */
+export function parseBlackoutDates(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const raw of value) {
+    if (typeof raw === "string" && parseIsoDate(raw)) out.push(raw);
+  }
+  return out;
+}
+
+/**
+ * Find — or create — the departure for a customer-picked date, and return its
+ * id. Must be called inside the same transaction as the seat claim that
+ * follows, so an abandoned reserve rolls the new departure back with it.
+ *
+ * `upsert` on the (tourId, startDate) UNIQUE index is doing the real work:
+ * whichever concurrent request gets there first creates the row, and the others
+ * fall through to its `update` branch, which deliberately touches nothing. We
+ * must NOT reset capacity or status here — a second traveler booking the same
+ * date has to inherit the seats the first one left, and an admin who CLOSED
+ * that date must stay closed (the seat claim's `status: "OPEN"` guard then
+ * rejects the booking, which is the intended outcome).
+ */
+export async function resolveRequestDepartureWith(
+  client: Db,
+  args: {
+    tourId: string;
+    /** UTC-midnight start date, already validated by assertSelectableDate. */
+    startDate: Date;
+    /** Tour duration in days; 1 means a single-day tour (end === start). */
+    durationDays: number;
+    /** Seats a newly created departure opens with. */
+    capacity: number;
+  },
+): Promise<string> {
+  const { tourId, startDate, durationDays, capacity } = args;
+  const endDate = addUtcDays(startDate, Math.max(1, durationDays) - 1);
+  const departure = await client.tourDeparture.upsert({
+    where: { tourId_startDate: { tourId, startDate } },
+    // Empty update = "leave the existing departure exactly as it is"; see above.
+    update: {},
+    create: {
+      tourId,
+      startDate,
+      endDate,
+      maxCapacity: capacity,
+      remainingCapacity: capacity,
+      status: "OPEN",
+    },
+    select: { id: true },
+  });
+  return departure.id;
 }
 
 // ─────────────────────────────── Coupons (P5) ───────────────────────────────
@@ -348,6 +563,9 @@ export async function reserveSeatsWith(
             title: true,
             slug: true,
             bookingClosed: true,
+            priceTiers: {
+              select: { minPax: true, maxPax: true, pricePerPersonCents: true },
+            },
           },
         },
       },
@@ -357,11 +575,15 @@ export async function reserveSeatsWith(
     // new reservations even if a stale funnel posts here. Rollback frees seats.
     if (dep.tour.bookingClosed) throw new ReserveError("BOOKING_CLOSED");
 
+    // A departure's `priceOverrideCents` is a deliberate per-date adult price
+    // (a peak-season sailing, say), so it outranks the group-size bands; when it
+    // is null the bands apply, and when there are none the tour base stands.
     const pricing: TourPricing = {
       adultCents: dep.priceOverrideCents ?? dep.tour.basePriceCents,
       childCents: dep.tour.childPriceCents,
       infantCents: dep.tour.infantPriceCents,
       currency: dep.tour.currency,
+      tiers: dep.priceOverrideCents == null ? dep.tour.priceTiers : [],
     };
     const breakdown = priceBooking(counts, pricing);
 

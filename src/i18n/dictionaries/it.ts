@@ -57,7 +57,7 @@ export const it = {
       {
         title: "Scopri l'Egitto",
         columns: [
-          { heading: "Destinazioni", links: ["Il Cairo", "Luxor", "Assuan", "Alessandria", "Hurghada", "Sharm el-Sheikh"] },
+          { heading: "Destinazioni", links: ["Luxor", "Assuan", "Il Cairo", "Alessandria", "Hurghada", "Sharm el-Sheikh"] },
           { heading: "Conoscere il territorio", links: ["Storia e patrimonio", "Stagioni e clima", "Il Nilo", "Deserti e oasi", "Barriere del Mar Rosso"] },
           { heading: "Buono a sapersi", links: ["Viaggio responsabile", "Accessibilità", "Sicurezza e assistenza", "Storie e diario"] },
         ],
@@ -71,7 +71,6 @@ export const it = {
         title: "Organizza il viaggio",
         columns: [
           { heading: "Come arrivare", links: ["Voli per l'Egitto", "Visti e ingresso", "Arrivo senza pensieri", "Come muoversi"] },
-          { heading: "Decidere", links: ["Quando andare", "Quanti giorni", "Budget e mance", "Viaggiare con i bambini"] },
           { heading: "La nostra promessa", links: ["Come funzionano i viaggi Ptah", "Viaggio responsabile", "Recensioni e accreditamenti", "Contatta il team"] },
         ],
         imageCtas: [
@@ -83,27 +82,14 @@ export const it = {
       {
         title: "Tour",
         columns: [
+          { heading: "Tour a Luxor", links: ["Tutti i tour a Luxor", "Templi e tombe", "Crociere sul Nilo da Luxor", "Scopri Luxor"] },
+          { heading: "Tour ad Aswan", links: ["Tutti i tour ad Aswan", "Abu Simbel e File", "Crociere sul Nilo da Aswan", "Scopri Aswan"] },
           { heading: "Per stile", links: ["Egitto classico", "Crociere sul Nilo", "Mar Rosso e spiaggia", "Avventure nel deserto"] },
-          { heading: "Per durata", links: ["Tour giornalieri", "Viaggi di 2–4 giorni", "Viaggi di 5–9 giorni", "Spedizioni di 10+ giorni"] },
-          { heading: "Speciali", links: ["Privati e su misura", "Viaggi per famiglie", "Viaggi di nozze", "Partenze last-minute"] },
         ],
         imageCtas: [
-          { label: "Viaggio esclusivo", heading: "Egitto classico, 8 giorni" },
+          { label: "Riva occidentale", heading: "Luxor, dal tempio alla tomba" },
           { label: "Sul fiume", heading: "Collezione crociere sul Nilo" },
-          { label: "Sott'acqua", heading: "Viaggi di immersione e snorkeling" },
-        ],
-      },
-      {
-        title: "Diario",
-        columns: [
-          { heading: "Per iniziare", links: ["Quando andare", "Prima crociera sul Nilo", "Itinerario di 7 giorni", "Cosa mettere in valigia"] },
-          { heading: "Luoghi e racconti", links: ["Il Cairo oltre la guida", "L'anima di Alessandria", "Oltre Giza", "Una sera a Karnak"] },
-          { heading: "Viaggia bene", links: ["L'Egitto con i bambini", "Rispetto per la barriera", "Giorni di feluca sul Nilo", "Tutti gli articoli"] },
-        ],
-        imageCtas: [
-          { label: "Pianifica il viaggio", heading: "Quando visitare l'Egitto" },
-          { label: "Sul fiume", heading: "Prima crociera sul Nilo" },
-          { label: "In famiglia", heading: "L'Egitto con i bambini" },
+          { label: "Risalendo il Nilo", heading: "Aswan e Abu Simbel" },
         ],
       },
     ],

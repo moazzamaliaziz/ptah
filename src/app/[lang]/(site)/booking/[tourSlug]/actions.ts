@@ -31,10 +31,14 @@ export interface BookingFormState {
   error: string | null;
 }
 
-/** Args for the live discount-code preview (mirrors validateCouponSchema). */
+/** Args for the live discount-code preview (mirrors validateCouponSchema).
+ *  The date arrives either as a scheduled `departureId` or, when the traveler
+ *  picked their own day, as `tourSlug` + `departureDate` (P8). */
 export interface CouponPreviewInput {
   code: string;
-  departureId: string;
+  departureId?: string;
+  tourSlug?: string;
+  departureDate?: string;
   adults: number;
   children: number;
   infants: number;
@@ -79,7 +83,13 @@ export async function submitBookingAction(
   const rawLang = formData.get("lang");
   const locale = toLocale(typeof rawLang === "string" ? rawLang : null);
   const raw = {
+    // P8: the funnel posts EITHER a scheduled departure id, or the tour slug
+    // plus the date the traveler picked on the calendar. The service layer
+    // narrows the pair and re-checks the date against the tour's own window —
+    // the calendar's disabled days are a courtesy, not the guard.
     departureId: formData.get("departureId"),
+    tourSlug: formData.get("tourSlug"),
+    departureDate: formData.get("departureDate"),
     adults: formData.get("adults"),
     children: formData.get("children"),
     infants: formData.get("infants"),

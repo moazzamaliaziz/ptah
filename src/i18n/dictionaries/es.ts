@@ -51,7 +51,7 @@ export const es = {
       {
         title: "Sobre Egipto",
         columns: [
-          { heading: "Destinos", links: ["El Cairo", "Luxor", "Asuán", "Alejandría", "Hurgada", "Sharm el-Sheij"] },
+          { heading: "Destinos", links: ["Luxor", "Asuán", "El Cairo", "Alejandría", "Hurgada", "Sharm el-Sheij"] },
           { heading: "Conoce el territorio", links: ["Historia y patrimonio", "Estaciones y clima", "El Nilo", "Desiertos y oasis", "Arrecifes del mar Rojo"] },
           { heading: "Información útil", links: ["Viajes responsables", "Accesibilidad", "Seguridad y asistencia", "Historias y diario"] },
         ],
@@ -65,7 +65,6 @@ export const es = {
         title: "Planifica tu viaje",
         columns: [
           { heading: "Cómo llegar", links: ["Vuelos a Egipto", "Visados y entrada", "Días de llegada, resueltos", "Cómo moverse"] },
-          { heading: "Decidir", links: ["Cuándo visitar", "Cuántos días", "Presupuesto y propinas", "Viajar con niños"] },
           { heading: "Nuestra promesa", links: ["Cómo funcionan los viajes de Ptah", "Viajes responsables", "Opiniones y acreditación", "Contacta con el equipo"] },
         ],
         imageCtas: [
@@ -77,27 +76,14 @@ export const es = {
       {
         title: "Tours",
         columns: [
+          { heading: "Tours en Luxor", links: ["Todos los tours en Luxor", "Templos y tumbas", "Cruceros por el Nilo desde Luxor", "Descubre Luxor"] },
+          { heading: "Tours en Asuán", links: ["Todos los tours en Asuán", "Abu Simbel y Filé", "Cruceros por el Nilo desde Asuán", "Descubre Asuán"] },
           { heading: "Por estilo", links: ["Egipto clásico", "Cruceros por el Nilo", "Mar Rojo y playa", "Aventuras en el desierto"] },
-          { heading: "Por duración", links: ["Tours de un día", "Viajes de 2 a 4 días", "Viajes de 5 a 9 días", "Expediciones de más de 10 días"] },
-          { heading: "Especiales", links: ["Privados y a medida", "Viajes en familia", "Lunas de miel", "Salidas de última hora"] },
         ],
         imageCtas: [
-          { label: "Viaje emblemático", heading: "Egipto clásico, 8 días" },
+          { label: "Orilla oeste", heading: "Luxor, del templo a la tumba" },
           { label: "En el río", heading: "Colección de cruceros por el Nilo" },
-          { label: "Bajo el agua", heading: "Viajes de buceo y esnórquel" },
-        ],
-      },
-      {
-        title: "Diario",
-        columns: [
-          { heading: "Para empezar", links: ["Cuándo viajar", "Primer crucero por el Nilo", "Itinerario de 7 días", "Qué llevar"] },
-          { heading: "Lugares e historias", links: ["El Cairo más allá de la guía", "El alma de Alejandría", "Más allá de Guiza", "Una noche en Karnak"] },
-          { heading: "Viaja con cabeza", links: ["Egipto con niños", "Respeto por los arrecifes", "Días de faluca en el Nilo", "Todos los artículos"] },
-        ],
-        imageCtas: [
-          { label: "Planificar el viaje", heading: "Cuándo visitar Egipto" },
-          { label: "En el río", heading: "Primer crucero por el Nilo" },
-          { label: "En familia", heading: "Egipto con niños" },
+          { label: "Río arriba", heading: "Asuán y Abu Simbel" },
         ],
       },
     ],

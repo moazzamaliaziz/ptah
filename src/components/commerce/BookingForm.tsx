@@ -4,7 +4,9 @@ import { useActionState, useEffect, useMemo, useState, useTransition } from "rea
 import { useFormStatus } from "react-dom";
 import { useParams } from "next/navigation";
 import { formatPriceCents } from "@/lib/utils";
-import { MAX_SEATS } from "@/server/booking-core";
+import { MAX_SEATS, adultUnitCents, type GroupPriceTier } from "@/server/booking-core";
+import DepartureCalendar from "@/components/commerce/DepartureCalendar";
+import GroupPriceTable from "@/components/commerce/GroupPriceTable";
 import {
   submitBookingAction,
   previewCouponAction,
@@ -115,10 +117,13 @@ function SubmitButton({
   totalLabel,
   offline,
   labels,
+  blocked,
 }: {
   totalLabel: string;
   offline: boolean;
   labels: FormLabels;
+  /** True until the traveler has picked a date (calendar mode). */
+  blocked?: boolean;
 }) {
   const { pending } = useFormStatus();
   const idle = offline
@@ -127,10 +132,10 @@ function SubmitButton({
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || blocked}
       className="w-full rounded-full bg-nile px-6 py-3.5 text-btn text-white transition-colors hover:bg-nile/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nile disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? labels.working : idle}
+      {pending ? labels.working : blocked ? labels.dateRequired : idle}
     </button>
   );
 }
@@ -222,6 +227,24 @@ function PaxStepper({
  * gateway (Stripe/PayPal) or the bank-transfer instructions. Live total is
  * display-only; the server re-prices authoritatively.
  */
+/** The customer-chosen-date mode's server-computed bounds (P8). All dates are
+ *  "YYYY-MM-DD" strings so nothing here depends on the browser's clock. */
+export interface BookingCalendarConfig {
+  /** Tour slug — posted with the date, since a date alone names no tour. */
+  tourSlug: string;
+  /** Inclusive first and last selectable day. */
+  firstDate: string;
+  lastDate: string;
+  /** Operator-closed days. */
+  blackoutDates: string[];
+  /** Days whose existing departure is sold out or closed. */
+  unavailableDates: string[];
+  /** Seats a new date opens with — the party-size cap in calendar mode. */
+  capacity: number;
+  /** Pre-selected day (e.g. from a `?date=` deep link), when still bookable. */
+  initialDate?: string;
+}
+
 export default function BookingForm({
   departures,
   initialDepartureId,
@@ -229,6 +252,10 @@ export default function BookingForm({
   labels,
   childPriceCents,
   infantPriceCents,
+  calendar,
+  basePriceCents,
+  priceTiers = [],
+  currency: tourCurrency,
 }: {
   departures: BookingDepartureOption[];
   initialDepartureId?: string;
@@ -238,6 +265,16 @@ export default function BookingForm({
    *  the tour doesn't price that type, so its stepper is hidden. `0` ⇒ free. */
   childPriceCents: number | null;
   infantPriceCents: number | null;
+  /** P8: present ⇒ the traveler picks their own date on a calendar instead of
+   *  choosing from `departures`. Absent ⇒ the pre-P8 departure list. */
+  calendar?: BookingCalendarConfig;
+  /** Tour adult price, used in calendar mode where there is no departure row
+   *  to read a price from yet. */
+  basePriceCents: number;
+  /** P8 group-size bands. The band matching the party size overrides the adult
+   *  per-person price — the same rule `priceBooking` applies server-side. */
+  priceTiers?: GroupPriceTier[];
+  currency: string;
 }) {
   const METHOD_META = methodMeta(labels);
   const firstBookable = departures.find((d) => d.remainingCapacity > 0);
@@ -249,6 +286,9 @@ export default function BookingForm({
       ? initialDepartureId
       : firstBookable?.id ?? departures[0]?.id ?? "",
   );
+  // Calendar mode starts with NOTHING selected: picking the travel date is the
+  // whole point, so we must not quietly pre-book the earliest day for them.
+  const [travelDate, setTravelDate] = useState<string | null>(calendar?.initialDate ?? null);
   const [counts, setCounts] = useState<Counts>({ adult: 1, child: 0, infant: 0 });
   const availableMethods = methods.length > 0 ? methods : (["stripe"] as PaymentMethod[]);
   const [method, setMethod] = useState<PaymentMethod>(availableMethods[0] ?? "stripe");
@@ -268,12 +308,31 @@ export default function BookingForm({
     () => departures.find((d) => d.id === departureId),
     [departures, departureId],
   );
-  const currency = selected?.currency ?? departures[0]?.currency ?? "USD";
-  const adultCents = selected?.priceCents ?? 0;
+  const currency = calendar ? tourCurrency : selected?.currency ?? tourCurrency;
   // Total travelers drive capacity; infants count as seats too (matches server).
-  const maxSeats = Math.max(1, Math.min(selected?.remainingCapacity ?? 1, MAX_SEATS));
   const totalTravelers = counts.adult + counts.child + counts.infant;
+  // In calendar mode the price comes off the tour (a date nobody has booked yet
+  // has no departure override), and the group-size band for the current party
+  // overrides it — exactly what `priceBooking` does on the server, through the
+  // very same `adultUnitCents`, so the quote below cannot drift from the charge.
+  const adultCents = calendar
+    ? adultUnitCents(
+        { adultCents: basePriceCents, childCents: childPriceCents, infantCents: infantPriceCents, currency, tiers: priceTiers },
+        totalTravelers,
+      )
+    : selected
+      ? adultUnitCents(
+          { adultCents: selected.priceCents, childCents: childPriceCents, infantCents: infantPriceCents, currency, tiers: priceTiers },
+          totalTravelers,
+        )
+      : 0;
+  const maxSeats = calendar
+    ? Math.max(1, Math.min(calendar.capacity, MAX_SEATS))
+    : Math.max(1, Math.min(selected?.remainingCapacity ?? 1, MAX_SEATS));
   const canAdd = totalTravelers < maxSeats;
+  // Calendar mode cannot submit until a day is picked; the server refuses a
+  // dateless post anyway, but blocking here keeps that from being a round trip.
+  const dateMissing = calendar != null && travelDate == null;
 
   // Adjust one passenger type, respecting the per-type floor (adult >= 1, others
   // >= 0) and the shared capacity ceiling. Display only — server re-validates.
@@ -290,23 +349,33 @@ export default function BookingForm({
     counts.adult * adultCents +
     counts.child * (childPriceCents ?? 0) +
     counts.infant * (infantPriceCents ?? 0);
-  const totalLabel = selected ? formatPriceCents(totalCents, currency) : "—";
+  const priceable = calendar ? travelDate != null : selected != null;
+  const totalLabel = priceable ? formatPriceCents(totalCents, currency) : "—";
 
-  // A previewed discount is tied to a specific departure + traveler mix. If
-  // either changes the applied number would be stale, so drop it and let the
-  // customer re-apply against the new total.
+  // A previewed discount is tied to a specific date + traveler mix. If either
+  // changes the applied number would be stale, so drop it and let the customer
+  // re-apply against the new total. In calendar mode the group-size band can
+  // move the per-person rate too, which is exactly such a change.
   useEffect(() => {
     setApplied(null);
     setCouponError(null);
-  }, [departureId, counts.adult, counts.child, counts.infant]);
+  }, [departureId, travelDate, counts.adult, counts.child, counts.infant]);
 
   const applyCoupon = () => {
     const code = couponInput.trim();
     if (!code) return;
+    // Nothing to price a code against until a date exists.
+    if (calendar && !travelDate) {
+      setCouponError(labels.dateRequired);
+      return;
+    }
     startApplying(async () => {
       const res = await previewCouponAction({
         code,
-        departureId,
+        // Mirrors the submit payload: a chosen date, or a scheduled departure.
+        ...(calendar && travelDate
+          ? { tourSlug: calendar.tourSlug, departureDate: travelDate }
+          : { departureId }),
         adults: counts.adult,
         children: counts.child,
         infants: counts.infant,
@@ -351,6 +420,27 @@ export default function BookingForm({
         </div>
       )}
 
+      {calendar ? (
+        /* P8 calendar mode — the traveler picks their own day. The date goes to
+           the server as a plain string alongside the tour slug; the server
+           re-checks it and materializes the departure inside the reservation. */
+        <fieldset className="space-y-3">
+          <legend className="text-card-title font-semibold text-ink">{labels.dateLegend}</legend>
+          <p className="text-meta text-ink/60">{labels.dateHelp}</p>
+          <DepartureCalendar
+            value={travelDate}
+            onChange={setTravelDate}
+            firstDate={calendar.firstDate}
+            lastDate={calendar.lastDate}
+            blackoutDates={calendar.blackoutDates}
+            unavailableDates={calendar.unavailableDates}
+            locale={lang ?? "en"}
+            labels={labels}
+          />
+          <input type="hidden" name="tourSlug" value={calendar.tourSlug} />
+          <input type="hidden" name="departureDate" value={travelDate ?? ""} />
+        </fieldset>
+      ) : (
       <fieldset className="space-y-3">
         <legend className="text-card-title font-semibold text-ink">{labels.departureLegend}</legend>
         <div className="space-y-2">
@@ -394,6 +484,7 @@ export default function BookingForm({
           })}
         </div>
       </fieldset>
+      )}
 
       <fieldset>
         <legend className="text-card-title font-semibold text-ink">{labels.travelersLegend}</legend>
@@ -437,8 +528,21 @@ export default function BookingForm({
           )}
         </div>
         <p className="mt-2 text-meta text-ink/55">
-          {selected ? labels.upTo.replace("{max}", String(maxSeats)) : labels.selectDeparture}
+          {calendar
+            ? labels.upToParty.replace("{max}", String(maxSeats))
+            : selected
+              ? labels.upTo.replace("{max}", String(maxSeats))
+              : labels.selectDeparture}
         </p>
+        {/* The band matching the current party is highlighted, so adding a
+            traveler visibly moves the rate rather than just the total. */}
+        <GroupPriceTable
+          tiers={priceTiers}
+          currency={currency}
+          labels={labels.groupPricing}
+          activePax={totalTravelers}
+          className="mt-4 rounded-xl border border-grey-300/60 bg-papyrus/40 p-4"
+        />
         {/* Authoritative per-type counts for the server action (it derives seats
             = adults + children + infants and re-prices from the DB). */}
         <input type="hidden" name="adults" value={counts.adult} />
@@ -695,7 +799,12 @@ export default function BookingForm({
         </p>
       </div>
 
-      <SubmitButton totalLabel={netLabel} offline={method === "bank_transfer"} labels={labels} />
+      <SubmitButton
+        totalLabel={netLabel}
+        offline={method === "bank_transfer"}
+        labels={labels}
+        blocked={dateMissing}
+      />
       <p className="text-center text-[11px] text-ink/45">
         {method === "bank_transfer" ? labels.footerBank : labels.footerOnline}
       </p>

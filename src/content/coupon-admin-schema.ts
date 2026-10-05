@@ -14,6 +14,7 @@
  * way "ends 2026-12-31" stays valid through the whole of Dec 31.
  */
 import { z } from "zod";
+import { SITE_CURRENCY, isSupportedCurrency } from "@/content/currency";
 import type { CouponType } from "@prisma/client";
 
 export const COUPON_TYPES = ["PERCENT", "FIXED"] as const;
@@ -38,11 +39,15 @@ export const couponInputSchema = z
       .int()
       .min(1, "Enter a discount amount greater than zero.")
       .max(1_000_000_00, "That discount amount is too large."),
+    // A money-valued coupon must be in the currency the shop charges in, or
+    // `evaluateCoupon` rejects it at checkout as a currency mismatch — which
+    // would look like a broken code to the customer. `null` stays valid: a
+    // percentage coupon with no currency applies to any total.
     currency: z
       .string()
       .trim()
       .toUpperCase()
-      .regex(/^[A-Z]{3}$/, "Currency must be a 3-letter code (e.g. USD).")
+      .refine(isSupportedCurrency, `Discount amounts are ${SITE_CURRENCY} only.`)
       .nullable(),
     minSpendCents: z.number().int().min(0, "Minimum spend cannot be negative.").max(1_000_000_00).nullable(),
     maxRedemptions: z.number().int().min(1, "Must allow at least one use.").max(1_000_000).nullable(),

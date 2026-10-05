@@ -35,23 +35,51 @@ export default function DepartureList({
   departures,
   labels,
   bookingClosed,
+  onRequestDates,
 }: {
   tourSlug: string;
   departures: DepartureView[];
   labels: DepartureLabels;
   /** When true, online booking is paused tour-wide — every row is disabled. */
   bookingClosed?: boolean;
+  /** P8: the tour runs on the traveler's own dates, so the real answer to
+   *  "when can I go?" is the calendar in the funnel, not this list. */
+  onRequestDates?: boolean;
 }) {
+  // An on-request tour leads with the calendar invitation. Any scheduled
+  // departures still list below it — a fixed date with seats held is useful
+  // information, and some travelers would rather join one than name a day.
+  const onRequestCard =
+    onRequestDates && !bookingClosed ? (
+      <div className="rounded-xl border border-nile/30 bg-nile/5 p-5">
+        <p className="text-card-title font-semibold text-ink">{labels.onRequestTitle}</p>
+        <p className="mt-1 text-body text-ink/70">{labels.onRequestBody}</p>
+        <Link
+          href={`/booking/${tourSlug}`}
+          className="mt-4 inline-block rounded-full bg-nile px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-nile/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nile"
+        >
+          {labels.onRequestCta}
+        </Link>
+      </div>
+    ) : null;
+
   if (departures.length === 0) {
     return (
-      <p className="rounded-xl border border-grey-300/60 bg-papyrus/50 p-5 text-body text-ink/70">
-        {labels.empty}
-      </p>
+      onRequestCard ?? (
+        <p className="rounded-xl border border-grey-300/60 bg-papyrus/50 p-5 text-body text-ink/70">
+          {labels.empty}
+        </p>
+      )
     );
   }
 
   return (
-    <ul className="space-y-3">
+    <>
+      {onRequestCard}
+      {onRequestCard && (
+        <p className="mt-4 mb-2 text-meta text-ink/55">{labels.onRequestAlso}</p>
+      )}
+      <ul className="space-y-3">
       {departures.map((d) => {
         const seats = seatsLabel(d.remainingCapacity, labels);
         const bookable = !d.soldOut && !bookingClosed;
@@ -100,6 +128,7 @@ export default function DepartureList({
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </>
   );
 }
