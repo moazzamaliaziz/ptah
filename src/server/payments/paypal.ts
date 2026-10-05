@@ -344,3 +344,91 @@ export async function verifyWebhookSignature(
   const json = (await res.json()) as { verification_status?: string };
   return json.verification_status === "SUCCESS";
 }
+
+// ── Connection diagnostic (admin) ────────────────────────────────────────────
+
+/**
+ * Why a PayPal checkout cannot start, in terms an operator can act on.
+ *
+ * `createOrder` deliberately returns a bare null so the funnel degrades without
+ * leaking gateway detail to customers. That is right for the public page and
+ * useless for the person trying to fix it, who then has to find server logs.
+ * This runs the same two calls and reports what actually happened.
+ */
+export type PaypalDiagnosis =
+  | { ok: true; environment: "live" | "sandbox" }
+  | {
+      ok: false;
+      /** NOT_CONFIGURED: disabled, or no client id/secret stored.
+       *  AUTH_REJECTED: PayPal refused the credentials (401/403).
+       *  ORDER_REJECTED: credentials fine, but PayPal refused a test order —
+       *    usually the account cannot take this currency, or is not able to
+       *    receive payments at all.
+       *  NETWORK: PayPal was unreachable. */
+      code: "NOT_CONFIGURED" | "AUTH_REJECTED" | "ORDER_REJECTED" | "NETWORK";
+      status?: number;
+      /** PayPal's own message, trimmed. Shown verbatim: it is the whole point. */
+      detail?: string;
+      environment?: "live" | "sandbox";
+    };
+
+/**
+ * Check PayPal end to end: fetch a token, then create a throwaway order.
+ *
+ * The test order is the valuable half — a token proves the credentials, but
+ * only an order proves the ACCOUNT can actually take a payment in this
+ * currency, which is the failure a token check would miss entirely. It is never
+ * approved and no Payment row is written, so it simply expires unused; no money
+ * moves and nothing is charged.
+ */
+export async function diagnosePaypal(currency: string): Promise<PaypalDiagnosis> {
+  const creds = await resolvePaypalCredentials();
+  if (!creds) return { ok: false, code: "NOT_CONFIGURED" };
+  const environment = creds.baseUrl === LIVE_BASE ? "live" : "sandbox";
+
+  // Bypass the cached token so a just-corrected credential is actually retried
+  // rather than answered from a stale cache entry.
+  globalForPaypal.__ptahPaypalToken = undefined;
+
+  let tokenRes: Response;
+  const basic = Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString("base64");
+  try {
+    tokenRes = await fetch(`${creds.baseUrl}/v1/oauth2/token`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: "grant_type=client_credentials",
+    });
+  } catch (error) {
+    return { ok: false, code: "NETWORK", detail: error instanceof Error ? error.message : String(error), environment };
+  }
+  if (!tokenRes.ok) {
+    const detail = await tokenRes.text().catch(() => "");
+    return { ok: false, code: "AUTH_REJECTED", status: tokenRes.status, detail: detail.slice(0, 400), environment };
+  }
+  const token = ((await tokenRes.json().catch(() => ({}))) as { access_token?: string }).access_token;
+  if (!token) return { ok: false, code: "AUTH_REJECTED", status: tokenRes.status, environment };
+
+  let orderRes: Response;
+  try {
+    orderRes = await fetch(`${creds.baseUrl}/v2/checkout/orders`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intent: "CAPTURE",
+        purchase_units: [
+          {
+            description: "Connection test",
+            amount: { currency_code: currency.toUpperCase(), value: "1.00" },
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    return { ok: false, code: "NETWORK", detail: error instanceof Error ? error.message : String(error), environment };
+  }
+  if (!orderRes.ok) {
+    const detail = await orderRes.text().catch(() => "");
+    return { ok: false, code: "ORDER_REJECTED", status: orderRes.status, detail: detail.slice(0, 600), environment };
+  }
+  return { ok: true, environment };
+}

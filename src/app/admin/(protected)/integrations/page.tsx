@@ -6,6 +6,7 @@ import {
   type IntegrationView,
 } from "@/server/integrations";
 import { saveIntegrationAction } from "./actions";
+import PaypalTest from "./PaypalTest";
 import AdminHint from "@/components/admin/AdminHint";
 import { getAdminLocale } from "@/server/admin/locale";
 import { getAdminDict, type IntegrationsDict } from "@/i18n/admin/dictionary";
@@ -61,6 +62,11 @@ function IntegrationCard({ item, canManage, labels, helpLabel }: { item: Integra
           </button>
         ) : null}
       </form>
+
+      {/* PayPal only: a checkout that will not start is otherwise invisible
+          here — the card happily reads "Enabled / Configured" while PayPal
+          refuses every order. */}
+      {item.key === "PAYPAL" && canManage ? <PaypalTest labels={labels.paypalTest} /> : null}
     </div>
   );
 }

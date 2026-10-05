@@ -31,7 +31,7 @@ import { widgetsEn, widgetsAr, type WidgetsDict, type WidgetEditorDict } from ".
 import { translationsEn, translationsAr, type TranslationsDict, type TranslationEditorDict } from "./dictionaries/translations";
 import { mediaEn, mediaAr, mediaPickerEn, mediaPickerAr, type MediaDict, type MediaUploadDict, type MediaPickerDict } from "./dictionaries/media";
 import { brandingEn, brandingAr, type BrandingDict, type BrandingEditorDict, type SocialsEditorDict } from "./dictionaries/branding";
-import { integrationsEn, integrationsAr, type IntegrationsDict } from "./dictionaries/integrations";
+import { integrationsEn, integrationsAr, type IntegrationsDict, type PaypalTestDict } from "./dictionaries/integrations";
 import { togglesEn, togglesAr, type TogglesDict } from "./dictionaries/toggles";
 import { paymentsEn, paymentsAr, type PaymentsDict, type PaymentsEditorDict } from "./dictionaries/payments";
 
@@ -64,7 +64,7 @@ export interface AdminDict {
 
 // Re-export the slice types so client islands can type a narrow prop
 // (e.g. `dict: DashboardDict`) without importing the whole barrel graph.
-export type { NavDict, ChromeDict, StatusDict, CommonDict, DashboardDict, OrdersDict, ReportsDict, ReportsChartsDict, ReportsCsvDict, EnquiriesDict, CouponsDict, CouponFormDict, AuthDict, ErrorsDict, ContentDict, ContentEditorLabels, DestinationsDict, DestinationFormDict, EventsDict, EventFormFieldsDict, ToursDict, TourFormFieldsDict, FaqEditorDict, ItinerarySectionDict, DeparturesSectionDict, TripIdeasDict, TripIdeaFormFieldsDict, WidgetsDict, WidgetEditorDict, TranslationsDict, TranslationEditorDict, MediaDict, MediaUploadDict, MediaPickerDict, BrandingDict, BrandingEditorDict, SocialsEditorDict, IntegrationsDict, TogglesDict, PaymentsDict, PaymentsEditorDict };
+export type { NavDict, ChromeDict, StatusDict, CommonDict, DashboardDict, OrdersDict, ReportsDict, ReportsChartsDict, ReportsCsvDict, EnquiriesDict, CouponsDict, CouponFormDict, AuthDict, ErrorsDict, ContentDict, ContentEditorLabels, DestinationsDict, DestinationFormDict, EventsDict, EventFormFieldsDict, ToursDict, TourFormFieldsDict, FaqEditorDict, ItinerarySectionDict, DeparturesSectionDict, TripIdeasDict, TripIdeaFormFieldsDict, WidgetsDict, WidgetEditorDict, TranslationsDict, TranslationEditorDict, MediaDict, MediaUploadDict, MediaPickerDict, BrandingDict, BrandingEditorDict, SocialsEditorDict, IntegrationsDict, PaypalTestDict, TogglesDict, PaymentsDict, PaymentsEditorDict };
 
 const en: AdminDict = {
   nav: navEn,
