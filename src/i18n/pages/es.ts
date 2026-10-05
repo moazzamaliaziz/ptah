@@ -1391,6 +1391,12 @@ export const esPages = {
   },
 
   landing: {
+    /** Homepage Luxor & Aswan tour grid (FocusTours). */
+    focusTours: {
+      heading: "Tours en Luxor y Asuán",
+      intro: "Días guiados entre los templos, tumbas e islas del Alto Egipto: precio por persona y reserva en la fecha que te convenga.",
+      cta: "Ver todos los tours",
+    },
     journalCta: "Leer el diario",
     faqsCta: "Ver todas las preguntas frecuentes",
   },

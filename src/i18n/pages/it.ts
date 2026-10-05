@@ -1391,6 +1391,12 @@ export const itPages = {
   },
 
   landing: {
+    /** Homepage Luxor & Aswan tour grid (FocusTours). */
+    focusTours: {
+      heading: "Tour a Luxor e Aswan",
+      intro: "Giornate guidate tra templi, tombe e isole dell'Alto Egitto: prezzo a persona, prenotabili nella data che preferisci.",
+      cta: "Vedi tutti i tour",
+    },
     journalCta: "Leggi il diario",
     faqsCta: "Tutte le domande frequenti",
   },
