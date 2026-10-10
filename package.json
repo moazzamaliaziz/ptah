@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
-        "build": "prisma generate && node scripts/db-deploy.mjs && next build && node scripts/build-sw.mjs",
+        "build": "prisma generate && next build && node scripts/build-sw.mjs",
         "build:sw": "node scripts/build-sw.mjs",
         "gen:pwa-icons": "node scripts/gen-pwa-icons.mjs",
         "start": "next start",
