@@ -44,6 +44,11 @@ export async function register(): Promise<void> {
       "integration registry unreadable (database offline or migrations pending) — continuing boot",
     );
   }
+
+  // 3. Admin bootstrap from env (ADMIN_EMAIL + ADMIN_PASSWORD/_HASH). No-op when
+  //    unset; self-guards against a missing DB so it never blocks startup.
+  const { syncAdminFromEnv } = await import("@/server/auth/admin-sync");
+  await syncAdminFromEnv();
 }
 
 /**

@@ -48,6 +48,15 @@ const envSchema = z
     NEXTAUTH_SECRET: optionalString(),
     AUTH_URL: optionalUrl(),
 
+    // ── Admin bootstrap (optional; applied at boot by src/server/auth/admin-sync)
+    // Set ADMIN_EMAIL plus ONE of ADMIN_PASSWORD (plaintext, hashed at boot) or
+    // ADMIN_PASSWORD_HASH (argon2id). Lets the admin login be set/changed via env.
+    // ADMIN_PASSWORD itself is read raw from process.env there (never trimmed).
+    ADMIN_EMAIL: optionalString(),
+    ADMIN_NAME: optionalString(),
+    ADMIN_PASSWORD: optionalString(),
+    ADMIN_PASSWORD_HASH: optionalString(),
+
     // ── Payments ─────────────────────────────────────────────────────────────
     // Stripe + PayPal credentials are vault-first (admin Integrations), with
     // these env vars as a deployment fallback. See src/lib/stripe.ts /

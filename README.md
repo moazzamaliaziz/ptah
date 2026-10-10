@@ -62,6 +62,21 @@ Useful scripts:
 
 Rotate immediately in any environment reachable by anyone else.
 
+### Admin login & integration keys via environment (production)
+
+For platform deploys (e.g. Hostinger) you can drive both the admin login and all
+third-party/payment credentials from environment variables — no admin console or DB
+access needed:
+
+- **Admin login:** set `ADMIN_EMAIL` plus either `ADMIN_PASSWORD` (plaintext, hashed
+  at boot) or `ADMIN_PASSWORD_HASH` (argon2id — preferred, no plaintext in env).
+  `src/server/auth/admin-sync.ts` ensures a matching `SUPER_ADMIN` at boot; change the
+  values and redeploy to change the login.
+- **Integration / payment keys:** set `INTEGRATION_<KEY>_<FIELD>` for any field in the
+  registry (`src/server/integrations.ts`), e.g. `INTEGRATION_PAYPAL_CLIENT_SECRET`,
+  `INTEGRATION_STRIPE_SECRET_KEY`. These **override the admin-panel vault per field**,
+  are read server-side only, and are never written to the DB or logged.
+
 ---
 
 ## Directory layout

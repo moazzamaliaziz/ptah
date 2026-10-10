@@ -159,32 +159,69 @@ export interface IntegrationView {
   fields: IntegrationFieldView[];
 }
 
-/** Server-only: decrypt an integration's full credential record for vendor use. */
-export async function getIntegrationConfig(key: string): Promise<StoredConfig | null> {
-  const row = await db.integration.findUnique({ where: { key }, select: { configEncrypted: true } });
-  if (!row) return null;
-  return openJson<StoredConfig>(row.configEncrypted);
+/**
+ * Environment overrides for integration credentials.
+ *
+ * For any field in the registry, an env var named `INTEGRATION_<KEY>_<FIELD>`
+ * (e.g. `INTEGRATION_PAYPAL_CLIENT_SECRET`, `INTEGRATION_STRIPE_SECRET_KEY`)
+ * supplies that value from the platform's secret store. Env wins per-field over
+ * the admin-panel vault, is read server-side only, and is never written to the
+ * DB or logged — so a deployment can configure any integration (payment gateway,
+ * analytics, …) purely through the environment, with no reliance on the
+ * encrypted vault blob (handy when the vault was sealed with a different key).
+ */
+function envConfigFor(key: string): StoredConfig {
+  const def = BY_KEY.get(key);
+  if (!def) return {};
+  const out: StoredConfig = {};
+  for (const field of def.fields) {
+    const raw = process.env[`INTEGRATION_${key}_${field.name}`];
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (value) out[field.name] = value;
+  }
+  return out;
 }
 
-/** Whether an integration is enabled AND has stored config (safe to invoke). */
+/** True when the environment supplies at least one field for this integration. */
+function hasEnvConfig(key: string): boolean {
+  return Object.keys(envConfigFor(key)).length > 0;
+}
+
+/**
+ * Server-only: an integration's full credential record for vendor use — the
+ * admin-panel vault overlaid with any `INTEGRATION_<KEY>_<FIELD>` env overrides
+ * (env wins). Returns null only when neither source provides anything.
+ */
+export async function getIntegrationConfig(key: string): Promise<StoredConfig | null> {
+  const envCfg = envConfigFor(key);
+  const row = await db.integration.findUnique({ where: { key }, select: { configEncrypted: true } });
+  const vault = row ? openJson<StoredConfig>(row.configEncrypted) : null;
+  if (!vault && Object.keys(envCfg).length === 0) return null;
+  return { ...(vault ?? {}), ...envCfg };
+}
+
+/** Whether an integration is usable: env config present, OR enabled with vault config. */
 export async function isIntegrationActive(key: string): Promise<boolean> {
+  if (hasEnvConfig(key)) return true;
   const row = await db.integration.findUnique({ where: { key }, select: { enabled: true, configEncrypted: true } });
   return !!row?.enabled && !!row.configEncrypted;
 }
 
 /**
- * Server-only: decrypt an integration's config ONLY when it is enabled (one DB
- * read). Returns null when the integration is disabled or unconfigured — the
- * shape the mailer/vendor callers want ("give me usable credentials or
- * nothing"), so a single disabled vendor never has its config acted on.
+ * Server-only: usable config for a vendor call — null when nothing is configured.
+ * `INTEGRATION_<KEY>_<FIELD>` env overrides are always honored (and alone make an
+ * integration usable, even if its DB row is disabled); otherwise the vault is read
+ * only when the integration is enabled. Env wins per-field over the vault.
  */
 export async function getActiveIntegrationConfig(key: string): Promise<StoredConfig | null> {
+  const envCfg = envConfigFor(key);
   const row = await db.integration.findUnique({
     where: { key },
     select: { enabled: true, configEncrypted: true },
   });
-  if (!row?.enabled || !row.configEncrypted) return null;
-  return openJson<StoredConfig>(row.configEncrypted);
+  const vault = row?.enabled && row.configEncrypted ? openJson<StoredConfig>(row.configEncrypted) : null;
+  const merged = { ...(vault ?? {}), ...envCfg };
+  return Object.keys(merged).length > 0 ? merged : null;
 }
 
 /** Admin list — secrets masked to "set/not set", never their values. */
@@ -196,7 +233,9 @@ export async function listIntegrationsForAdmin(): Promise<IntegrationView[]> {
 
   return INTEGRATIONS.map((def) => {
     const row = rowByKey.get(def.key);
-    const config = row ? openJson<StoredConfig>(row.configEncrypted) ?? {} : {};
+    // Overlay env overrides so a field supplied via INTEGRATION_<KEY>_<FIELD>
+    // shows as "set" in the admin UI (secret values stay masked below).
+    const config = { ...(row ? openJson<StoredConfig>(row.configEncrypted) ?? {} : {}), ...envConfigFor(def.key) };
     const fields: IntegrationFieldView[] = def.fields.map((f) => {
       const stored = config[f.name] ?? "";
       const isSet = stored.length > 0;
