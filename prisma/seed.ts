@@ -458,13 +458,18 @@ const DAY_TOURS: SeedTour[] = [
 async function main(): Promise<void> {
   console.log("🌱 Seeding Ptah Tours database…");
 
-  // 1) Super admin — DEV CREDENTIALS ONLY. Rotate immediately in real envs.
-  const passwordHash = await hash("ChangeMe!Dev2026", ARGON2_OPTIONS);
+  // 1) Super admin — credentials come from ADMIN_EMAIL / ADMIN_PASSWORD env vars
+  //    with dev fallbacks. Set BOTH in production (e.g. Hostinger env vars) so no
+  //    public site ships with the documented default password.
+  const adminEmail = process.env.ADMIN_EMAIL?.trim() || "admin@ptahtours.local";
+  const adminPassword = process.env.ADMIN_PASSWORD || "ChangeMe!Dev2026";
+  const usingDefaultPassword = adminPassword === "ChangeMe!Dev2026";
+  const passwordHash = await hash(adminPassword, ARGON2_OPTIONS);
   const admin = await db.user.upsert({
-    where: { email: "admin@ptahtours.local" },
+    where: { email: adminEmail },
     update: {},
     create: {
-      email: "admin@ptahtours.local",
+      email: adminEmail,
       name: "Ptah Platform Admin",
       passwordHash,
       role: "SUPER_ADMIN",
@@ -472,7 +477,12 @@ async function main(): Promise<void> {
       emailVerifiedAt: new Date(),
     },
   });
-  console.log(`  ✓ SUPER_ADMIN user: ${admin.email} (dev password — see README)`);
+  console.log(
+    `  ✓ SUPER_ADMIN user: ${admin.email}` +
+      (usingDefaultPassword
+        ? " (DEFAULT dev password — set ADMIN_PASSWORD and rotate immediately!)"
+        : " (password from ADMIN_PASSWORD)"),
+  );
 
   // 2) Site toggles
   for (const toggle of SITE_TOGGLES) {

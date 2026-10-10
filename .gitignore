@@ -68,3 +68,9 @@ tidb-schema.sql
 tidb-setup.sql
 scripts/load-tidb.mjs
 
+# Non-production working files: kept locally, excluded from the deploy repo.
+# docs/ = internal planning notes + staged translations (not used at build/runtime).
+/docs/
+# scratch schema dump generated during Hostinger setup (schema lives in prisma/migrations)
+/hostinger-schema.sql
+
