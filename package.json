@@ -8,7 +8,6 @@
         "build:sw": "node scripts/build-sw.mjs",
         "gen:pwa-icons": "node scripts/gen-pwa-icons.mjs",
         "start": "next start",
-        "lint": "eslint",
         "db:generate": "prisma generate",
         "db:migrate": "prisma migrate dev",
         "db:seed": "tsx prisma/seed.ts",
@@ -52,8 +51,11 @@
         "zod": "^4.6.5"
     },
     "devDependencies": {
-        "eslint": "^9",
-        "eslint-config-next": "16.3.5",
         "playwright": "^1.63.0"
+    },
+    "overrides": {
+        "mariadb": "^3.5.4",
+        "mysql2": "^3.24.5",
+        "deepmerge-ts": "^8.0.2"
     }
 }
